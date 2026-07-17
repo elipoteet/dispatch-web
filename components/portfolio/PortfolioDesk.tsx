@@ -132,6 +132,7 @@ export function PortfolioDesk() {
                 </div>
               </div>
             ) : (
+              <div style={{ overflowX: "auto" }}>
               <table className="holdings-table">
                 <thead>
                   <tr>
@@ -192,6 +193,7 @@ export function PortfolioDesk() {
                     ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         </div>
@@ -217,6 +219,7 @@ export function PortfolioDesk() {
                 <div>Your trade history will appear here.</div>
               </div>
             ) : (
+              <div style={{ overflowX: "auto" }}>
               <table className="activity-table">
                 <thead>
                   <tr>
@@ -256,6 +259,7 @@ export function PortfolioDesk() {
                   })}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         </div>

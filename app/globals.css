@@ -2260,6 +2260,18 @@
   /* Footer: lighten up */
   footer { opacity: 0.85; }
 
+/* ——————— PHONE WIDTHS ——————— */
+/* The original's one breakpoint (900px) was really a tablet breakpoint —
+   nav-links, the home hero search, and the portfolio tables never got a
+   rule for genuinely narrow (~375–430px) phone screens, so they overflowed
+   horizontally instead of wrapping/stacking. */
+@media (max-width: 640px) {
+  .nav-links { flex-wrap: wrap; justify-content: flex-end; row-gap: 10px; gap: 10px 16px; }
+  .nav-links a { font-size: 10px; }
+  .hero-search { flex-direction: column; }
+  .hero-search button { padding: 14px; }
+}
+
 /* ——————— AUTH ——————— */
 /* Nav auth button — mirrors .settings-btn */
 .auth-btn {
