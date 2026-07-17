@@ -90,6 +90,20 @@ export async function fetchPrices(symbol: string): Promise<PriceRow[]> {
   return rows;
 }
 
+// —— Twelve Data: single lightweight quote (used for trade execution and
+// mark-to-market pricing, where a full 1300-row history is wasteful) ——
+export async function fetchQuotePrice(symbol: string): Promise<number> {
+  const key = process.env.TWELVE_DATA_API_KEY;
+  if (!key) throw new Error("Twelve Data API key not configured.");
+  const url = `https://api.twelvedata.com/price?symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(key)}`;
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error("Twelve Data HTTP " + res.status);
+  const j = await res.json();
+  const price = parseFloat(j.price);
+  if (j.status === "error" || isNaN(price)) throw new Error(j.message || "No price data");
+  return price;
+}
+
 // —— Finnhub: fundamentals, consensus, news ——
 async function fh<T = unknown>(path: string, params: Record<string, string> = {}): Promise<T | null> {
   const key = process.env.FINNHUB_API_KEY;

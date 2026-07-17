@@ -4,6 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { AuthModalProvider } from "@/components/auth/AuthModalContext";
 import { AuthModal } from "@/components/auth/AuthModal";
+import { PortfolioProvider } from "@/components/portfolio/PortfolioProvider";
+import { OnboardingModal } from "@/components/portfolio/OnboardingModal";
+import { TradeModal } from "@/components/portfolio/TradeModal";
+import { Toast } from "@/components/portfolio/Toast";
 import { Masthead } from "@/components/layout/Masthead";
 import { TopNav } from "@/components/layout/TopNav";
 import { Footer } from "@/components/layout/Footer";
@@ -51,11 +55,16 @@ export default async function RootLayout({
       <body>
         <AuthProvider initialUser={user}>
           <AuthModalProvider>
-            <Masthead />
-            <TopNav />
-            <main>{children}</main>
-            <Footer />
-            <AuthModal />
+            <PortfolioProvider>
+              <Masthead />
+              <TopNav />
+              <main>{children}</main>
+              <Footer />
+              <AuthModal />
+              <OnboardingModal />
+              <TradeModal />
+              <Toast />
+            </PortfolioProvider>
           </AuthModalProvider>
         </AuthProvider>
       </body>

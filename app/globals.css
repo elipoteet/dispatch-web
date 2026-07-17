@@ -1827,6 +1827,11 @@
     transition: all 0.15s;
   }
   .onboard-custom button:hover { background: var(--gold); border-color: var(--gold); color: var(--navy); }
+  .onboard-modal .error {
+    color: var(--accent);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+  }
 
   /* Trade modal — quick buy/sell from analyzer */
   .trade-backdrop {

@@ -25,6 +25,7 @@ export type ReportData = {
   name: string;
   industry: string;
   price: string;
+  lastPrice: number;
   changeText: string;
   changeClassName: "pos" | "neg";
   rating: string;
@@ -335,6 +336,7 @@ export function buildReport(
     name: fund?.profile?.name || "U.S.-listed equity",
     industry: [fund?.profile?.finnhubIndustry, fund?.profile?.exchange].filter(Boolean).join(" · ") || "Equity",
     price: "$" + fmt(last),
+    lastPrice: last,
     changeText: `${sign(d1abs)}${fmt(d1abs)} (${sign(d1pct)}${fmt(d1pct, 2)}%)`,
     changeClassName: d1abs >= 0 ? "pos" : "neg",
     rating,

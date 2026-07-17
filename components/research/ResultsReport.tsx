@@ -1,4 +1,7 @@
+"use client";
+
 import type { ReportData } from "@/lib/analysis/report";
+import { usePortfolio } from "@/components/portfolio/PortfolioProvider";
 import { ChartSVG } from "./ChartSVG";
 
 const RANGES = [
@@ -18,12 +21,27 @@ export function ResultsReport({
   rangeDays: number;
   onRangeChange: (days: number) => void;
 }) {
+  const { openTrade } = usePortfolio();
+
   return (
     <div className="results active" id="results">
       <div className="report-header">
         <div className="report-meta-top">
           <span>The Dispatch Equity Research Memo</span>
-          <span id="reportTimestamp">{report.timestamp}</span>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <button
+              className="trade-action-btn"
+              type="button"
+              title="Place a paper trade"
+              onClick={() => openTrade(report.ticker, report.lastPrice)}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+              </svg>
+              Trade
+            </button>
+            <span id="reportTimestamp">{report.timestamp}</span>
+          </div>
         </div>
         <div className="report-title-row">
           <div>
