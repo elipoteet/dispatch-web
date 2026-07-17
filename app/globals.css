@@ -2270,6 +2270,9 @@
   .nav-links a { font-size: 10px; }
   .hero-search { flex-direction: column; }
   .hero-search button { padding: 14px; }
+  .cta-row { flex-direction: column; }
+  .cta-text, .cta-btn { padding: 32px 24px; }
+  .report-meta-top { flex-wrap: wrap; row-gap: 10px; }
 }
 
 /* ——————— AUTH ——————— */
