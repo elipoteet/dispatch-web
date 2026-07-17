@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useAuthModal } from "@/components/auth/AuthModalContext";
+import { AccountModal } from "@/components/auth/AccountModal";
 import { ThemeToggle } from "./ThemeToggle";
 
 const LINKS = [
@@ -20,12 +22,15 @@ export function TopNav() {
   const router = useRouter();
   const { user } = useAuth();
   const { open } = useAuthModal();
+  const [accountOpen, setAccountOpen] = useState(false);
 
   async function handleSignOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
     router.refresh();
   }
+
+  const displayName = (user?.user_metadata?.username as string | undefined) || user?.email;
 
   return (
     <nav className="topnav">
@@ -46,7 +51,15 @@ export function TopNav() {
         <ThemeToggle />
         {user ? (
           <div className="auth-user-chip">
-            <span className="email">{user.email}</span>
+            <button
+              type="button"
+              className="email"
+              title="Edit display name"
+              onClick={() => setAccountOpen(true)}
+              style={{ background: "none", border: "none", cursor: "pointer", padding: 0, font: "inherit", color: "inherit" }}
+            >
+              {displayName}
+            </button>
             <button type="button" onClick={handleSignOut}>
               Sign Out
             </button>
@@ -61,6 +74,7 @@ export function TopNav() {
           </button>
         )}
       </div>
+      <AccountModal open={accountOpen} onClose={() => setAccountOpen(false)} />
     </nav>
   );
 }

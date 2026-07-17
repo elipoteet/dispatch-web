@@ -2,15 +2,45 @@
 
 import { useEffect, useState } from "react";
 import { buildReport, type ReportData } from "@/lib/analysis/report";
+import { buildHistoricalFundamentals, sliceRowsAsOf } from "@/lib/analysis/historical";
 import type { Fundamentals, NewsItem, PriceRow } from "@/lib/providers";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Skeleton } from "./Skeleton";
 import { ResultsReport } from "./ResultsReport";
 import { WatchlistRow } from "./WatchlistRow";
+import { HistoricalBanner } from "./HistoricalBanner";
+import { CompareView } from "./CompareView";
 
 const EXAMPLES = ["AAPL", "MSFT", "NVDA", "APLD", "TSLA", "GOOGL", "AMZN", "META", "SPY"];
 
 type Status = "idle" | "loading" | "error";
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+async function fetchAndBuildReport(
+  sym: string,
+  asOf: string | null,
+): Promise<{ report: ReportData; fullRows: PriceRow[] }> {
+  const url = `/api/analyze/${encodeURIComponent(sym)}${asOf ? `?asOf=${asOf}` : ""}`;
+  const res = await fetch(url);
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || `Could not fetch data for ${sym}.`);
+  const rows = json.rows as PriceRow[];
+  const fundamentals = json.fundamentals as Fundamentals | null;
+  const news = json.news as NewsItem[] | null;
+
+  if (asOf) {
+    const sliced = sliceRowsAsOf(rows, asOf);
+    if (sliced.length < 30) {
+      throw new Error(`Not enough price history before ${asOf} for ${sym}. Try a more recent date.`);
+    }
+    const histFund = buildHistoricalFundamentals(fundamentals, asOf);
+    return { report: buildReport(sym, sliced, histFund, news), fullRows: rows };
+  }
+  return { report: buildReport(sym, rows, fundamentals, news), fullRows: rows };
+}
 
 export function ResearchDesk({ initialTicker }: { initialTicker: string }) {
   const { user } = useAuth();
@@ -18,29 +48,47 @@ export function ResearchDesk({ initialTicker }: { initialTicker: string }) {
   const [status, setStatus] = useState<Status>("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [report, setReport] = useState<ReportData | null>(null);
+  const [fullRows, setFullRows] = useState<PriceRow[] | null>(null);
+  const [activeAsOf, setActiveAsOf] = useState("");
   const [rangeDays, setRangeDays] = useState(180);
   const [watchlist, setWatchlist] = useState<string[]>([]);
 
-  async function runAnalysis(sym: string) {
+  // Date picker's raw value — distinct from activeAsOf, since picking a
+  // date doesn't run anything until Run Research is clicked (matches the
+  // original: the date is only read at analyze time).
+  const [dateInput, setDateInput] = useState("");
+
+  const [compareLoading, setCompareLoading] = useState(false);
+  const [compareView, setCompareView] = useState<{ thenReport: ReportData; nowReport: ReportData } | null>(null);
+
+  async function runAnalysis(sym: string, asOf: string | null = null) {
     const clean = sym.trim().toUpperCase();
     if (!clean) return;
     setTicker(clean);
     setStatus("loading");
     setReport(null);
+    setCompareView(null);
     try {
-      const res = await fetch(`/api/analyze/${encodeURIComponent(clean)}`);
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || `Could not fetch data for ${clean}.`);
-      const rows = json.rows as PriceRow[];
-      const fundamentals = json.fundamentals as Fundamentals | null;
-      const news = json.news as NewsItem[] | null;
-      setReport(buildReport(clean, rows, fundamentals, news));
+      const { report: r, fullRows: fr } = await fetchAndBuildReport(clean, asOf);
+      setReport(r);
+      setFullRows(fr);
+      setActiveAsOf(asOf || "");
+      if (asOf) setDateInput(asOf);
       setStatus("idle");
-      if (user) addToWatchlist(clean);
+      // Historical-only lookups don't get added to the watchlist — same as
+      // the original, which only tracked what you're actually researching now.
+      if (user && !asOf) addToWatchlist(clean);
     } catch (e) {
       setErrorMsg(e instanceof Error ? e.message : `Could not fetch data for ${clean}.`);
       setStatus("error");
     }
+  }
+
+  // Used by chips/watchlist — always a fresh live lookup, so any stale date
+  // sitting in the picker shouldn't carry over.
+  function runLive(sym: string) {
+    setDateInput("");
+    runAnalysis(sym, null);
   }
 
   async function addToWatchlist(sym: string) {
@@ -86,14 +134,35 @@ export function ResearchDesk({ initialTicker }: { initialTicker: string }) {
       .catch(() => {});
   }, [user]);
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    runAnalysis(ticker);
+  function handleSearch() {
+    const asOf = dateInput && dateInput < todayStr() ? dateInput : null;
+    runAnalysis(ticker, asOf);
   }
 
   function handleInputKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") runAnalysis(ticker);
+    if (e.key === "Enter") handleSearch();
   }
+
+  function handleDateReset() {
+    setDateInput("");
+    if (ticker) runAnalysis(ticker, null);
+  }
+
+  async function handleCompareToToday() {
+    if (!activeAsOf || !report) return;
+    setCompareLoading(true);
+    try {
+      const { report: nowReport } = await fetchAndBuildReport(ticker, null);
+      setCompareView({ thenReport: report, nowReport });
+    } catch {
+      // Best-effort — leave the historical memo showing if the live fetch fails.
+    } finally {
+      setCompareLoading(false);
+    }
+  }
+
+  const isHistoricalInput = Boolean(dateInput && dateInput < todayStr());
+  const minDate = new Date(Date.now() - 3 * 365 * 864e5).toISOString().slice(0, 10);
 
   return (
     <>
@@ -111,17 +180,41 @@ export function ResearchDesk({ initialTicker }: { initialTicker: string }) {
           onChange={(e) => setTicker(e.target.value.toUpperCase())}
           onKeyDown={handleInputKeyDown}
         />
-        <button id="analyzeBtn" type="button" onClick={handleSubmit} disabled={status === "loading"}>
+        <div className="date-picker-wrap">
+          <label htmlFor="asOfInput" className="date-picker-label">
+            As of
+          </label>
+          <input
+            id="asOfInput"
+            type="date"
+            aria-label="Historical memo date"
+            max={todayStr()}
+            min={minDate}
+            value={dateInput}
+            onChange={(e) => setDateInput(e.target.value)}
+          />
+          <button
+            className={`date-reset ${isHistoricalInput ? "active" : ""}`}
+            id="dateReset"
+            type="button"
+            aria-label="Reset to today"
+            title="Reset to today"
+            onClick={handleDateReset}
+          >
+            Today
+          </button>
+        </div>
+        <button id="analyzeBtn" type="button" onClick={handleSearch} disabled={status === "loading"}>
           Run Research →
         </button>
       </div>
 
-      <WatchlistRow tickers={watchlist} onSelect={runAnalysis} onRemove={removeFromWatchlist} />
+      <WatchlistRow tickers={watchlist} onSelect={runLive} onRemove={removeFromWatchlist} />
 
       <div className="suggestions">
         <span className="label">Examples:</span>
         {EXAMPLES.map((sym) => (
-          <button key={sym} className="chip" type="button" onClick={() => runAnalysis(sym)}>
+          <button key={sym} className="chip" type="button" onClick={() => runLive(sym)}>
             {sym}
           </button>
         ))}
@@ -135,8 +228,34 @@ export function ResearchDesk({ initialTicker }: { initialTicker: string }) {
 
       {status === "loading" && <Skeleton />}
 
-      {status === "idle" && report && (
-        <ResultsReport report={report} rangeDays={rangeDays} onRangeChange={setRangeDays} />
+      {status === "idle" && report && !compareView && (
+        <ResultsReport
+          report={report}
+          rangeDays={rangeDays}
+          onRangeChange={setRangeDays}
+          historicalBanner={
+            activeAsOf && fullRows ? (
+              <HistoricalBanner
+                sym={ticker}
+                asOfDate={activeAsOf}
+                thenPrice={report.snapshot.last}
+                nowPrice={fullRows[fullRows.length - 1].close}
+                onCompare={handleCompareToToday}
+                loading={compareLoading}
+              />
+            ) : undefined
+          }
+        />
+      )}
+
+      {compareView && (
+        <CompareView
+          thenReport={compareView.thenReport}
+          nowReport={compareView.nowReport}
+          sym={ticker}
+          thenDate={activeAsOf}
+          onClose={() => setCompareView(null)}
+        />
       )}
     </>
   );

@@ -151,3 +151,20 @@ export async function fetchNews(symbol: string): Promise<NewsItem[] | null> {
   if (!Array.isArray(news)) return null;
   return news.slice(0, 6);
 }
+
+// News within ±14 days of a historical date — used by the Time Machine
+// view, where "last 30 days" (fetchNews above) wouldn't be relevant.
+export async function fetchNewsAsOf(symbol: string, asOfDate: string): Promise<NewsItem[] | null> {
+  if (!process.env.FINNHUB_API_KEY) return null;
+  const d = new Date(asOfDate + "T00:00:00");
+  const from = new Date(d.getTime() - 14 * 864e5);
+  const to = new Date(d.getTime() + 1 * 864e5);
+  const fmt = (dd: Date) => dd.toISOString().slice(0, 10);
+  const news = await fh<NewsItem[]>("company-news", {
+    symbol: symbol.toUpperCase(),
+    from: fmt(from),
+    to: fmt(to),
+  });
+  if (!Array.isArray(news)) return null;
+  return news.slice(0, 6);
+}

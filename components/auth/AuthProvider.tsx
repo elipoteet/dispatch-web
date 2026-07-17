@@ -6,9 +6,10 @@ import { createClient } from "@/lib/supabase/client";
 
 type AuthContextValue = {
   user: User | null;
+  refreshUser: () => Promise<void>;
 };
 
-const AuthContext = createContext<AuthContextValue>({ user: null });
+const AuthContext = createContext<AuthContextValue>({ user: null, refreshUser: async () => {} });
 
 export function AuthProvider({
   initialUser,
@@ -29,8 +30,16 @@ export function AuthProvider({
     return () => subscription.unsubscribe();
   }, []);
 
+  async function refreshUser() {
+    const supabase = createClient();
+    const {
+      data: { user: fresh },
+    } = await supabase.auth.getUser();
+    setUser(fresh);
+  }
+
   return (
-    <AuthContext.Provider value={{ user }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ user, refreshUser }}>{children}</AuthContext.Provider>
   );
 }
 

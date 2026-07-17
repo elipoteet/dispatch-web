@@ -20,6 +20,28 @@ import { scoreFundamentals, scoreSentiment, scoreTechnicals, type Score } from "
 export type KeyStat = { label: string; value: string; sub?: string; className?: string };
 export type ScorecardRow = { name: string; score: number | null; signal: string; isComposite?: boolean };
 
+// Raw indicator values, kept separately from the formatted display fields —
+// used by the Time Machine compare view, which needs to do its own math
+// (deltas between a "then" and "now" snapshot) rather than compare strings.
+export type ReportSnapshot = {
+  last: number;
+  rating: string;
+  ratingClass: "buy" | "hold" | "sell";
+  composite: number;
+  w52high: number;
+  w52low: number;
+  pctFromHigh: number;
+  ma50: number | null;
+  ma200: number | null;
+  rsiVal: number | null;
+  d30: number | null;
+  d90: number | null;
+  d365: number | null;
+  vol: number | null;
+  dd: number;
+  date: string;
+};
+
 export type ReportData = {
   ticker: string;
   name: string;
@@ -42,6 +64,7 @@ export type ReportData = {
   catalystHtml: string;
   news: NewsItem[] | null;
   rows: PriceRow[];
+  snapshot: ReportSnapshot;
 };
 
 export function buildReport(
@@ -353,6 +376,24 @@ export function buildReport(
     catalystHtml,
     news,
     rows,
+    snapshot: {
+      last,
+      rating,
+      ratingClass,
+      composite,
+      w52high,
+      w52low,
+      pctFromHigh,
+      ma50,
+      ma200,
+      rsiVal,
+      d30,
+      d90,
+      d365,
+      vol,
+      dd,
+      date: rows[rows.length - 1].date,
+    },
   };
 }
 
