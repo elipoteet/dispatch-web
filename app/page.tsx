@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TickerTape } from "@/components/home/TickerTape";
 
@@ -86,6 +87,20 @@ export default function HomePage() {
             what Wall Street is saying — then remind you they&rsquo;re often wrong together.
           </p>
         </div>
+      </div>
+
+      <div className="time-machine-teaser">
+        <div className="label">Not Just a Snapshot</div>
+        <h2>Go back and read yesterday&rsquo;s memo, today.</h2>
+        <p>
+          The Time Machine pulls up any past date and rebuilds the memo as it would have read
+          then — technicals and sentiment recalculated from that day&rsquo;s data, fundamentals
+          held back rather than shown stale. Then compare it straight to the live memo, side by
+          side.
+        </p>
+        <Link href="/research" className="tm-link">
+          Try the Time Machine →
+        </Link>
       </div>
 
       <div className="cta-row">

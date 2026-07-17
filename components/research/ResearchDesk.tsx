@@ -180,14 +180,14 @@ export function ResearchDesk({ initialTicker }: { initialTicker: string }) {
           onChange={(e) => setTicker(e.target.value.toUpperCase())}
           onKeyDown={handleInputKeyDown}
         />
-        <div className="date-picker-wrap">
+        <div className="date-picker-wrap" title="Time Machine — pick a past date to see this memo as it read then">
           <label htmlFor="asOfInput" className="date-picker-label">
-            As of
+            🕐 Time Machine
           </label>
           <input
             id="asOfInput"
             type="date"
-            aria-label="Historical memo date"
+            aria-label="Time Machine — view this memo as of a past date"
             max={todayStr()}
             min={minDate}
             value={dateInput}

@@ -41,6 +41,23 @@ export default function AboutPage() {
             you want to read carefully and decide for yourself, we built this for you.
           </p>
 
+          <h2>The Time Machine.</h2>
+
+          <p>
+            Every memo is a snapshot of a moment — but moments are worth revisiting. The Time
+            Machine lets you pick any date within the last three years and see the memo as it
+            would have read then: technicals and sentiment recalculated from that day&rsquo;s
+            data, the rating recomputed under the same rules we use today. Fundamentals are held
+            back rather than shown stale, since point-in-time filings aren&rsquo;t something we
+            can honestly reconstruct after the fact.
+          </p>
+
+          <p>
+            Pull up a memo from six months ago and compare it directly to the live one. Did the
+            thesis hold? Did the rating change, and why? Hindsight is usually wasted on investors
+            who never write anything down. We&rsquo;d rather you could check your own work.
+          </p>
+
           <h2>What we are not.</h2>
 
           <p>
