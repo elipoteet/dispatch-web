@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { TickerSearchRow } from "@/components/research/TickerSearchRow";
+import { ResearchDesk } from "@/components/research/ResearchDesk";
 
 export const metadata: Metadata = {
   title: "Research — The Dispatch",
@@ -24,17 +24,7 @@ export default async function ResearchPage({
         </p>
       </div>
 
-      <TickerSearchRow defaultTicker={ticker?.toUpperCase() ?? ""} />
-
-      <div className="phase-stub">
-        <div className="label">Phase 2</div>
-        <h2>The analyzer isn&rsquo;t wired up yet.</h2>
-        <p>
-          This is the visual shell only — Phase 1 is scoped to authentication. The live price
-          proxy, fundamentals, technicals, and sentiment memo land in Phase 2, per the backend
-          architecture doc&rsquo;s build order.
-        </p>
-      </div>
+      <ResearchDesk initialTicker={ticker?.toUpperCase() ?? ""} />
     </section>
   );
 }

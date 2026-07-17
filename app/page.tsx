@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { TickerTape } from "@/components/home/TickerTape";
 
 export default function HomePage() {
   const router = useRouter();
@@ -52,11 +53,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div className="ticker-tape">
-        <div className="ticker-tape-inner">
-          <span style={{ color: "var(--muted-2)" }}>Loading markets…</span>
-        </div>
-      </div>
+      <TickerTape />
 
       <div className="features-head">
         <div className="label">The Dispatch Method</div>
