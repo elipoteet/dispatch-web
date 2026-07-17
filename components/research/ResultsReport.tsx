@@ -168,8 +168,12 @@ export function ResultsReport({
           </div>
           <div className="chart-legend">
             <span className="legend-item">
-              <span className="legend-swatch" style={{ background: "var(--navy)" }} />
-              Price
+              <span className="legend-swatch" style={{ background: "var(--green)" }} />
+              Up
+            </span>
+            <span className="legend-item">
+              <span className="legend-swatch" style={{ background: "var(--accent)" }} />
+              Down
             </span>
             <span className="legend-item">
               <span className="legend-swatch" style={{ background: "var(--gold)" }} />
@@ -178,7 +182,7 @@ export function ResultsReport({
             <span className="legend-item">
               <span
                 className="legend-swatch"
-                style={{ background: "var(--accent)", opacity: 0.7, borderTop: "1px dashed var(--accent)" }}
+                style={{ background: "var(--navy)", opacity: 0.7, borderTop: "1px dashed var(--navy)" }}
               />
               200-Day MA
             </span>

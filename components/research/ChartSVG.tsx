@@ -13,12 +13,11 @@ const W = 1000,
 
 export function ChartSVG({ rows, rangeDays }: { rows: PriceRow[]; rangeDays: number }) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [hover, setHover] = useState<{ i: number; x: number; y: number } | null>(null);
+  const [hover, setHover] = useState<{ i: number; x: number } | null>(null);
 
   const chart = useMemo(() => {
     const slice = rows.slice(-rangeDays);
     if (slice.length < 2) return null;
-    const prices = slice.map((r) => r.close);
 
     const start50Idx = Math.max(0, rows.length - rangeDays - 49);
     const start200Idx = Math.max(0, rows.length - rangeDays - 199);
@@ -29,16 +28,38 @@ export function ChartSVG({ rows, rangeDays }: { rows: PriceRow[]; rangeDays: num
     const ma50 = ma50Full.slice(ma50Full.length - slice.length);
     const ma200 = ma200Full.slice(ma200Full.length - slice.length);
 
-    const all = [...prices, ...ma50.filter((v): v is number => v != null), ...ma200.filter((v): v is number => v != null)];
+    // Scale to the full high/low range, not just closes — wicks need room too.
+    const highs = slice.map((r) => r.high);
+    const lows = slice.map((r) => r.low);
+    const all = [
+      ...highs,
+      ...lows,
+      ...ma50.filter((v): v is number => v != null),
+      ...ma200.filter((v): v is number => v != null),
+    ];
     const min = Math.min(...all);
     const max = Math.max(...all);
     const rng = max - min || 1;
     const x = (i: number) => PAD_L + (i / (slice.length - 1)) * (W - PAD_L - PAD_R);
     const y = (p: number) => PAD_T + (1 - (p - min) / rng) * (H - PAD_T - PAD_B);
 
-    let pricePath = `M ${x(0)} ${y(prices[0])}`;
-    for (let i = 1; i < prices.length; i++) pricePath += ` L ${x(i)} ${y(prices[i])}`;
-    const areaPath = pricePath + ` L ${x(prices.length - 1)} ${H - PAD_B} L ${x(0)} ${H - PAD_B} Z`;
+    const plotWidth = W - PAD_L - PAD_R;
+    const slotWidth = slice.length > 1 ? plotWidth / (slice.length - 1) : plotWidth;
+    const candleWidth = Math.max(1, Math.min(slotWidth * 0.62, 9));
+
+    const candles = slice.map((r, i) => {
+      const isUp = r.close >= r.open;
+      const bodyTop = y(Math.max(r.open, r.close));
+      const bodyBottom = y(Math.min(r.open, r.close));
+      return {
+        cx: x(i),
+        wickTop: y(r.high),
+        wickBottom: y(r.low),
+        bodyTop,
+        bodyHeight: Math.max(1, bodyBottom - bodyTop),
+        isUp,
+      };
+    });
 
     let m200path = "";
     let started200 = false;
@@ -64,11 +85,9 @@ export function ChartSVG({ rows, rangeDays }: { rows: PriceRow[]; rangeDays: num
 
     return {
       slice,
-      prices,
       x,
-      y,
-      pricePath,
-      areaPath,
+      candles,
+      candleWidth,
       m50path,
       m200path,
       gridLines,
@@ -78,7 +97,7 @@ export function ChartSVG({ rows, rangeDays }: { rows: PriceRow[]; rangeDays: num
   }, [rows, rangeDays]);
 
   if (!chart) return null;
-  const { slice, prices, x, gridLines, pricePath, areaPath, m50path, m200path, firstDate, lastDate } = chart;
+  const { slice, candles, candleWidth, gridLines, m50path, m200path, firstDate, lastDate } = chart;
 
   function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
     if (!svgRef.current || !chart) return;
@@ -90,8 +109,10 @@ export function ChartSVG({ rows, rangeDays }: { rows: PriceRow[]; rangeDays: num
     }
     const i = Math.round(((svgX - PAD_L) / (W - PAD_L - PAD_R)) * (slice.length - 1));
     if (i < 0 || i >= slice.length) return;
-    setHover({ i, x: chart.x(i), y: chart.y(prices[i]) });
+    setHover({ i, x: chart.x(i) });
   }
+
+  const hoverRow = hover ? slice[hover.i] : null;
 
   return (
     <div className="chart-wrap">
@@ -106,14 +127,9 @@ export function ChartSVG({ rows, rangeDays }: { rows: PriceRow[]; rangeDays: num
         onMouseLeave={() => setHover(null)}
       >
         <title id="chartTitle">
-          Price chart over the last {slice.length} trading days, including 50-day and 200-day moving averages.
+          Candlestick chart over the last {slice.length} trading days, including 50-day and 200-day
+          moving averages.
         </title>
-        <defs>
-          <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--navy)" stopOpacity="0.14" />
-            <stop offset="100%" stopColor="var(--navy)" stopOpacity="0" />
-          </linearGradient>
-        </defs>
 
         {gridLines.map(({ gy, label }, i) => (
           <g key={i}>
@@ -124,14 +140,26 @@ export function ChartSVG({ rows, rangeDays }: { rows: PriceRow[]; rangeDays: num
           </g>
         ))}
 
-        <path d={areaPath} fill="url(#grad)" />
-
         {m200path && (
-          <path d={m200path} fill="none" stroke="var(--accent)" strokeWidth="1" strokeDasharray="5,3" opacity="0.8" />
+          <path d={m200path} fill="none" stroke="var(--navy)" strokeWidth="1" strokeDasharray="5,3" opacity="0.55" />
         )}
         {m50path && <path d={m50path} fill="none" stroke="var(--gold)" strokeWidth="1.3" />}
 
-        <path d={pricePath} fill="none" stroke="var(--navy)" strokeWidth="1.6" strokeLinejoin="round" />
+        {candles.map((c, i) => {
+          const color = c.isUp ? "var(--green)" : "var(--accent)";
+          return (
+            <g key={i} opacity={hover && hover.i !== i ? 0.55 : 1}>
+              <line x1={c.cx} x2={c.cx} y1={c.wickTop} y2={c.wickBottom} stroke={color} strokeWidth="1" />
+              <rect
+                x={c.cx - candleWidth / 2}
+                y={c.bodyTop}
+                width={candleWidth}
+                height={c.bodyHeight}
+                fill={color}
+              />
+            </g>
+          );
+        })}
 
         <text x={PAD_L} y={H - 14} fontFamily="IBM Plex Mono, monospace" fontSize="10" fill="var(--muted)">
           {firstDate}
@@ -148,41 +176,35 @@ export function ChartSVG({ rows, rangeDays }: { rows: PriceRow[]; rangeDays: num
         </text>
 
         {hover && (
-          <>
-            <line
-              x1={hover.x}
-              x2={hover.x}
-              y1={PAD_T}
-              y2={H - PAD_B}
-              stroke="var(--navy)"
-              strokeWidth="1"
-              strokeDasharray="2,3"
-              opacity="0.5"
-              pointerEvents="none"
-            />
-            <circle
-              cx={hover.x}
-              cy={hover.y}
-              r="4"
-              fill="var(--navy)"
-              stroke="var(--paper)"
-              strokeWidth="2"
-              pointerEvents="none"
-            />
-          </>
+          <line
+            x1={hover.x}
+            x2={hover.x}
+            y1={PAD_T}
+            y2={H - PAD_B}
+            stroke="var(--navy)"
+            strokeWidth="1"
+            strokeDasharray="2,3"
+            opacity="0.5"
+            pointerEvents="none"
+          />
         )}
       </svg>
-      {hover && (
+      {hover && hoverRow && (
         <div
           className="chart-tooltip"
           style={{
             opacity: 1,
-            left: Math.min(940, Math.max(0, (hover.x / W) * 100)) + "%",
-            top: Math.max(0, (hover.y / H) * 100 - 10) + "%",
+            left: Math.min(870, Math.max(0, (hover.x / W) * 100)) + "%",
+            top: "8%",
           }}
         >
-          <span className="t-date">{slice[hover.i].date}</span>
-          <span className="t-price">${prices[hover.i].toFixed(2)}</span>
+          <span className="t-date">{hoverRow.date}</span>
+          <span className="t-price">
+            O {hoverRow.open.toFixed(2)} · H {hoverRow.high.toFixed(2)}
+          </span>
+          <span className="t-price">
+            L {hoverRow.low.toFixed(2)} · C {hoverRow.close.toFixed(2)}
+          </span>
         </div>
       )}
     </div>
