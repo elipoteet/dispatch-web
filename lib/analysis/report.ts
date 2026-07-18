@@ -8,6 +8,7 @@ import {
   annualizedVol,
   fmt,
   fmtBig,
+  joinWithAnd,
   macd,
   maxDrawdown,
   pctChange,
@@ -42,6 +43,22 @@ export type ReportSnapshot = {
   date: string;
 };
 
+const CORP_SUFFIX = /\b(inc|incorporated|corp|corporation|co|company|ltd|limited|plc|holdings?|group|n\.v\.|s\.a\.)\b\.?/gi;
+
+// Finnhub's free-tier company-news endpoint mixes in loosely-related market
+// listicles alongside actual company news. Keep only headlines that
+// mention the ticker or a real word from the company name, rather than
+// padding the Sentiment section with unrelated stories.
+function isRelevantHeadline(headline: string, ticker: string, companyName?: string): boolean {
+  const h = headline.toLowerCase();
+  if (new RegExp(`\\b${ticker.toLowerCase()}\\b`).test(h)) return true;
+  if (companyName) {
+    const firstWord = companyName.replace(CORP_SUFFIX, "").trim().split(/\s+/)[0];
+    if (firstWord && firstWord.length > 2 && h.includes(firstWord.toLowerCase())) return true;
+  }
+  return false;
+}
+
 export type ReportData = {
   ticker: string;
   name: string;
@@ -71,8 +88,9 @@ export function buildReport(
   sym: string,
   rows: PriceRow[],
   fund: Fundamentals | null,
-  news: NewsItem[] | null,
+  newsIn: NewsItem[] | null,
 ): ReportData {
+  const news = newsIn ? newsIn.filter((n) => isRelevantHeadline(n.headline, sym, fund?.profile?.name)) : newsIn;
   const prices = rows.map((r) => r.close);
   const last = prices[prices.length - 1];
   const prev = prices[prices.length - 2];
@@ -89,9 +107,14 @@ export function buildReport(
   const macdVal = macd(prices);
   const vol = annualizedVol(prices.slice(-252));
   const dd = maxDrawdown(prices.slice(-252));
+
+  const mk = fund?.metrics || ({} as NonNullable<Fundamentals["metrics"]>);
+  // Prefer Finnhub's own 52-week metric (calendar-accurate) over our
+  // 252-trading-day approximation from the price series; whichever we pick,
+  // use it everywhere so the key stat and the prose never disagree.
   const w52 = prices.slice(-252);
-  const w52high = w52.length ? Math.max(...w52) : last;
-  const w52low = w52.length ? Math.min(...w52) : last;
+  const w52high = mk["52WeekHigh"] ?? (w52.length ? Math.max(...w52) : last);
+  const w52low = mk["52WeekLow"] ?? (w52.length ? Math.min(...w52) : last);
   const pctFromHigh = ((last - w52high) / w52high) * 100;
   const pctFromLow = ((last - w52low) / w52low) * 100;
 
@@ -120,8 +143,6 @@ export function buildReport(
     rating = "Sell";
     ratingClass = "sell";
   }
-
-  const mk = fund?.metrics || ({} as NonNullable<Fundamentals["metrics"]>);
 
   const keyStats: KeyStat[] = [
     {
@@ -186,11 +207,9 @@ export function buildReport(
     }
     body2 += "</p>";
     fundProse.push(body2);
-    if (mk["52WeekHigh"] != null && mk["52WeekLow"] != null) {
-      fundProse.push(
-        `<p>The 52-week range spans <span class="data-inline">$${fmt(mk["52WeekLow"])}</span> to <span class="data-inline">$${fmt(mk["52WeekHigh"])}</span>. Current price sits <span class="data-inline ${pctFromHigh > -10 ? "pos" : "neg"}">${fmt(pctFromHigh, 1)}%</span> from the high and <span class="data-inline pos">+${fmt(pctFromLow, 0)}%</span> from the low — ${pctFromHigh > -5 ? "the stock is trading near its annual peak" : pctFromHigh > -20 ? "a controlled pullback from recent highs" : "well below its recent peak"}.</p>`,
-      );
-    }
+    fundProse.push(
+      `<p>The 52-week range spans <span class="data-inline">$${fmt(w52low)}</span> to <span class="data-inline">$${fmt(w52high)}</span>. Current price sits <span class="data-inline ${pctFromHigh > -10 ? "pos" : "neg"}">${fmt(pctFromHigh, 1)}%</span> from the high and <span class="data-inline pos">+${fmt(pctFromLow, 0)}%</span> from the low — ${pctFromHigh > -5 ? "the stock is trading near its annual peak" : pctFromHigh > -20 ? "a controlled pullback from recent highs" : "well below its recent peak"}.</p>`,
+    );
   } else {
     fundProse.push(
       `<p>Fundamental data for <strong>${sym}</strong> is unavailable right now. Technical analysis below is based on ${rows.length} days of price history.</p>`,
@@ -294,9 +313,10 @@ export function buildReport(
   if (sS.score != null && sS.score <= 4) weaks.push("sentiment");
 
   verdict += `The composite rating of <strong>${rating}</strong> (<span class="data-inline">${composite}/10</span>) reflects `;
-  if (strongs.length && !weaks.length) verdict += `strength across ${strongs.join(", ")}. `;
-  else if (strongs.length && weaks.length) verdict += `tension between strong ${strongs.join(", ")} and weak ${weaks.join(", ")}. `;
-  else if (weaks.length) verdict += `concern across ${weaks.join(", ")}. `;
+  if (strongs.length && !weaks.length) verdict += `strength across ${joinWithAnd(strongs)}. `;
+  else if (strongs.length && weaks.length)
+    verdict += `tension between strong ${joinWithAnd(strongs)} and weak ${joinWithAnd(weaks)}. `;
+  else if (weaks.length) verdict += `concern across ${joinWithAnd(weaks)}. `;
   else verdict += "a middling setup without clear conviction signals. ";
 
   if (rsiVal != null && rsiVal > 70 && (tS.score as number) >= 7) {

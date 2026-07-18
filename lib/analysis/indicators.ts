@@ -97,3 +97,10 @@ export function fmtBig(n: number | null | undefined): string {
 export function sign(n: number): string {
   return n > 0 ? "+" : "";
 }
+
+// "a" -> "a"; "a","b" -> "a and b"; "a","b","c" -> "a, b, and c"
+export function joinWithAnd(items: string[]): string {
+  if (items.length <= 1) return items.join("");
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+}
