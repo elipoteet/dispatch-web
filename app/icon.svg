@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 100">
+  <path
+    fill-rule="evenodd"
+    fill="#0d1b2a"
+    d="M38,20 L80,20 C102,20 102,80 80,80 L24,80 Z
+       M52,35 L72,35 C88,35 88,65 72,65 L46,65 Z"
+  />
+  <polyline
+    points="18,80 38,62 50,72 64,54 92,26"
+    fill="none"
+    stroke="#f5f1e8"
+    stroke-width="11"
+    stroke-linejoin="round"
+    stroke-linecap="round"
+  />
+  <polyline
+    points="18,80 38,62 50,72 64,54 92,26"
+    fill="none"
+    stroke="#a67c00"
+    stroke-width="5"
+    stroke-linejoin="round"
+    stroke-linecap="round"
+  />
+  <polygon points="106,16 84,22 96,36" fill="#a67c00" />
+</svg>

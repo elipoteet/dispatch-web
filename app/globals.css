@@ -113,7 +113,11 @@
     font-weight: 700;
     letter-spacing: -0.025em;
     color: var(--navy);
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
+  .logo-mark { flex-shrink: 0; }
   .logo .tag {
     display: block;
     font-family: 'IBM Plex Mono', monospace;

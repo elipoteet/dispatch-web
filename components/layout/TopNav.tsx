@@ -8,6 +8,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { useAuthModal } from "@/components/auth/AuthModalContext";
 import { AccountModal } from "@/components/auth/AccountModal";
 import { ThemeToggle } from "./ThemeToggle";
+import { Logo } from "./Logo";
 
 const LINKS = [
   { href: "/", label: "Home" },
@@ -35,8 +36,11 @@ export function TopNav() {
   return (
     <nav className="topnav">
       <Link href="/" className="logo" style={{ textDecoration: "none" }}>
-        DISPATCH
-        <span className="tag">Equity Research &amp; Analytics</span>
+        <Logo size={30} />
+        <span>
+          DISPATCH
+          <span className="tag">Equity Research &amp; Analytics</span>
+        </span>
       </Link>
       <div className="nav-links">
         {LINKS.map((link) => (
