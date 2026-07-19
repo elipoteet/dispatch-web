@@ -104,35 +104,6 @@ export async function fetchQuotePrice(symbol: string): Promise<number> {
   return price;
 }
 
-// —— Twelve Data: batch quote — one HTTP call for many symbols, each with
-// today's % change already computed server-side by the provider. Used for
-// the home page ticker tape, where fetching full history per symbol (like
-// fetchPrices does) would be wasteful and would blow through the free-tier
-// rate limit the moment the symbol list grows past a handful. ——
-export type QuoteItem = { symbol: string; last: number; pct: number };
-
-export async function fetchQuoteBatch(symbols: string[]): Promise<QuoteItem[]> {
-  const key = process.env.TWELVE_DATA_API_KEY;
-  if (!key) throw new Error("Twelve Data API key not configured.");
-  const url = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(symbols.join(","))}&apikey=${encodeURIComponent(key)}`;
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw new Error("Twelve Data HTTP " + res.status);
-  const j = await res.json();
-
-  const out: QuoteItem[] = [];
-  for (const sym of symbols) {
-    // Twelve Data returns a flat object for a single symbol, but a
-    // {symbol: {...}} map once more than one symbol is requested.
-    const entry = symbols.length > 1 ? j[sym] : j;
-    if (!entry || entry.status === "error") continue;
-    const last = parseFloat(entry.close);
-    const pct = parseFloat(entry.percent_change);
-    if (isNaN(last) || isNaN(pct)) continue;
-    out.push({ symbol: sym, last, pct });
-  }
-  return out;
-}
-
 // —— Finnhub: fundamentals, consensus, news ——
 async function fh<T = unknown>(path: string, params: Record<string, string> = {}): Promise<T | null> {
   const key = process.env.FINNHUB_API_KEY;
