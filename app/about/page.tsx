@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "About — The Dispatch",
+  title: "About",
 };
 
 export default function AboutPage() {

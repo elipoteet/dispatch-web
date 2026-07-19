@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Pricing — The Dispatch",
+  title: "Pricing",
 };
 
 export default function PricingPage() {

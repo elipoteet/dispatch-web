@@ -12,10 +12,28 @@ import { Masthead } from "@/components/layout/Masthead";
 import { TopNav } from "@/components/layout/TopNav";
 import { Footer } from "@/components/layout/Footer";
 
+const SITE_NAME = "The Dispatch";
+const SITE_DESCRIPTION =
+  "A full research memo on any U.S. stock in five seconds — scored, sourced, and written to be read.";
+
 export const metadata: Metadata = {
-  title: "The Dispatch — Equity Research",
-  description:
-    "Institutional-grade equity research memos, generated live from real market data. Scorecard, technicals, fundamentals, sentiment — written for readers.",
+  metadataBase: new URL("https://dispatch-web-psi.vercel.app"),
+  title: {
+    default: `${SITE_NAME} — Equity Research`,
+    template: `%s — ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  openGraph: {
+    title: `${SITE_NAME} — Equity Research`,
+    description: SITE_DESCRIPTION,
+    siteName: SITE_NAME,
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${SITE_NAME} — Equity Research`,
+    description: SITE_DESCRIPTION,
+  },
 };
 
 // Sets data-theme before first paint so there's no light/dark flash —

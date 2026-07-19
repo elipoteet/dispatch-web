@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { ResearchDesk } from "@/components/research/ResearchDesk";
 
 export const metadata: Metadata = {
-  title: "Research — The Dispatch",
+  title: "Research",
 };
 
 export default async function ResearchPage({

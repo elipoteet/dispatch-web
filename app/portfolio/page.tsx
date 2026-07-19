@@ -4,7 +4,7 @@ import { PortfolioSignedOut } from "@/components/portfolio/PortfolioSignedOut";
 import { PortfolioDesk } from "@/components/portfolio/PortfolioDesk";
 
 export const metadata: Metadata = {
-  title: "Portfolio — The Dispatch",
+  title: "Portfolio",
 };
 
 export default async function PortfolioPage() {
