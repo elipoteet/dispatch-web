@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { ResearchDesk } from "@/components/research/ResearchDesk";
 
 export const metadata: Metadata = {
@@ -14,6 +15,12 @@ export default async function ResearchPage({
 }) {
   const { ticker } = await searchParams;
 
+  // Old shareable form (?ticker=NVDA) — consolidate onto the server-rendered
+  // canonical path instead of serving the same memo at two URLs.
+  if (ticker && ticker.trim()) {
+    redirect(`/research/${encodeURIComponent(ticker.trim().toLowerCase())}`);
+  }
+
   return (
     <section className="page active" id="page-analyzer">
       <div className="analyzer-head">
@@ -28,7 +35,7 @@ export default async function ResearchPage({
         </p>
       </div>
 
-      <ResearchDesk initialTicker={ticker?.toUpperCase() ?? ""} />
+      <ResearchDesk initialTicker="" />
     </section>
   );
 }

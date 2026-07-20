@@ -42,21 +42,36 @@ async function fetchAndBuildReport(
   return { report: buildReport(sym, rows, fundamentals, news), fullRows: rows };
 }
 
-export function ResearchDesk({ initialTicker }: { initialTicker: string }) {
+export function ResearchDesk({
+  initialTicker,
+  initialReport = null,
+  initialRows = null,
+  initialAsOf = "",
+}: {
+  initialTicker: string;
+  // Set when the server-rendered /research/[ticker] route already fetched
+  // and built the memo — lets the initial render (and its SSR HTML) show
+  // the full report immediately instead of an empty shell that only fills
+  // in after a client-side fetch, which is what made these pages invisible
+  // to crawlers before.
+  initialReport?: ReportData | null;
+  initialRows?: PriceRow[] | null;
+  initialAsOf?: string;
+}) {
   const { user } = useAuth();
   const [ticker, setTicker] = useState(initialTicker);
   const [status, setStatus] = useState<Status>("idle");
   const [errorMsg, setErrorMsg] = useState("");
-  const [report, setReport] = useState<ReportData | null>(null);
-  const [fullRows, setFullRows] = useState<PriceRow[] | null>(null);
-  const [activeAsOf, setActiveAsOf] = useState("");
+  const [report, setReport] = useState<ReportData | null>(initialReport);
+  const [fullRows, setFullRows] = useState<PriceRow[] | null>(initialRows);
+  const [activeAsOf, setActiveAsOf] = useState(initialAsOf);
   const [rangeDays, setRangeDays] = useState(180);
   const [watchlist, setWatchlist] = useState<string[]>([]);
 
   // Date picker's raw value — distinct from activeAsOf, since picking a
   // date doesn't run anything until Run Research is clicked (matches the
   // original: the date is only read at analyze time).
-  const [dateInput, setDateInput] = useState("");
+  const [dateInput, setDateInput] = useState(initialAsOf);
 
   const [compareLoading, setCompareLoading] = useState(false);
   const [compareView, setCompareView] = useState<{ thenReport: ReportData; nowReport: ReportData } | null>(null);
@@ -118,7 +133,10 @@ export function ResearchDesk({ initialTicker }: { initialTicker: string }) {
   }
 
   useEffect(() => {
-    if (initialTicker) runAnalysis(initialTicker);
+    // The SSR ticker page already fetched and built this report server-side
+    // — re-running the client fetch here would just flash the skeleton and
+    // redo work for nothing.
+    if (initialTicker && !initialReport) runAnalysis(initialTicker);
     // Only run for the ticker the page loaded with.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTicker]);
@@ -132,6 +150,11 @@ export function ResearchDesk({ initialTicker }: { initialTicker: string }) {
       .then((res) => (res.ok ? res.json() : { tickers: [] }))
       .then((json) => setWatchlist(json.tickers ?? []))
       .catch(() => {});
+    // A server-rendered ticker page can't add to the watchlist itself
+    // (auth is read client-side) — do it here once we know who's signed in,
+    // same rule as a live client search: skip historical (asOf) lookups.
+    if (initialReport && !initialAsOf) addToWatchlist(initialTicker);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   function handleSearch() {

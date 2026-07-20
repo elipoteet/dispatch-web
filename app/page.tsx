@@ -12,7 +12,7 @@ export default function HomePage() {
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     const symbol = ticker.trim();
-    router.push(symbol ? `/research?ticker=${encodeURIComponent(symbol)}` : "/research");
+    router.push(symbol ? `/research/${encodeURIComponent(symbol.toLowerCase())}` : "/research");
   }
 
   return (
