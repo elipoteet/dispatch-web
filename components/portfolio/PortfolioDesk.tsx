@@ -79,7 +79,7 @@ export function PortfolioDesk() {
               <div className="as-label">Total Account Value</div>
               <div className="as-value">${fmt(summary.totalValue)}</div>
               <div className={`as-delta ${summary.totalReturnPct >= 0 ? "pos" : "neg"}`}>
-                {summary.totalValue - summary.startingCash >= 0 ? "+" : ""}$
+                {summary.totalValue - summary.startingCash >= 0 ? "+" : "-"}$
                 {fmt(Math.abs(summary.totalValue - summary.startingCash))} (
                 {summary.totalReturnPct >= 0 ? "+" : ""}
                 {fmt(summary.totalReturnPct, 2)}%) since open
@@ -98,7 +98,7 @@ export function PortfolioDesk() {
             <div className="as-stat">
               <div className="as-label">Unrealized P&amp;L</div>
               <div className={`as-value ${summary.unrealizedPL >= 0 ? "pos" : "neg"}`}>
-                {summary.unrealizedPL >= 0 ? "+" : ""}${fmt(Math.abs(summary.unrealizedPL))}
+                {summary.unrealizedPL >= 0 ? "+" : "-"}${fmt(Math.abs(summary.unrealizedPL))}
               </div>
               <div className="as-sub">on cost basis ${fmt(summary.costBasis)}</div>
             </div>
@@ -166,7 +166,7 @@ export function PortfolioDesk() {
                         </td>
                         <td>${fmt(p.marketValue)}</td>
                         <td className={p.unrealizedPL >= 0 ? "pos" : "neg"}>
-                          {p.unrealizedPL >= 0 ? "+" : ""}${fmt(Math.abs(p.unrealizedPL))}
+                          {p.unrealizedPL >= 0 ? "+" : "-"}${fmt(Math.abs(p.unrealizedPL))}
                           <br />
                           <span style={{ fontSize: 11, opacity: 0.8 }}>
                             {p.unrealizedPLPct >= 0 ? "+" : ""}
