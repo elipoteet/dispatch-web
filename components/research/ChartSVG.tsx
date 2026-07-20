@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import type { PriceRow } from "@/lib/providers";
 import { sma } from "@/lib/analysis/indicators";
+import { useIsDarkMode } from "@/lib/useTheme";
 
 const W = 1000,
   H = 380,
@@ -14,6 +15,7 @@ const W = 1000,
 export function ChartSVG({ rows, rangeDays }: { rows: PriceRow[]; rangeDays: number }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [hover, setHover] = useState<{ i: number; x: number } | null>(null);
+  const isDark = useIsDarkMode();
 
   const chart = useMemo(() => {
     const slice = rows.slice(-rangeDays);
@@ -77,6 +79,11 @@ export function ChartSVG({ rows, rangeDays }: { rows: PriceRow[]; rangeDays: num
       started50 = true;
     }
 
+    let linePath = "";
+    for (let i = 0; i < slice.length; i++) {
+      linePath += (i === 0 ? "M " : " L ") + x(i) + " " + y(slice[i].close);
+    }
+
     const gridLines = Array.from({ length: 5 }, (_, i) => {
       const gy = PAD_T + (i / 4) * (H - PAD_T - PAD_B);
       const price = max - (i / 4) * rng;
@@ -90,6 +97,7 @@ export function ChartSVG({ rows, rangeDays }: { rows: PriceRow[]; rangeDays: num
       candleWidth,
       m50path,
       m200path,
+      linePath,
       gridLines,
       firstDate: slice[0].date,
       lastDate: slice[slice.length - 1].date,
@@ -97,7 +105,7 @@ export function ChartSVG({ rows, rangeDays }: { rows: PriceRow[]; rangeDays: num
   }, [rows, rangeDays]);
 
   if (!chart) return null;
-  const { slice, candles, candleWidth, gridLines, m50path, m200path, firstDate, lastDate } = chart;
+  const { slice, candles, candleWidth, gridLines, m50path, m200path, linePath, firstDate, lastDate } = chart;
 
   function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
     if (!svgRef.current || !chart) return;
@@ -127,8 +135,8 @@ export function ChartSVG({ rows, rangeDays }: { rows: PriceRow[]; rangeDays: num
         onMouseLeave={() => setHover(null)}
       >
         <title id="chartTitle">
-          Candlestick chart over the last {slice.length} trading days, including 50-day and 200-day
-          moving averages.
+          {isDark ? "Candlestick" : "Line"} chart over the last {slice.length} trading days,
+          including 50-day and 200-day moving averages.
         </title>
 
         {gridLines.map(({ gy, label }, i) => (
@@ -145,21 +153,25 @@ export function ChartSVG({ rows, rangeDays }: { rows: PriceRow[]; rangeDays: num
         )}
         {m50path && <path d={m50path} fill="none" stroke="var(--gold)" strokeWidth="1.3" />}
 
-        {candles.map((c, i) => {
-          const color = c.isUp ? "var(--green)" : "var(--accent)";
-          return (
-            <g key={i} opacity={hover && hover.i !== i ? 0.55 : 1}>
-              <line x1={c.cx} x2={c.cx} y1={c.wickTop} y2={c.wickBottom} stroke={color} strokeWidth="1" />
-              <rect
-                x={c.cx - candleWidth / 2}
-                y={c.bodyTop}
-                width={candleWidth}
-                height={c.bodyHeight}
-                fill={color}
-              />
-            </g>
-          );
-        })}
+        {isDark ? (
+          candles.map((c, i) => {
+            const color = c.isUp ? "var(--green)" : "var(--accent)";
+            return (
+              <g key={i} opacity={hover && hover.i !== i ? 0.55 : 1}>
+                <line x1={c.cx} x2={c.cx} y1={c.wickTop} y2={c.wickBottom} stroke={color} strokeWidth="1" />
+                <rect
+                  x={c.cx - candleWidth / 2}
+                  y={c.bodyTop}
+                  width={candleWidth}
+                  height={c.bodyHeight}
+                  fill={color}
+                />
+              </g>
+            );
+          })
+        ) : (
+          <path d={linePath} fill="none" stroke="var(--navy)" strokeWidth="1.8" />
+        )}
 
         <text x={PAD_L} y={H - 14} fontFamily="IBM Plex Mono, monospace" fontSize="10" fill="var(--muted)">
           {firstDate}

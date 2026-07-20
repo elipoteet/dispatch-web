@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { ReportData } from "@/lib/analysis/report";
 import { buildMarkdown } from "@/lib/analysis/markdown";
 import { usePortfolio } from "@/components/portfolio/PortfolioProvider";
+import { useIsDarkMode } from "@/lib/useTheme";
 import { ChartSVG } from "./ChartSVG";
 
 const RANGES = [
@@ -27,6 +28,7 @@ export function ResultsReport({
 }) {
   const { openTrade } = usePortfolio();
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  const isDark = useIsDarkMode();
 
   async function handleCopyMemo() {
     try {
@@ -167,14 +169,23 @@ export function ResultsReport({
             ))}
           </div>
           <div className="chart-legend">
-            <span className="legend-item">
-              <span className="legend-swatch" style={{ background: "var(--green)" }} />
-              Up
-            </span>
-            <span className="legend-item">
-              <span className="legend-swatch" style={{ background: "var(--accent)" }} />
-              Down
-            </span>
+            {isDark ? (
+              <>
+                <span className="legend-item">
+                  <span className="legend-swatch" style={{ background: "var(--green)" }} />
+                  Up
+                </span>
+                <span className="legend-item">
+                  <span className="legend-swatch" style={{ background: "var(--accent)" }} />
+                  Down
+                </span>
+              </>
+            ) : (
+              <span className="legend-item">
+                <span className="legend-swatch" style={{ background: "var(--navy)" }} />
+                Price
+              </span>
+            )}
             <span className="legend-item">
               <span className="legend-swatch" style={{ background: "var(--gold)" }} />
               50-Day MA
