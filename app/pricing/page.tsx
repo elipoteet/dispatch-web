@@ -59,7 +59,9 @@ export default function PricingPage() {
             <li>API access</li>
             <li>Priority support</li>
           </ul>
-          <button type="button">Contact Us</button>
+          <a className="plan-cta" href="mailto:eli.poteet@gmail.com?subject=The%20Dispatch%20%E2%80%94%20Firm%20plan">
+            Contact Us
+          </a>
         </div>
       </div>
     </section>

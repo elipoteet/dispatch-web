@@ -9,6 +9,9 @@ export function Footer() {
         <span className="fgold">·</span> Not Investment Advice
       </div>
       <div>Set in Inter &amp; IBM Plex Mono</div>
+      <div>
+        <a href="/about#contact">Contact</a>
+      </div>
     </footer>
   );
 }

@@ -68,6 +68,38 @@ export default function AboutPage() {
             ratings reflect rule-based scoring against historical patterns; they have no predictive
             warranty. Markets will continue to surprise everyone, including us.
           </p>
+
+          <h2 id="contact">Who&rsquo;s behind this.</h2>
+
+          <p>
+            Everything above is written as &ldquo;we,&rdquo; because that&rsquo;s how research
+            usually reads — but The Dispatch is built and run by one person. I&rsquo;m Eli
+            Poteet, a finance student at the University of New Hampshire. I built this because I
+            actually trade, and I was tired of juggling six tabs and a spreadsheet just to get a
+            straight answer on a stock I already cared about. I wanted one page that did the
+            reading for me and showed its work — so I built it, and I use it on my own watchlist
+            every day.
+          </p>
+
+          <p>
+            There&rsquo;s no team here, no compliance desk, no firm — just someone building the
+            tool he wished existed. If you spot something wrong, have a ticker you think the
+            engine gets wrong, or just want to talk shop, reach out. I read everything.
+          </p>
+
+          <p className="about-signature">
+            <span className="name">— Eli Poteet</span>
+            <br />
+            <a href="mailto:eli.poteet@gmail.com">eli.poteet@gmail.com</a>
+            {" · "}
+            <a href="https://www.linkedin.com/in/eli-poteet" target="_blank" rel="noopener noreferrer">
+              LinkedIn
+            </a>
+            {" · "}
+            <a href="https://github.com/elipoteet" target="_blank" rel="noopener noreferrer">
+              GitHub
+            </a>
+          </p>
         </div>
       </div>
     </section>
