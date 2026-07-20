@@ -90,7 +90,9 @@ export function buildReport(
   fund: Fundamentals | null,
   newsIn: NewsItem[] | null,
 ): ReportData {
-  const news = newsIn ? newsIn.filter((n) => isRelevantHeadline(n.headline, sym, fund?.profile?.name)) : newsIn;
+  const news = newsIn
+    ? newsIn.filter((n) => isRelevantHeadline(n.headline, sym, fund?.profile?.name)).slice(0, 6)
+    : newsIn;
   const prices = rows.map((r) => r.close);
   const last = prices[prices.length - 1];
   const prev = prices[prices.length - 2];

@@ -138,6 +138,11 @@ export async function fetchFundamentals(symbol: string): Promise<Fundamentals | 
   };
 }
 
+// Finnhub's free-tier company-news feed is sorted newest-first and mixes in
+// loosely-related market listicles alongside real company news — the first
+// few items are sometimes all noise, so this returns a much larger pool for
+// buildReport's relevance filter to pick the top 6 *relevant* ones from,
+// rather than truncating here and risking the filter zeroing out the batch.
 export async function fetchNews(symbol: string): Promise<NewsItem[] | null> {
   if (!process.env.FINNHUB_API_KEY) return null;
   const now = new Date();
@@ -149,7 +154,7 @@ export async function fetchNews(symbol: string): Promise<NewsItem[] | null> {
     to: fmt(now),
   });
   if (!Array.isArray(news)) return null;
-  return news.slice(0, 6);
+  return news.slice(0, 60);
 }
 
 // News within ±14 days of a historical date — used by the Time Machine
@@ -166,5 +171,5 @@ export async function fetchNewsAsOf(symbol: string, asOfDate: string): Promise<N
     to: fmt(to),
   });
   if (!Array.isArray(news)) return null;
-  return news.slice(0, 6);
+  return news.slice(0, 60);
 }

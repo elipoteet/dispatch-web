@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Pricing",
+  alternates: { canonical: "/pricing" },
+  openGraph: { url: "/pricing" },
 };
 
 export default function PricingPage() {

@@ -3,6 +3,8 @@ import { ResearchDesk } from "@/components/research/ResearchDesk";
 
 export const metadata: Metadata = {
   title: "Research",
+  alternates: { canonical: "/research" },
+  openGraph: { url: "/research" },
 };
 
 export default async function ResearchPage({

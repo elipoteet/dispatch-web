@@ -5,6 +5,7 @@ import { PortfolioDesk } from "@/components/portfolio/PortfolioDesk";
 
 export const metadata: Metadata = {
   title: "Portfolio",
+  robots: { index: false, follow: false },
 };
 
 export default async function PortfolioPage() {

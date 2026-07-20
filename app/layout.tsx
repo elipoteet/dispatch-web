@@ -17,16 +17,20 @@ const SITE_DESCRIPTION =
   "A full research memo on any U.S. stock in five seconds — scored, sourced, and written to be read.";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://dispatch-web-psi.vercel.app"),
+  metadataBase: new URL("https://www.dispatchresearch.com"),
   title: {
     default: `${SITE_NAME} — Equity Research`,
     template: `%s — ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     title: `${SITE_NAME} — Equity Research`,
     description: SITE_DESCRIPTION,
     siteName: SITE_NAME,
+    url: "/",
     type: "website",
   },
   twitter: {

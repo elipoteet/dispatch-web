@@ -19,9 +19,7 @@ export default function HomePage() {
     <section className="page active" id="page-home">
       <div className="hero">
         <div>
-          <div className="hero-label">
-            Institutional-grade research for independent investors
-          </div>
+          <div className="hero-label">For Independent Investors</div>
           <h1>
             Equity research,
             <br />
