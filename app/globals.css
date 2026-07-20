@@ -2324,6 +2324,25 @@
   .cta-row { flex-direction: column; }
   .cta-text, .cta-btn { padding: 32px 24px; }
   .report-meta-top { flex-wrap: wrap; row-gap: 10px; }
+
+  /* Chart controls: range buttons + legend no longer fit one row once the
+     legend grew to 4 items (Up/Down/50-Day MA/200-Day MA) for candlesticks */
+  .chart-controls { flex-wrap: wrap; row-gap: 14px; }
+  .chart-legend { flex-wrap: wrap; row-gap: 8px; gap: 10px 16px; }
+
+  /* Time Machine date picker: label + date input + reset button overflow a
+     narrow phone width even after the search row stacks at 900px */
+  .date-picker-wrap { flex-wrap: wrap; row-gap: 8px; }
+  .date-picker-wrap input[type="date"] { min-width: 0; flex: 1 1 100px; }
+
+  /* Portfolio: account summary keeps its 900px 2-col grid, but the big
+     dollar figure at 56px mono can still force a column wider than its
+     1fr share; shrink it and let grid cells shrink below content size */
+  .account-summary { grid-template-columns: 1fr 1fr; }
+  .account-summary > div { min-width: 0; }
+  .as-main .as-value { font-size: 36px; }
+  .as-main { grid-column: 1 / -1; }
+  .equity-section .header { flex-wrap: wrap; row-gap: 10px; }
 }
 
 /* ——————— AUTH ——————— */
