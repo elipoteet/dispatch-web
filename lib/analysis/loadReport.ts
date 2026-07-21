@@ -2,36 +2,28 @@
 // /research/[ticker] page, so both fetch/cache/error-handle identically
 // instead of the SSR path silently drifting from the API's behavior.
 
-import { withCache } from "@/lib/cache";
 import { fetchFundamentals, fetchNews, fetchNewsAsOf, fetchPrices } from "@/lib/providers";
 import type { Fundamentals, NewsItem, PriceRow } from "@/lib/providers";
 import { buildHistoricalFundamentals, sliceRowsAsOf } from "@/lib/analysis/historical";
 import { buildReport, type ReportData } from "@/lib/analysis/report";
 
-const CACHE_TTL_MS = 5 * 60 * 1000;
-
 export const TICKER_PATTERN = /^[A-Z.\-]{1,10}$/;
 
 export class TickerDataError extends Error {}
 
+// No caching here — fetchPrices/fetchFundamentals/fetchNews(AsOf) are each
+// cached per-symbol (and per-asOf-date) in lib/providers.ts, shared with
+// every other caller (the ticker tape, etc.), so wrapping the composite
+// result again here would just be a second, redundant cache layer.
 export async function loadTickerData(
   ticker: string,
   asOf: string | null,
 ): Promise<{ rows: PriceRow[]; fundamentals: Fundamentals | null; news: NewsItem[] | null }> {
-  const { rows, fundamentals } = await withCache(`analyze:${ticker}`, CACHE_TTL_MS, async () => {
-    const [rows, fundamentals] = await Promise.all([
-      fetchPrices(ticker),
-      fetchFundamentals(ticker).catch(() => null),
-    ]);
-    return { rows, fundamentals };
-  });
-
-  const news = asOf
-    ? await withCache(`analyze:news:${ticker}:${asOf}`, CACHE_TTL_MS, () =>
-        fetchNewsAsOf(ticker, asOf).catch(() => null),
-      )
-    : await withCache(`analyze:news:${ticker}:live`, CACHE_TTL_MS, () => fetchNews(ticker).catch(() => null));
-
+  const [rows, fundamentals, news] = await Promise.all([
+    fetchPrices(ticker),
+    fetchFundamentals(ticker),
+    asOf ? fetchNewsAsOf(ticker, asOf) : fetchNews(ticker),
+  ]);
   return { rows, fundamentals, news };
 }
 
