@@ -3,7 +3,7 @@
 // instead of the SSR path silently drifting from the API's behavior.
 
 import { withCache } from "@/lib/cache";
-import { fetchFundamentals, fetchNews, fetchNewsAsOf, fetchPrices } from "@/lib/providers";
+import { fetchFundamentals, fetchNews, fetchNewsAsOf, fetchPrices, NoTickerDataError } from "@/lib/providers";
 import type { Fundamentals, NewsItem, PriceRow } from "@/lib/providers";
 import { buildHistoricalFundamentals, sliceRowsAsOf } from "@/lib/analysis/historical";
 import { buildReport, type ReportData } from "@/lib/analysis/report";
@@ -12,6 +12,10 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 
 export const TICKER_PATTERN = /^[A-Z.\-]{1,10}$/;
 
+// A genuinely bad ticker (unrecognized symbol, or not enough history) —
+// callers should 404, not show a "try again" state. Kept distinct from a
+// plain thrown Error, which means the *request* failed (rate limit,
+// provider outage) rather than confirming the ticker itself has no data.
 export class TickerDataError extends Error {}
 
 export async function loadTickerData(
@@ -20,7 +24,14 @@ export async function loadTickerData(
 ): Promise<{ rows: PriceRow[]; fundamentals: Fundamentals | null; news: NewsItem[] | null }> {
   const { rows, fundamentals } = await withCache(`analyze:${ticker}`, CACHE_TTL_MS, async () => {
     const [rows, fundamentals] = await Promise.all([
-      fetchPrices(ticker),
+      fetchPrices(ticker).catch((err) => {
+        if (err instanceof NoTickerDataError) {
+          throw new TickerDataError(
+            `No data available for ${ticker}. Double-check that it's a valid, U.S.-listed ticker symbol.`,
+          );
+        }
+        throw err;
+      }),
       fetchFundamentals(ticker).catch(() => null),
     ]);
     return { rows, fundamentals };

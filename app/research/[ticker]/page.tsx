@@ -52,7 +52,13 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
       twitter: { description },
     };
   } catch {
-    return { title: `${ticker} Stock Analysis` };
+    // Whether this ends up 404ing (bad ticker) or showing the transient
+    // retry state, neither is worth indexing — a real crawl attempt that
+    // lands here should try again later rather than index a placeholder.
+    // (This is what actually governs the served <meta name="robots">, not
+    // not-found.tsx's own metadata export — verified empirically that the
+    // latter doesn't apply once notFound() diverts the page body.)
+    return { title: `${ticker} Stock Analysis`, robots: { index: false, follow: false } };
   }
 }
 
@@ -80,8 +86,8 @@ export default async function TickerResearchPage(props: Props) {
           <h1>Couldn&rsquo;t reach the market data provider.</h1>
         </div>
         <div className="status error">
-          This is usually temporary — a data provider hiccup or a brief rate limit, not a
-          problem with {ticker} itself.{" "}
+          Our market data provider is temporarily unavailable — most likely a brief rate limit
+          on our end, not a problem with {ticker} or your connection.{" "}
           <a href={`/research/${ticker.toLowerCase()}`}>Refresh the page</a> in a few seconds to
           try again.
         </div>

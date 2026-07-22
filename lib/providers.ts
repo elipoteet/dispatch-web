@@ -60,6 +60,13 @@ export type NewsItem = {
   headline: string;
 };
 
+// Thrown when Twelve Data has confirmed there's no usable data for this
+// symbol (an unrecognized ticker, or too little price history) — distinct
+// from a plain Error, which means the request itself failed (rate limit,
+// outage, network issue). Callers use this to tell "this ticker is wrong"
+// apart from "the provider is temporarily unavailable, try again".
+export class NoTickerDataError extends Error {}
+
 // —— Twelve Data: price history ——
 // (The original also had a Stooq fallback for visitors without a Twelve Data
 // key, routed through a CORS proxy since it ran in the browser. Stooq now
@@ -73,7 +80,7 @@ export async function fetchPrices(symbol: string): Promise<PriceRow[]> {
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error("Twelve Data HTTP " + res.status);
   const j = await res.json();
-  if (j.status === "error" || !j.values) throw new Error(j.message || "No data");
+  if (j.status === "error" || !j.values) throw new NoTickerDataError(j.message || "No data for this symbol.");
   const rows: PriceRow[] = j.values
     .slice()
     .reverse()
@@ -86,7 +93,7 @@ export async function fetchPrices(symbol: string): Promise<PriceRow[]> {
       volume: +v.volume || 0,
     }))
     .filter((r: PriceRow) => !isNaN(r.close));
-  if (rows.length < 10) throw new Error("Not enough data");
+  if (rows.length < 10) throw new NoTickerDataError("Not enough price history for this symbol.");
   return rows;
 }
 
