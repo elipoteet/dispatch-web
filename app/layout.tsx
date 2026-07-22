@@ -11,6 +11,7 @@ import { Toast } from "@/components/portfolio/Toast";
 import { Masthead } from "@/components/layout/Masthead";
 import { TopNav } from "@/components/layout/TopNav";
 import { Footer } from "@/components/layout/Footer";
+import { Analytics } from "@vercel/analytics/next";
 
 const SITE_NAME = "The Dispatch";
 const SITE_DESCRIPTION =
@@ -89,6 +90,7 @@ export default async function RootLayout({
             </PortfolioProvider>
           </AuthModalProvider>
         </AuthProvider>
+        <Analytics />
       </body>
     </html>
   );
