@@ -96,6 +96,17 @@ const HISTORICAL_TTL_S = false; // Time Machine news — a past date's news neve
 // serves a JS proof-of-work challenge instead of raw CSV to non-browser
 // clients, so that path no longer returns usable data — dropped rather than
 // shipping a fallback that always fails.)
+// GATED FEATURE (not yet gated): outputsize=1300 is a fixed ~5-year window
+// for every viewer, matching the Reader tier's promise. The pricing page
+// promises Subscribers 20 years — doing that properly means requesting a
+// much larger outputsize (5000+ rows) for subscribers only, which isn't
+// cleanly separable here yet: fetchPrices is cached per-symbol and shared
+// across every viewer regardless of tier (see the caching comments above),
+// so gating this means either a second, tier-specific cache entry per
+// symbol or threading the viewer's subscriber status into this call and
+// its cache key. Left undone rather than forced in — see also
+// lib/analysis/loadReport.ts for where the trim-to-5-years step would go
+// once fetchPrices can return the longer window.
 async function fetchPricesRaw(symbol: string): Promise<PriceRow[]> {
   console.log(`[cache] MISS fetchPrices(${symbol}) — calling Twelve Data`);
   const key = process.env.TWELVE_DATA_API_KEY;

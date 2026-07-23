@@ -2,6 +2,31 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 > See [ARCHITECTURE.md](./ARCHITECTURE.md) for how the app is put together.
 
+## Environment variables
+
+Set these in `.env.local` for local development, and in the Vercel project's
+environment variables for production (use Stripe **test** keys for Preview
+deployments, live keys only for Production).
+
+```
+# Supabase (auth + Postgres)
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY      # server-only — never prefix NEXT_PUBLIC, never import into a client component
+
+# Market data
+TWELVE_DATA_API_KEY
+FINNHUB_API_KEY
+
+# Stripe (subscriptions)
+STRIPE_SECRET_KEY              # sk_live_… (sk_test_… while developing)
+STRIPE_WEBHOOK_SECRET          # whsec_… from the webhook endpoint in the Stripe dashboard, or `stripe listen` locally
+STRIPE_PRICE_ID                # price_… — the $7/month recurring Price
+
+# Site
+NEXT_PUBLIC_SITE_URL           # https://www.dispatchresearch.com — used for Stripe Checkout success/cancel redirects
+```
+
 ## Getting Started
 
 First, run the development server:

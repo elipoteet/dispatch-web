@@ -9,6 +9,8 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
   const [username, setUsername] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSubscriber, setIsSubscriber] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -16,6 +18,38 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
       setError(null);
     }
   }, [open, user]);
+
+  useEffect(() => {
+    if (!open || !user) {
+      setIsSubscriber(false);
+      return;
+    }
+    const supabase = createClient();
+    let cancelled = false;
+    supabase
+      .from("subscriptions")
+      .select("status")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setIsSubscriber(data?.status === "active" || data?.status === "trialing");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, user]);
+
+  async function handleManageBilling() {
+    setPortalLoading(true);
+    try {
+      const res = await fetch("/api/stripe/portal", { method: "POST" });
+      const json = await res.json();
+      if (json.url) window.location.href = json.url;
+      else setPortalLoading(false);
+    } catch {
+      setPortalLoading(false);
+    }
+  }
 
   if (!open) return null;
 
@@ -76,6 +110,22 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
             {saving ? "Saving…" : "Save"}
           </button>
         </form>
+
+        {isSubscriber && (
+          <div style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid var(--rule)" }}>
+            <div className="sub" style={{ marginBottom: 10 }}>
+              Billing
+            </div>
+            <button
+              className="auth-submit"
+              type="button"
+              onClick={handleManageBilling}
+              disabled={portalLoading}
+            >
+              {portalLoading ? "Redirecting…" : "Manage Subscription"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
