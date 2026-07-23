@@ -57,22 +57,35 @@ export async function POST() {
 
   const customerId = await findOrCreateCustomerId(supabase, user.id, user.email);
 
-  const session = await getStripe().checkout.sessions.create({
-    mode: "subscription",
-    line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
-    customer: customerId,
-    subscription_data: { trial_period_days: 7 },
-    // Card required up front (the default — no payment_method_collection
-    // override). For a card-less trial instead, add:
-    //   payment_method_collection: "if_required",
-    success_url: `${siteUrl}/pricing?checkout=success`,
-    cancel_url: `${siteUrl}/pricing?checkout=cancel`,
-    allow_promotion_codes: true,
-    client_reference_id: user.id,
-  });
+  try {
+    const session = await getStripe().checkout.sessions.create({
+      mode: "subscription",
+      line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
+      customer: customerId,
+      subscription_data: { trial_period_days: 7 },
+      // Card required up front (the default — no payment_method_collection
+      // override). For a card-less trial instead, add:
+      //   payment_method_collection: "if_required",
+      success_url: `${siteUrl}/pricing?checkout=success`,
+      cancel_url: `${siteUrl}/pricing?checkout=cancel`,
+      allow_promotion_codes: true,
+      client_reference_id: user.id,
+      // Managed Payments (Stripe's merchant-of-record / automatic sales-tax
+      // handling) is on by default for newer Stripe accounts and requires a
+      // tax code on the Product before it'll let a session through — not
+      // something to silently opt into, since real tax collection/remittance
+      // is a business decision, not a config default. Explicitly off to
+      // keep this the simple flat $7/month it was scoped as; revisit if
+      // sales tax collection is something to set up properly later.
+      managed_payments: { enabled: false },
+    });
 
-  if (!session.url) {
-    return NextResponse.json({ error: "Could not start checkout." }, { status: 500 });
+    if (!session.url) {
+      return NextResponse.json({ error: "Could not start checkout." }, { status: 500 });
+    }
+    return NextResponse.json({ url: session.url });
+  } catch (err) {
+    console.error("[stripe checkout] session creation failed:", err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: "Could not start checkout. Try again in a moment." }, { status: 500 });
   }
-  return NextResponse.json({ url: session.url });
 }

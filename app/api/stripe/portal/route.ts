@@ -25,10 +25,14 @@ export async function POST() {
     return NextResponse.json({ error: "No billing account found for this user." }, { status: 400 });
   }
 
-  const session = await getStripe().billingPortal.sessions.create({
-    customer: sub.stripe_customer_id,
-    return_url: `${siteUrl}/pricing`,
-  });
-
-  return NextResponse.json({ url: session.url });
+  try {
+    const session = await getStripe().billingPortal.sessions.create({
+      customer: sub.stripe_customer_id,
+      return_url: `${siteUrl}/pricing`,
+    });
+    return NextResponse.json({ url: session.url });
+  } catch (err) {
+    console.error("[stripe portal] session creation failed:", err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: "Could not open billing portal. Try again in a moment." }, { status: 500 });
+  }
 }

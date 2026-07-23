@@ -1449,8 +1449,8 @@
     letter-spacing: 0.15em;
     text-transform: uppercase;
     color: var(--muted);
-    margin-top: -20px;
-    margin-bottom: 24px;
+    margin-top: 8px;
+    margin-bottom: 16px;
   }
   .plan.featured .plan-trial { color: var(--cream-2); }
 
