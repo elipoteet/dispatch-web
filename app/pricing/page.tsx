@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { BeginButton } from "@/components/pricing/BeginButton";
+import { SubscribeButton } from "@/components/pricing/SubscribeButton";
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -6,7 +8,13 @@ export const metadata: Metadata = {
   openGraph: { url: "/pricing" },
 };
 
-export default function PricingPage() {
+export default async function PricingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ checkout?: string }>;
+}) {
+  const { checkout } = await searchParams;
+
   return (
     <section className="page active" id="page-pricing">
       <div className="pricing-head">
@@ -14,6 +22,17 @@ export default function PricingPage() {
         <h1>Simple pricing.</h1>
         <p>Free to research. Paid tiers for those who want the archive and deeper data.</p>
       </div>
+
+      {checkout === "success" && (
+        <div className="checkout-banner success">
+          <strong>You&rsquo;re in.</strong> Your 7-day trial has started — cancel anytime from Manage
+          Subscription before it ends and you won&rsquo;t be charged.
+        </div>
+      )}
+      {checkout === "cancel" && (
+        <div className="checkout-banner">Checkout was canceled — no charge was made.</div>
+      )}
+
       <div className="plans">
         <div className="plan">
           <div className="plan-name">— Reader —</div>
@@ -28,13 +47,14 @@ export default function PricingPage() {
             <li>Live analyst consensus</li>
             <li>Recent news feed</li>
           </ul>
-          <button type="button">Begin</button>
+          <BeginButton />
         </div>
         <div className="plan featured">
           <div className="plan-name">— Subscriber —</div>
           <div className="plan-price">
-            $19<span className="per"> / month</span>
+            $7<span className="per"> / month</span>
           </div>
+          <div className="plan-trial">7-day free trial · cancel anytime</div>
           <div className="plan-desc">The research desk, in full.</div>
           <ul>
             <li>Everything in Reader</li>
@@ -44,7 +64,7 @@ export default function PricingPage() {
             <li>Portfolio watchlists</li>
             <li>Earnings calendar alerts</li>
           </ul>
-          <button type="button">Subscribe</button>
+          <SubscribeButton />
         </div>
         <div className="plan">
           <div className="plan-name">— Firm —</div>

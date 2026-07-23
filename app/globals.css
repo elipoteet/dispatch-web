@@ -1442,6 +1442,31 @@
     display: block;
   }
   .plan button:hover, .plan a.plan-cta:hover { background: var(--gold); border-color: var(--gold); color: var(--navy); }
+  .plan button:disabled { opacity: 0.6; cursor: default; }
+  .plan-trial {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: -20px;
+    margin-bottom: 24px;
+  }
+  .plan.featured .plan-trial { color: var(--cream-2); }
+
+  /* Checkout result banner — success/cancel redirect from Stripe */
+  .checkout-banner {
+    margin: 0 40px 32px;
+    padding: 16px 24px;
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--muted);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    color: var(--navy-2);
+    background: var(--cream-2);
+  }
+  .checkout-banner.success { border-left-color: var(--green); }
+  .checkout-banner strong { color: var(--navy); }
 
   /* ═══════════════════════════════════════════════════════════
      Portfolio (paper trading) styles
