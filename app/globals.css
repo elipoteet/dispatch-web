@@ -811,16 +811,91 @@
   }
   .compare-verdict.buy { border-color: var(--green); background: var(--green); }
   .compare-verdict.sell { border-color: var(--accent); background: var(--accent); }
-  .compare-footer {
+
+  /* Score-delta strip and "what actually happened" panel — reuse the same
+     cmp-row/cmp-label/cmp-val primitives as the two-column body above. */
+  .compare-deltas, .compare-interval {
     padding: 24px 48px;
     background: var(--cream-2);
     border-top: 1px solid var(--rule);
-    font-family: 'Inter', sans-serif;
-    font-size: 14px;
-    line-height: 1.6;
-    color: var(--navy-2);
   }
-  .compare-footer strong { color: var(--navy); font-weight: 600; }
+  .compare-deltas .cmp-row, .compare-interval .cmp-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .compare-deltas .cmp-row:last-child, .compare-interval .cmp-row:last-child { border-bottom: none; }
+  .compare-deltas .cmp-label, .compare-interval .cmp-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .compare-deltas .cmp-val, .compare-interval .cmp-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--navy);
+  }
+  .compare-deltas .cmp-val.big, .compare-interval .cmp-val.big { font-size: 23px; font-weight: 600; }
+  .compare-deltas-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--navy);
+    margin-bottom: 8px;
+  }
+  .cmp-top-mover {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
+    color: var(--gold);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .cmp-subnote {
+    display: block;
+    margin-top: 2px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--muted);
+  }
+  .cmp-note {
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--muted);
+  }
+  .cmp-inline-note {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--muted);
+  }
+  .compare-interval {
+    background: var(--paper);
+  }
+  .compare-interval-verdict {
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+    color: var(--navy-2);
+    margin: 0 0 20px;
+    padding-left: 16px;
+    border-left: 2px solid var(--rule-dark);
+  }
+  .compare-interval-verdict.pos { border-left-color: var(--green); }
+  .compare-interval-verdict.neg { border-left-color: var(--accent); }
 
   /* Responsive: stack compare grid on narrow screens */
   @media (max-width: 900px) {
