@@ -1,4 +1,5 @@
 import type { ReportData, ReportSnapshot } from "@/lib/analysis/report";
+import { buildComparison, type Comparison } from "@/lib/analysis/compare";
 import { fmt, sign } from "@/lib/analysis/indicators";
 
 function CmpRow({ label, value, big }: { label: string; value: React.ReactNode; big?: boolean }) {
@@ -61,6 +62,72 @@ function CompareSide({ snap }: { snap: ReportSnapshot }) {
   );
 }
 
+function ScoreDeltaStrip({ cmp }: { cmp: Comparison }) {
+  return (
+    <div className="compare-deltas">
+      <div className="compare-deltas-title">Score Change</div>
+      {cmp.scoreDeltas.map((d) => {
+        const decimals = d.isComposite ? 1 : 0;
+        return (
+          <div className="cmp-row" key={d.name}>
+            <span className="cmp-label">
+              {d.name}
+              {d.name === cmp.topMover && <span className="cmp-top-mover"> · biggest mover</span>}
+            </span>
+            <span className="cmp-val">
+              {d.thenScore == null ? (
+                <span className="cmp-note">— not available as-of then</span>
+              ) : d.delta === 0 ? (
+                <>
+                  {fmt(d.thenScore, decimals)} <span className="cmp-note">unchanged</span>
+                </>
+              ) : (
+                <>
+                  {fmt(d.thenScore, decimals)} → {fmt(d.nowScore, decimals)}{" "}
+                  <span className={d.delta! > 0 ? "pos" : "neg"}>
+                    {d.delta! > 0 ? "▲" : "▼"} {sign(d.delta!)}
+                    {fmt(Math.abs(d.delta!), decimals)}
+                  </span>
+                </>
+              )}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function IntervalPanel({ cmp }: { cmp: Comparison }) {
+  const { interval } = cmp;
+  return (
+    <div className="compare-interval">
+      <p className={`compare-interval-verdict ${cmp.verdictTone}`}>{cmp.verdict}</p>
+      <div className="compare-interval-stats">
+        <div className="cmp-row">
+          <span className="cmp-label">Interval Return</span>
+          <span className={`cmp-val big ${interval.totalReturnPct >= 0 ? "pos" : "neg"}`}>
+            {sign(interval.totalReturnPct)}
+            {fmt(interval.totalReturnPct, 1)}%
+          </span>
+        </div>
+        <div className="cmp-row">
+          <span className="cmp-label">Interval High</span>
+          <span className="cmp-val">${fmt(interval.high)}</span>
+        </div>
+        <div className="cmp-row">
+          <span className="cmp-label">Interval Low</span>
+          <span className="cmp-val">${fmt(interval.low)}</span>
+        </div>
+        <div className="cmp-row">
+          <span className="cmp-label">Interval Max Drawdown</span>
+          <span className="cmp-val neg">{fmt(interval.maxDrawdownPct, 1)}%</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function CompareView({
   thenReport,
   nowReport,
@@ -76,16 +143,7 @@ export function CompareView({
 }) {
   const then = thenReport.snapshot;
   const now = nowReport.snapshot;
-  const priceDelta = ((now.last - then.last) / then.last) * 100;
-  const ratingChange =
-    then.rating !== now.rating
-      ? `The Dispatch rating moved from ${then.rating} to ${now.rating}.`
-      : `The Dispatch rating remained ${then.rating}.`;
-  const compositeDelta = now.composite - then.composite;
-  const compositeText =
-    compositeDelta === 0
-      ? `The composite score was unchanged at ${now.composite}/10.`
-      : `The composite score moved from ${then.composite}/10 to ${now.composite}/10 (${compositeDelta > 0 ? "+" : ""}${compositeDelta}).`;
+  const cmp = buildComparison(thenReport, nowReport, thenDate);
 
   const thenDateLabel = new Date(thenDate + "T00:00:00").toLocaleDateString("en-US", {
     year: "numeric",
@@ -125,14 +183,8 @@ export function CompareView({
           </div>
         </div>
       </div>
-      <div className="compare-footer">
-        Over this period, <strong>{sym}</strong> has moved{" "}
-        <strong className={priceDelta >= 0 ? "pos" : "neg"}>
-          {sign(priceDelta)}
-          {fmt(priceDelta, 1)}%
-        </strong>
-        . {ratingChange} {compositeText}
-      </div>
+      <ScoreDeltaStrip cmp={cmp} />
+      <IntervalPanel cmp={cmp} />
     </div>
   );
 }
