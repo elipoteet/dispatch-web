@@ -16,6 +16,7 @@ SUPABASE_SERVICE_ROLE_KEY      # server-only — never prefix NEXT_PUBLIC, never
 
 # Market data
 TWELVE_DATA_API_KEY
+TIINGO_API_KEY                 # price-history fallback when Twelve Data is rate-limited/down
 FINNHUB_API_KEY
 
 # Stripe (subscriptions)

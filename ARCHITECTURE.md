@@ -12,8 +12,8 @@ You type a stock ticker (like `AAPL`). A few seconds later, you get back a full 
 
 **2. The "analyst"** — the part of the app that does the actual thinking. It takes raw numbers and turns them into the scores, the write-up, and the rating you read. This never runs in your browser — it runs privately behind the scenes, so nobody visiting the site can see or tamper with how it works.
 
-**3. Outside data sources** — the app doesn't know anything about stocks on its own. It buys access to real data from two outside companies:
-- **Twelve Data** — supplies stock prices, today's and years of history.
+**3. Outside data sources** — the app doesn't know anything about stocks on its own. It buys access to real data from a few outside companies:
+- **Twelve Data** — supplies stock prices, today's and years of history. If it's ever slow or temporarily unavailable, the app quietly asks **Tiingo** instead, so a price still shows up for you without any error.
 - **Finnhub** — supplies company financials, analyst opinions, and news.
 
 There's also a fourth piece, **Supabase**, which is where the app keeps track of things tied to *you* specifically — your login, your watchlist, your paper-trading account. Think of it like a filing cabinet where every user's folder is locked, so nobody else can open yours, and you can't open theirs.
@@ -33,7 +33,7 @@ You can pick any date from the last few years and see the memo as if it were wri
 
 ## Keeping things safe
 
-- **Nobody can see the "secret keys."** The app pays Twelve Data and Finnhub for access using private passwords that live only on the server — never sent to your browser, never visible to visitors.
+- **Nobody can see the "secret keys."** The app pays Twelve Data, Tiingo, and Finnhub for access using private passwords that live only on the server — never sent to your browser, never visible to visitors.
 - **Your data is yours alone.** Your watchlist and paper-trading account are locked to your account specifically; there's no way for the app to accidentally mix up your data with someone else's.
 - **Trade prices can't be faked.** When you buy or sell in paper trading, the app looks up the real price itself rather than trusting whatever a browser sends it — so there's no way to cheat the system by tampering with a request.
 
@@ -56,9 +56,11 @@ flowchart TD
 
     subgraph EXT["Outside services"]
         direction TB
-        TD["Twelve Data<br/>price history"]
+        TD["Twelve Data<br/>price history (primary)"]
+        TG["Tiingo<br/>price history (fallback)"]
         FH["Finnhub<br/>fundamentals, news, estimates"]
         SB["Supabase<br/>Postgres + Auth"]
+        ST["Stripe<br/>Subscriber billing"]
     end
 
     U -->|request| PROXY
@@ -67,8 +69,10 @@ flowchart TD
     PAGES -->|"client-side re-search, watchlist, trades"| API
     API --> ENGINE
     ENGINE -->|needs raw data| TD
+    TD -.->|"on rate limit / outage"| TG
     ENGINE -->|needs raw data| FH
     API -->|read / write user data| SB
+    API -->|checkout, portal, webhook| ST
     API -->|finished memo| PAGES
     PAGES -->|rendered page| U
 ```
@@ -78,7 +82,7 @@ flowchart TD
 1. A visitor opens the site and searches a ticker (e.g. `AAPL`). The browser's request first passes through `proxy.ts`, which keeps the Supabase login session fresh.
 2. A page (server-rendered React) handles the view. Visiting `/research/[ticker]` directly (a shared link, a search result) calls the **scoring engine** server-side, in-process — no HTTP hop. Everything else that needs a memo (searching a new ticker without navigating, watchlist chips, the Time Machine's "compare to today") goes through the client and hits an internal **API route** instead, since it's the browser driving it after the page has already loaded. Both paths share the same fetch/cache/build logic (`lib/analysis/loadReport.ts`), so they can't drift apart.
 3. Either way, building a memo means calling the **scoring engine** in `lib/analysis`, which needs raw market data.
-4. The engine pulls that data server-side from **Twelve Data** (prices) and **Finnhub** (fundamentals, news, analyst estimates), using API keys held privately on the server — never exposed to the visitor. Provider responses are cached (`lib/providers.ts`, via `unstable_cache`) so a repeat lookup of the same ticker doesn't re-spend API credits.
+4. The engine pulls that data server-side from **Twelve Data** (prices, primary — falling back to **Tiingo** if Twelve Data is rate-limited or down) and **Finnhub** (fundamentals, news, analyst estimates), using API keys held privately on the server — never exposed to the visitor. Provider responses are cached (`lib/providers.ts`, via `unstable_cache`) so a repeat lookup of the same ticker doesn't re-spend API credits.
 5. The engine computes indicators, scores each dimension 1–10, and assembles the memo text.
 6. The finished memo is rendered. If the visitor is signed in, their watchlist and paper-trading data are read from and written to **Supabase**.
 
@@ -90,19 +94,21 @@ flowchart TD
 | Language | TypeScript | Type-safe application code |
 | Hosting | Vercel | Deploys and hosts the app; custom domain `dispatchresearch.com` |
 | Database & auth | Supabase (Postgres + Auth) | User data storage; Google OAuth and email/password sign-in |
-| Market data | Twelve Data, Finnhub | External price, fundamentals, news and estimate feeds |
+| Market data | Twelve Data (primary), Tiingo (fallback), Finnhub | External price, fundamentals, news and estimate feeds |
+| Billing | Stripe | Subscriber tier: hosted Checkout, Customer Portal, webhook |
 
 ### Where things live
 
 | Path | What it holds |
 |---|---|
-| `app/` | Pages and routes. `page.tsx` (home), `about/`, `research/` (Research Desk + Time Machine, plus server-rendered `research/[ticker]/` memo pages), `portfolio/`, `auth/callback/` |
-| `app/api/` | Back-office endpoints: `analyze/[ticker]`, `watchlist`, `tape` (homepage ticker strip), `portfolio/account`, `portfolio/trade`, `portfolio/equity-curve` |
+| `app/` | Pages and routes. `page.tsx` (home), `about/`, `research/` (Research Desk + Time Machine, plus server-rendered `research/[ticker]/` memo pages), `portfolio/`, `pricing/`, `auth/callback/` |
+| `app/api/` | Back-office endpoints: `analyze/[ticker]`, `watchlist`, `tape` (homepage ticker strip), `portfolio/account`, `portfolio/trade`, `portfolio/equity-curve`, `stripe/checkout`, `stripe/portal`, `stripe/webhook` |
 | `lib/analysis/` | The scoring engine: `indicators.ts` (RSI, MACD, moving averages, volatility), `scoring.ts` (1–10 scores), `report.ts` (assembles the memo), `loadReport.ts` (shared fetch/cache/build used by both the API route and the SSR ticker pages), `historical.ts` (Time Machine slicing) |
-| `lib/providers.ts` | Server-side wrappers for the Twelve Data and Finnhub APIs, with per-symbol response caching |
-| `lib/db.ts`, `lib/supabase/` | Request-scoped Supabase client used by the API routes |
+| `lib/providers.ts` | Server-side wrappers for the Twelve Data, Tiingo, and Finnhub APIs, with per-symbol response caching and a Twelve Data → Tiingo price fallback |
+| `lib/stripe.ts`, `lib/subscription.ts` | Lazily-initialized Stripe client; subscriber-status entitlement helpers |
+| `lib/db.ts`, `lib/supabase/` | Request-scoped Supabase client used by the API routes; `lib/supabase/service.ts` is the service-role client for the two writes that need to bypass RLS (checkout, webhook) |
 | `lib/portfolio.ts` | Paper-trading logic (positions, cash, equity snapshots) |
-| `components/` | React UI: `research/`, `portfolio/`, `layout/`, `auth/` |
+| `components/` | React UI: `research/`, `portfolio/`, `pricing/`, `layout/`, `auth/` |
 | `proxy.ts` | Session middleware (renamed from `middleware` in Next.js 16) |
 
 ### Data & security notes
