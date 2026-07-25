@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { buildReport, type ReportData } from "@/lib/analysis/report";
 import { buildHistoricalFundamentals, sliceRowsAsOf } from "@/lib/analysis/historical";
+import type { FundamentalsChangeResult } from "@/lib/analysis/fundamentalsChange";
 import type { Fundamentals, NewsItem, PriceRow } from "@/lib/providers";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Skeleton } from "./Skeleton";
@@ -42,6 +43,20 @@ async function fetchAndBuildReport(
   return { report: buildReport(sym, rows, fundamentals, news), fullRows: rows };
 }
 
+// Best-effort: the Time Machine's "how the business changed" panel is a
+// bonus, not core to the comparison, so any failure here just hides that
+// section rather than breaking the compare view.
+async function fetchFundamentalsChange(sym: string, asOf: string): Promise<FundamentalsChangeResult | null> {
+  try {
+    const res = await fetch(`/api/fundamentals-change/${encodeURIComponent(sym)}?asOf=${asOf}`);
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.change ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function ResearchDesk({
   initialTicker,
   initialReport = null,
@@ -74,7 +89,11 @@ export function ResearchDesk({
   const [dateInput, setDateInput] = useState(initialAsOf);
 
   const [compareLoading, setCompareLoading] = useState(false);
-  const [compareView, setCompareView] = useState<{ thenReport: ReportData; nowReport: ReportData } | null>(null);
+  const [compareView, setCompareView] = useState<{
+    thenReport: ReportData;
+    nowReport: ReportData;
+    fundamentalsChange: FundamentalsChangeResult | null;
+  } | null>(null);
 
   async function runAnalysis(sym: string, asOf: string | null = null) {
     const clean = sym.trim().toUpperCase();
@@ -175,8 +194,11 @@ export function ResearchDesk({
     if (!activeAsOf || !report) return;
     setCompareLoading(true);
     try {
-      const { report: nowReport } = await fetchAndBuildReport(ticker, null);
-      setCompareView({ thenReport: report, nowReport });
+      const [{ report: nowReport }, fundamentalsChange] = await Promise.all([
+        fetchAndBuildReport(ticker, null),
+        fetchFundamentalsChange(ticker, activeAsOf),
+      ]);
+      setCompareView({ thenReport: report, nowReport, fundamentalsChange });
     } catch {
       // Best-effort — leave the historical memo showing if the live fetch fails.
     } finally {
@@ -275,6 +297,7 @@ export function ResearchDesk({
         <CompareView
           thenReport={compareView.thenReport}
           nowReport={compareView.nowReport}
+          fundamentalsChange={compareView.fundamentalsChange}
           sym={ticker}
           thenDate={activeAsOf}
           onClose={() => setCompareView(null)}

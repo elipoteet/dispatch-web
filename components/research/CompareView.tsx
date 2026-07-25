@@ -1,6 +1,7 @@
 import type { ReportData, ReportSnapshot } from "@/lib/analysis/report";
 import { buildComparison, type Comparison } from "@/lib/analysis/compare";
-import { fmt, sign } from "@/lib/analysis/indicators";
+import type { FundamentalsChangeResult } from "@/lib/analysis/fundamentalsChange";
+import { fmt, fmtBig, sign } from "@/lib/analysis/indicators";
 
 function CmpRow({ label, value, big }: { label: string; value: React.ReactNode; big?: boolean }) {
   return (
@@ -126,15 +127,46 @@ function IntervalPanel({ cmp }: { cmp: Comparison }) {
   );
 }
 
+function formatQuarter(dateStr: string): string {
+  return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
+
+function FundamentalsChangePanel({ change }: { change: FundamentalsChangeResult }) {
+  return (
+    <div className="compare-deltas">
+      <div className="compare-deltas-title">How The Business Changed</div>
+      {change.figures.map((f) => (
+        <div className="cmp-row" key={f.label}>
+          <span className="cmp-label">{f.label}</span>
+          <span className="cmp-val">
+            ${fmtBig(f.thenValue)} <span className="cmp-inline-note">(qtr ending {formatQuarter(f.thenDate)})</span>
+            {" → "}
+            ${fmtBig(f.nowValue)} <span className="cmp-inline-note">(qtr ending {formatQuarter(f.nowDate)})</span>
+            {f.percentChange != null && (
+              <span className={f.percentChange >= 0 ? "pos" : "neg"}>
+                {" "}
+                {f.percentChange > 0 ? "▲" : f.percentChange < 0 ? "▼" : ""} {sign(f.percentChange)}
+                {fmt(f.percentChange, 1)}%
+              </span>
+            )}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function CompareView({
   thenReport,
   nowReport,
+  fundamentalsChange,
   sym,
   thenDate,
   onClose,
 }: {
   thenReport: ReportData;
   nowReport: ReportData;
+  fundamentalsChange: FundamentalsChangeResult | null;
   sym: string;
   thenDate: string;
   onClose: () => void;
@@ -183,6 +215,9 @@ export function CompareView({
       </div>
       <ScoreDeltaStrip cmp={cmp} />
       <IntervalPanel cmp={cmp} />
+      {fundamentalsChange && fundamentalsChange.figures.length > 0 && (
+        <FundamentalsChangePanel change={fundamentalsChange} />
+      )}
     </div>
   );
 }

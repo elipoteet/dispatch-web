@@ -876,6 +876,12 @@
     letter-spacing: 0;
     color: var(--muted);
   }
+  .cmp-inline-note {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--muted);
+  }
   .compare-interval {
     background: var(--paper);
   }

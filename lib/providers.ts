@@ -355,3 +355,47 @@ export async function fetchNewsAsOf(symbol: string, asOfDate: string): Promise<N
     return null;
   }
 }
+
+// As-reported quarterly filings — used by the Time Machine's "how the
+// business changed" figures (lib/analysis/fundamentalsChange.ts). Distinct
+// from stock/metric above: that endpoint only ever returns today's
+// pre-computed ratios, while this returns each actual filed quarterly report
+// (with its own filedDate/endDate and raw income-statement line items), which
+// is what makes a genuine then-vs-now comparison possible. One fetch returns
+// every filing on record, so it's cached per-symbol same as everything else.
+export type FinancialsReportedLineItem = {
+  concept: string;
+  label?: string;
+  value: number;
+  unit?: string;
+};
+export type FinancialsReportedFiling = {
+  filedDate: string;
+  endDate: string;
+  form?: string;
+  report: {
+    ic?: FinancialsReportedLineItem[];
+    bs?: FinancialsReportedLineItem[];
+    cf?: FinancialsReportedLineItem[];
+  };
+};
+async function fetchFinancialsReportedRaw(symbol: string): Promise<FinancialsReportedFiling[]> {
+  console.log(`[cache] MISS fetchFinancialsReported(${symbol}) — calling Finnhub`);
+  const res = await fh<{ data: FinancialsReportedFiling[] }>("stock/financials-reported", {
+    symbol: symbol.toUpperCase(),
+    freq: "quarterly",
+  });
+  if (!res || !Array.isArray(res.data)) throw new Error("Finnhub financials-reported request failed");
+  return res.data;
+}
+const cachedFetchFinancialsReported = unstable_cache(fetchFinancialsReportedRaw, ["fetchFinancialsReported"], {
+  revalidate: LIVE_TTL_S,
+});
+export async function fetchFinancialsReported(symbol: string): Promise<FinancialsReportedFiling[] | null> {
+  if (!process.env.FINNHUB_API_KEY) return null;
+  try {
+    return await cachedFetchFinancialsReported(symbol);
+  } catch {
+    return null;
+  }
+}
