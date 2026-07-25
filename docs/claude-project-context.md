@@ -23,8 +23,9 @@ New Hampshire. Not a company, no team — see the "Who's behind this" section on
   default domain — useful if the custom domain is ever misbehaving)
 - **Hosting:** Vercel, auto-deploys on push to `master`
 - **Database/auth:** Supabase (Postgres + Auth — Google OAuth and email/password)
-- **Market data:** Twelve Data (prices) and Finnhub (fundamentals/news/estimates), both
-  free-tier, both server-side only
+- **Market data:** Twelve Data (prices, primary) with Tiingo as a fallback when Twelve
+  Data is rate-limited or down, and Finnhub (fundamentals/news/estimates) — all
+  free-tier, all server-side only
 
 ## Tech stack
 
@@ -53,8 +54,14 @@ Set in `.env.local` locally and in Vercel's project settings for production:
 ```
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY
 TWELVE_DATA_API_KEY
+TIINGO_API_KEY
 FINNHUB_API_KEY
+STRIPE_SECRET_KEY
+STRIPE_WEBHOOK_SECRET
+STRIPE_PRICE_ID
+NEXT_PUBLIC_SITE_URL
 ```
 
 (Values are secrets — never commit them, never paste them into a Claude conversation.)
@@ -116,21 +123,33 @@ in this codebase:
    you touch this path — collapsing it back into one generic error message was
    exactly the bug that got fixed.
 5. **`unstable_cache` (from `next/cache`) is the right tool for durable, per-argument
-   server-side caching on Vercel** — a plain in-memory `Map` (see `lib/cache.ts`)
-   does *not* reliably persist across separate serverless invocations. There's an
-   unmerged branch (`feat/provider-cache`, pushed but not merged — ask before
-   merging) that moves provider-response caching from the in-memory `Map` into
-   `unstable_cache`, wrapping each `lib/providers.ts` function individually so every
-   caller shares one cache entry per symbol. It also fixes a real gap: `fh()`
-   (the Finnhub helper) swallows failures to `null`, which could otherwise get
-   durably cached as "no data" for a transient Finnhub hiccup — the branch only
-   treats it as a real failure when *all five* parallel Finnhub sub-requests come
-   back null.
+   server-side caching on Vercel** — a plain in-memory `Map` (see `lib/cache.ts`,
+   still used by `lib/portfolio.ts`'s trade-quote cache only) does *not* reliably
+   persist across separate serverless invocations. Provider-response caching (this
+   was `feat/provider-cache`, now merged) wraps each `lib/providers.ts` function
+   individually with `unstable_cache` so every caller shares one cache entry per
+   symbol. It also fixes a real gap: `fh()` (the Finnhub helper) swallows failures
+   to `null`, which could otherwise get durably cached as "no data" for a transient
+   Finnhub hiccup — only treated as a real failure when *all five* parallel Finnhub
+   sub-requests come back null.
 6. **Always verify empirically, not just against docs.** Multiple times this
    session, documented Next.js behavior didn't match actual behavior in this
    specific version/bundler combo. When in doubt: build, run a real server
    (`next start`, not just `next dev`), and hit it with `curl` (or force a
-   deterministic failure) rather than trusting what should happen.
+   deterministic failure) rather than trusting what should happen. This extends to
+   third-party APIs too, not just Next.js itself — Stripe's Checkout Sessions
+   started requiring an explicit `managed_payments: { enabled: false }` opt-out
+   with no warning in older docs (a newer default-on account feature), caught only
+   by testing a real checkout rather than trusting the original integration plan.
+7. **`fetchPrices`/`fetchQuotePrice` fall through to Tiingo when Twelve Data fails
+   with anything other than a confirmed bad ticker** (rate limit, outage, network —
+   see gotcha #4's `NoTickerDataError` distinction, which this fallback depends on
+   to avoid wasting a Tiingo call on a symbol that's simply invalid). Tiingo uses
+   hyphens for share classes where Twelve Data uses dots (`BRK.B` → `BRK-B`) and is
+   end-of-day only, so a quote served via the fallback is the previous close, not
+   real-time — acceptable for a path that only fires when the primary provider is
+   already down, but don't mistake it for live pricing if it's ever surfaced
+   directly.
 
 ## Workflow conventions already established
 
@@ -156,20 +175,25 @@ identity (logo, OG images, brand guidelines), SEO audit fixes (robots.txt, sitem
 canonical tags, metadataBase pointed at the real domain), server-rendered per-ticker
 memo pages at `/research/[ticker]` (the biggest SEO lever — real content in the initial
 HTML instead of a client-fetched empty shell), a founder's note + real contact info on
-`/about`, and the rate-limit/error-messaging fixes described above.
+`/about`, the rate-limit/error-messaging fixes described above, `unstable_cache`-based
+provider caching (the `feat/provider-cache` branch — merged), and a paid Subscriber
+tier via Stripe ($7/month, 7-day trial — hosted Checkout + Customer Portal + webhook,
+merged and live in Stripe test mode).
 
 ## What's not done / open threads
 
-- `feat/provider-cache` branch: built, tested, pushed — **not merged**. Ask before
-  merging; it will likely conflict with anything else touched in `lib/providers.ts`
-  or `lib/analysis/loadReport.ts` since master diverged from it.
+- **The Subscriber tier doesn't actually unlock anything yet.** The Stripe plumbing
+  works, but none of the promised perks (extended fundamentals, 20-year history,
+  weekly letter, earnings alerts) are built, and "Portfolio watchlists" is actively
+  wrong copy — that's already free for everyone. Told the user directly: don't flip
+  Stripe to live/real-money mode until at least one real perk exists.
 - The `notFound()` → `noindex` metadata gap (gotcha #2 above) has a best-effort fix
   but wasn't fully confirmed working in local testing — worth re-checking on the
   live domain if SEO of bad-ticker URLs ever matters.
 - Business/positioning decisions flagged by the site audit but deliberately left to
-  the user's judgment, not yet acted on: free-tier-cannibalizes-paid-tier pricing
-  restructure, deeper risk-engine coverage for "clean" mega-cap tickers, and the
-  "not a terminal" positioning vs. the Buy/Sell rating badge + paper-trading button
+  the user's judgment, not yet acted on: deeper risk-engine coverage for "clean"
+  mega-cap tickers, and the "not a terminal" positioning vs. the Buy/Sell rating
+  badge + paper-trading button
   sitting right next to it.
 
 ## What else to upload to the Claude Project

@@ -1,7 +1,9 @@
 // Twelve Data / Finnhub fetch wrappers — server-side only. Ported from the
 // original client-side fetchers in the-dispatch.html; same shapes, same
 // fallback behavior, just running behind our own API key instead of one
-// pasted into localStorage by each visitor.
+// pasted into localStorage by each visitor. Price history and quotes fall
+// back to Tiingo when Twelve Data is rate-limited or down (Twelve Data's
+// free tier is 8 requests/minute — the tightest quota of any provider here).
 
 import { unstable_cache } from "next/cache";
 
@@ -94,8 +96,8 @@ const HISTORICAL_TTL_S = false; // Time Machine news — a past date's news neve
 // (The original also had a Stooq fallback for visitors without a Twelve Data
 // key, routed through a CORS proxy since it ran in the browser. Stooq now
 // serves a JS proof-of-work challenge instead of raw CSV to non-browser
-// clients, so that path no longer returns usable data — dropped rather than
-// shipping a fallback that always fails.)
+// clients, so that path no longer returns usable data. Tiingo now fills
+// that fallback role instead — see fetchPricesTiingo below.)
 // GATED FEATURE (not yet gated): outputsize=1300 is a fixed ~5-year window
 // for every viewer, matching the Reader tier's promise. The pricing page
 // promises Subscribers 20 years — doing that properly means requesting a
@@ -107,12 +109,19 @@ const HISTORICAL_TTL_S = false; // Time Machine news — a past date's news neve
 // its cache key. Left undone rather than forced in — see also
 // lib/analysis/loadReport.ts for where the trim-to-5-years step would go
 // once fetchPrices can return the longer window.
-async function fetchPricesRaw(symbol: string): Promise<PriceRow[]> {
-  console.log(`[cache] MISS fetchPrices(${symbol}) — calling Twelve Data`);
+async function fetchPricesTwelveData(symbol: string): Promise<PriceRow[]> {
   const key = process.env.TWELVE_DATA_API_KEY;
   if (!key) throw new Error("Twelve Data API key not configured.");
   const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=1day&outputsize=1300&apikey=${encodeURIComponent(key)}`;
   const res = await fetch(url, { cache: "no-store" });
+  // Twelve Data returns a real HTTP 404 for an unrecognized symbol, not a
+  // 200 with an error body — confirmed empirically while testing the
+  // Tiingo fallback (a 429 rate-limit response ALSO sets status:"error" in
+  // its JSON body, so that field alone can't tell "bad ticker" apart from
+  // "rate limited"; the HTTP status is what actually distinguishes them).
+  // Checked before the generic !res.ok branch so a bad ticker correctly
+  // short-circuits instead of wasting a Tiingo fallback call on it.
+  if (res.status === 404) throw new NoTickerDataError("No data for this symbol.");
   if (!res.ok) throw new Error("Twelve Data HTTP " + res.status);
   const j = await res.json();
   if (j.status === "error" || !j.values) throw new NoTickerDataError(j.message || "No data for this symbol.");
@@ -131,6 +140,59 @@ async function fetchPricesRaw(symbol: string): Promise<PriceRow[]> {
   if (rows.length < 10) throw new NoTickerDataError("Not enough price history for this symbol.");
   return rows;
 }
+
+// —— Tiingo: price history fallback ——
+// Only reached when Twelve Data fails with something other than a confirmed
+// "no data for this symbol" (see fetchPricesRaw below) — a rate limit,
+// outage, or network error. Tiingo uses hyphens for share classes where
+// Twelve Data uses dots (BRK.B -> BRK-B); normalize before requesting.
+// startDate is bounded to ~5 years back to match the existing outputsize
+// window and to keep payloads small (Tiingo's free tier caps at 1 GB/month
+// of bandwidth — no reason to pull decades of history for a fallback path).
+async function fetchPricesTiingo(symbol: string): Promise<PriceRow[]> {
+  const key = process.env.TIINGO_API_KEY;
+  if (!key) throw new Error("Tiingo API key not configured.");
+  const tiingoSymbol = symbol.replace(/\./g, "-");
+  const startDate = new Date();
+  startDate.setFullYear(startDate.getFullYear() - 5);
+  const url = `https://api.tiingo.com/tiingo/daily/${encodeURIComponent(tiingoSymbol)}/prices?startDate=${startDate.toISOString().slice(0, 10)}&token=${encodeURIComponent(key)}`;
+  const res = await fetch(url, { cache: "no-store" });
+  if (res.status === 404) throw new NoTickerDataError("No data for this symbol.");
+  if (!res.ok) throw new Error("Tiingo HTTP " + res.status);
+  const j = await res.json();
+  if (!Array.isArray(j)) throw new NoTickerDataError("No data for this symbol.");
+  const rows: PriceRow[] = j
+    .map((v: { date: string; open: number; high: number; low: number; close: number; volume: number }) => ({
+      // Raw (unadjusted) OHLCV, not adjClose/adjOpen/etc — matches what
+      // Twelve Data returns, so the rest of the pipeline (which never
+      // adjusts for splits/dividends either) stays consistent regardless
+      // of which provider actually served a given request.
+      date: String(v.date).slice(0, 10),
+      open: v.open,
+      high: v.high,
+      low: v.low,
+      close: v.close,
+      volume: v.volume || 0,
+    }))
+    .filter((r) => !isNaN(r.close))
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  if (rows.length < 10) throw new NoTickerDataError("Not enough price history for this symbol.");
+  return rows;
+}
+
+async function fetchPricesRaw(symbol: string): Promise<PriceRow[]> {
+  console.log(`[cache] MISS fetchPrices(${symbol}) — calling Twelve Data`);
+  try {
+    return await fetchPricesTwelveData(symbol);
+  } catch (err) {
+    // A confirmed bad ticker is a bad ticker on both providers — re-throw
+    // without spending a Tiingo request on it. Only a genuine request
+    // failure (rate limit, outage, network) falls through.
+    if (err instanceof NoTickerDataError) throw err;
+    console.log(`[fallback] Twelve Data failed for ${symbol}, trying Tiingo`);
+    return await fetchPricesTiingo(symbol);
+  }
+}
 export const fetchPrices = unstable_cache(fetchPricesRaw, ["fetchPrices"], {
   revalidate: LIVE_TTL_S,
 });
@@ -140,16 +202,49 @@ export const fetchPrices = unstable_cache(fetchPricesRaw, ["fetchPrices"], {
 // Not wrapped here — it already has its own short-TTL cache in
 // lib/portfolio.ts (getLatestPrice), deliberately separate and shorter
 // since it backs live trade execution pricing.
-export async function fetchQuotePrice(symbol: string): Promise<number> {
+async function fetchQuotePriceTwelveData(symbol: string): Promise<number> {
   const key = process.env.TWELVE_DATA_API_KEY;
   if (!key) throw new Error("Twelve Data API key not configured.");
   const url = `https://api.twelvedata.com/price?symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(key)}`;
   const res = await fetch(url, { cache: "no-store" });
+  // See the matching comment in fetchPricesTwelveData — confirmed the
+  // /price endpoint has the same real-404-for-bad-symbol behavior.
+  if (res.status === 404) throw new NoTickerDataError("No price data for this symbol.");
   if (!res.ok) throw new Error("Twelve Data HTTP " + res.status);
   const j = await res.json();
   const price = parseFloat(j.price);
-  if (j.status === "error" || isNaN(price)) throw new Error(j.message || "No price data");
+  if (j.status === "error" || isNaN(price)) throw new NoTickerDataError(j.message || "No price data");
   return price;
+}
+
+// Tiingo fallback for the quote too. IMPORTANT: Tiingo's free tier is
+// end-of-day only — this returns the previous close, not a live intraday
+// price. That's an acceptable degradation for a fallback that only fires
+// when Twelve Data is already down, but it's worth knowing this isn't a
+// real-time quote if it's ever surfaced directly rather than just used for
+// mark-to-market math.
+async function fetchQuotePriceTiingo(symbol: string): Promise<number> {
+  const key = process.env.TIINGO_API_KEY;
+  if (!key) throw new Error("Tiingo API key not configured.");
+  const tiingoSymbol = symbol.replace(/\./g, "-");
+  const url = `https://api.tiingo.com/tiingo/daily/${encodeURIComponent(tiingoSymbol)}/prices?token=${encodeURIComponent(key)}`;
+  const res = await fetch(url, { cache: "no-store" });
+  if (res.status === 404) throw new NoTickerDataError("No price data for this symbol.");
+  if (!res.ok) throw new Error("Tiingo HTTP " + res.status);
+  const j = await res.json();
+  const price = Array.isArray(j) && j.length > 0 ? j[0].close : NaN;
+  if (isNaN(price)) throw new NoTickerDataError("No price data for this symbol.");
+  return price;
+}
+
+export async function fetchQuotePrice(symbol: string): Promise<number> {
+  try {
+    return await fetchQuotePriceTwelveData(symbol);
+  } catch (err) {
+    if (err instanceof NoTickerDataError) throw err;
+    console.log(`[fallback] Twelve Data failed for ${symbol}, trying Tiingo`);
+    return await fetchQuotePriceTiingo(symbol);
+  }
 }
 
 // —— Finnhub: fundamentals, consensus, news ——
