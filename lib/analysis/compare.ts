@@ -11,6 +11,7 @@ export type ScoreDelta = {
   nowScore: number | null;
   delta: number | null;
   isComposite?: boolean;
+  note?: string;
 };
 
 export type IntervalPerformance = {
@@ -77,23 +78,22 @@ export function buildComparison(thenReport: ReportData, nowReport: ReportData, t
     };
   });
 
-  // Like-for-like composite: the "then" composite only ever averaged the
-  // dimensions available at that date (Fundamentals is hidden for historical
-  // dates — see buildHistoricalFundamentals), while "now" averages all three.
-  // Comparing the raw composites would silently mix a 2-input average against
-  // a 3-input one, so recompute both sides over only the dimensions valid on
-  // both dates.
-  const comparableDims = rowDeltas.filter((r) => r.thenScore != null && r.nowScore != null);
-  const avg = (pick: (r: ScoreDelta) => number) =>
-    comparableDims.length ? comparableDims.reduce((a, r) => a + pick(r), 0) / comparableDims.length : null;
-  const comparableThen = avg((r) => r.thenScore as number);
-  const comparableNow = avg((r) => r.nowScore as number);
+  // Use the same composite each side already displays in its own column
+  // (ReportData.composite) rather than recomputing one, so the strip never
+  // shows a number that contradicts what's above it. The "then" composite
+  // only ever averaged the dimensions available at that date (Fundamentals
+  // is hidden for historical dates — see buildHistoricalFundamentals), while
+  // "now" averages all three — flag that with a note instead of masking it.
+  const missingThenDims = rowDeltas.filter((r) => r.thenScore == null).map((r) => r.name);
   const compositeDelta: ScoreDelta = {
     name: "Composite",
-    thenScore: comparableThen,
-    nowScore: comparableNow,
-    delta: comparableThen != null && comparableNow != null ? comparableNow - comparableThen : null,
+    thenScore: thenReport.composite,
+    nowScore: nowReport.composite,
+    delta: nowReport.composite - thenReport.composite,
     isComposite: true,
+    note: missingThenDims.length
+      ? `then composite excludes ${missingThenDims.join(", ")} — unavailable as of that date`
+      : undefined,
   };
 
   const nonComposite = rowDeltas.slice().sort((a, b) => {

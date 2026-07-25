@@ -11,10 +11,11 @@ function makeReport(overrides: {
   ticker?: string;
   rating?: string;
   ratingClass?: "buy" | "hold" | "sell";
+  composite?: number;
   scorecard: ScorecardRow[];
   rows: PriceRow[];
 }): ReportData {
-  const { ticker = "TEST", rating = "Hold", ratingClass = "hold", scorecard, rows } = overrides;
+  const { ticker = "TEST", rating = "Hold", ratingClass = "hold", composite = 5, scorecard, rows } = overrides;
   return {
     ticker,
     name: "Test Co",
@@ -25,7 +26,7 @@ function makeReport(overrides: {
     changeClassName: "pos",
     rating,
     ratingClass,
-    composite: 5,
+    composite,
     timestamp: "",
     keyStats: [],
     scorecard,
@@ -41,7 +42,7 @@ function makeReport(overrides: {
       last: rows[rows.length - 1].close,
       rating,
       ratingClass,
-      composite: 5,
+      composite,
       w52high: Math.max(...rows.map((r) => r.close)),
       w52low: Math.min(...rows.map((r) => r.close)),
       pctFromHigh: 0,
@@ -111,8 +112,9 @@ describe("buildComparison — score deltas", () => {
     expect(cmp.topMover).toBe("Technicals");
   });
 
-  it("computes the composite delta only over dimensions valid on both dates", () => {
+  it("matches the composite delta to the composite each column already displays", () => {
     const thenReport = makeReport({
+      composite: 5,
       scorecard: [
         { name: "Fundamentals", score: null, signal: "" },
         { name: "Technicals", score: 4, signal: "" },
@@ -122,6 +124,7 @@ describe("buildComparison — score deltas", () => {
       rows: [row("2024-01-02", 100)],
     });
     const nowReport = makeReport({
+      composite: 7,
       scorecard: [
         { name: "Fundamentals", score: 9, signal: "" },
         { name: "Technicals", score: 7, signal: "" },
@@ -133,11 +136,33 @@ describe("buildComparison — score deltas", () => {
 
     const cmp = buildComparison(thenReport, nowReport, "2024-01-02");
     const composite = cmp.scoreDeltas.find((d) => d.isComposite)!;
-    // Like-for-like: only Technicals + Sentiment count on both sides — the
-    // Fundamentals=9 on "now" must not pull the comparable average up.
-    expect(composite.thenScore).toBeCloseTo(5); // (4 + 6) / 2
-    expect(composite.nowScore).toBeCloseTo(6.5); // (7 + 6) / 2
-    expect(composite.delta).toBeCloseTo(1.5);
+    // Must equal ReportData.composite on each side — the same number the
+    // Then/Now columns already show — not a recomputed average.
+    expect(composite.thenScore).toBe(5);
+    expect(composite.nowScore).toBe(7);
+    expect(composite.delta).toBe(2);
+    // But since "then" excludes Fundamentals (null as-of that date) while
+    // "now" includes it, that non-like-for-like comparison must be flagged.
+    expect(composite.note).toMatch(/excludes Fundamentals/);
+  });
+
+  it("does not flag the composite note when every dimension was valid on both dates", () => {
+    const scorecard: ScorecardRow[] = [
+      { name: "Fundamentals", score: 5, signal: "" },
+      { name: "Technicals", score: 6, signal: "" },
+      { name: "Sentiment / News", score: 6, signal: "" },
+      { name: "Composite", score: 6, signal: "", isComposite: true },
+    ];
+    const thenReport = makeReport({ composite: 6, scorecard, rows: [row("2024-01-02", 100)] });
+    const nowReport = makeReport({
+      composite: 7,
+      scorecard,
+      rows: [row("2024-01-02", 100), row("2024-06-01", 110)],
+    });
+
+    const cmp = buildComparison(thenReport, nowReport, "2024-01-02");
+    const composite = cmp.scoreDeltas.find((d) => d.isComposite)!;
+    expect(composite.note).toBeUndefined();
   });
 
   it("does not treat an unchanged dimension as unavailable", () => {

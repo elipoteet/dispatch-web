@@ -822,39 +822,55 @@
   .compare-deltas .cmp-row, .compare-interval .cmp-row {
     display: flex;
     justify-content: space-between;
-    padding: 10px 0;
+    align-items: baseline;
+    padding: 16px 0;
     border-bottom: 1px solid var(--rule);
   }
   .compare-deltas .cmp-row:last-child, .compare-interval .cmp-row:last-child { border-bottom: none; }
   .compare-deltas .cmp-label, .compare-interval .cmp-label {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.2em;
+    font-size: 12px;
+    letter-spacing: 0.15em;
     text-transform: uppercase;
     color: var(--muted);
   }
   .compare-deltas .cmp-val, .compare-interval .cmp-val {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 14px;
+    font-size: 17px;
     font-weight: 500;
     color: var(--navy);
   }
-  .compare-deltas .cmp-val.big, .compare-interval .cmp-val.big { font-size: 20px; }
+  .compare-deltas .cmp-val.big, .compare-interval .cmp-val.big { font-size: 23px; font-weight: 600; }
   .compare-deltas-title {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.25em;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 4px;
+    color: var(--navy);
+    margin-bottom: 8px;
   }
   .cmp-top-mover {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
     color: var(--gold);
     text-transform: none;
     letter-spacing: 0;
   }
+  .cmp-subnote {
+    display: block;
+    margin-top: 2px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--muted);
+  }
   .cmp-note {
     font-family: 'Inter', sans-serif;
+    font-size: 15px;
     font-weight: 400;
     text-transform: none;
     letter-spacing: 0;
@@ -865,11 +881,11 @@
   }
   .compare-interval-verdict {
     font-family: 'Inter', sans-serif;
-    font-size: 14px;
-    line-height: 1.6;
+    font-size: 16px;
+    line-height: 1.65;
     color: var(--navy-2);
-    margin: 0 0 16px;
-    padding-left: 14px;
+    margin: 0 0 20px;
+    padding-left: 16px;
     border-left: 2px solid var(--rule-dark);
   }
   .compare-interval-verdict.pos { border-left-color: var(--green); }

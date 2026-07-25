@@ -66,34 +66,32 @@ function ScoreDeltaStrip({ cmp }: { cmp: Comparison }) {
   return (
     <div className="compare-deltas">
       <div className="compare-deltas-title">Score Change</div>
-      {cmp.scoreDeltas.map((d) => {
-        const decimals = d.isComposite ? 1 : 0;
-        return (
-          <div className="cmp-row" key={d.name}>
-            <span className="cmp-label">
-              {d.name}
-              {d.name === cmp.topMover && <span className="cmp-top-mover"> · biggest mover</span>}
-            </span>
-            <span className="cmp-val">
-              {d.thenScore == null ? (
-                <span className="cmp-note">— not available as-of then</span>
-              ) : d.delta === 0 ? (
-                <>
-                  {fmt(d.thenScore, decimals)} <span className="cmp-note">unchanged</span>
-                </>
-              ) : (
-                <>
-                  {fmt(d.thenScore, decimals)} → {fmt(d.nowScore, decimals)}{" "}
-                  <span className={d.delta! > 0 ? "pos" : "neg"}>
-                    {d.delta! > 0 ? "▲" : "▼"} {sign(d.delta!)}
-                    {fmt(Math.abs(d.delta!), decimals)}
-                  </span>
-                </>
-              )}
-            </span>
-          </div>
-        );
-      })}
+      {cmp.scoreDeltas.map((d) => (
+        <div className="cmp-row" key={d.name}>
+          <span className="cmp-label">
+            {d.name}
+            {d.name === cmp.topMover && <span className="cmp-top-mover">Biggest mover</span>}
+            {d.note && <span className="cmp-subnote">{d.note}</span>}
+          </span>
+          <span className={`cmp-val${d.isComposite ? " big" : ""}`}>
+            {d.thenScore == null ? (
+              <span className="cmp-note">— not available as-of then</span>
+            ) : d.delta === 0 ? (
+              <>
+                {fmt(d.thenScore, 0)} <span className="cmp-note">unchanged</span>
+              </>
+            ) : (
+              <>
+                {fmt(d.thenScore, 0)} → {fmt(d.nowScore, 0)}{" "}
+                <span className={d.delta! > 0 ? "pos" : "neg"}>
+                  {d.delta! > 0 ? "▲" : "▼"} {sign(d.delta!)}
+                  {fmt(Math.abs(d.delta!), 0)}
+                </span>
+              </>
+            )}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
