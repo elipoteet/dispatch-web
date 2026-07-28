@@ -12,7 +12,7 @@ import { WatchlistRow } from "./WatchlistRow";
 import { HistoricalBanner } from "./HistoricalBanner";
 import { CompareView } from "./CompareView";
 
-const EXAMPLES = ["AAPL", "MSFT", "NVDA", "APLD", "TSLA", "GOOGL", "AMZN", "META", "SPY"];
+const EXAMPLES = ["AAPL", "MSFT", "NVDA", "JPM", "TSLA", "GOOGL", "AMZN", "META", "SPY"];
 
 type Status = "idle" | "loading" | "error";
 
@@ -218,7 +218,7 @@ export function ResearchDesk({
         <input
           id="tickerInput"
           type="text"
-          placeholder="AAPL, NVDA, APLD, SPY…"
+          placeholder="AAPL, NVDA, GOOG, SPY…"
           autoComplete="off"
           spellCheck={false}
           value={ticker}
