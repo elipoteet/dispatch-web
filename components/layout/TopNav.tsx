@@ -8,6 +8,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { useAuthModal } from "@/components/auth/AuthModalContext";
 import { AccountModal } from "@/components/auth/AccountModal";
 import { ThemeToggle } from "./ThemeToggle";
+import { AlertBell } from "./AlertBell";
 import { Logo } from "./Logo";
 
 const LINKS = [
@@ -53,6 +54,7 @@ export function TopNav() {
           </Link>
         ))}
         <ThemeToggle />
+        {user && <AlertBell />}
         {user ? (
           <div className="auth-user-chip">
             <button
