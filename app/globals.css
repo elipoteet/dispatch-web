@@ -1450,6 +1450,24 @@
     margin-left: auto;
     margin-right: auto;
   }
+  .give-note {
+    max-width: 560px;
+    margin: 40px auto 0;
+    padding: 0 40px;
+  }
+  .give-note p {
+    color: var(--navy-2);
+    font-size: 15px;
+    line-height: 1.7;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  .give-note p.give-note-signature {
+    margin-top: 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    color: var(--muted);
+  }
   .give-card {
     max-width: 480px;
     margin: 48px auto;
