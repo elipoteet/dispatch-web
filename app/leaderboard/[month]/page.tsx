@@ -8,7 +8,7 @@ import {
   type MonthStatus,
 } from "@/lib/competition/publicBoard";
 import { nyMonthKey } from "@/lib/competition/marketHours";
-import { LeaderboardBoard } from "@/components/leaderboard/LeaderboardBoard";
+import { LeaderboardTabs } from "@/components/leaderboard/LeaderboardTabs";
 
 const MONTH_PATTERN = /^\d{4}-\d{2}$/;
 
@@ -41,7 +41,7 @@ export default async function LeaderboardMonthPage(props: Props) {
 
   return (
     <section className="page active" id="page-leaderboard">
-      <LeaderboardBoard month={month} isCurrent={isCurrent} status={status} rows={rows} closedMonths={closedMonths} />
+      <LeaderboardTabs month={month} isCurrent={isCurrent} status={status} rows={rows} closedMonths={closedMonths} />
     </section>
   );
 }

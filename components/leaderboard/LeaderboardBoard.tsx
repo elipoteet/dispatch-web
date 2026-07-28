@@ -36,7 +36,7 @@ export function LeaderboardBoard({ month, isCurrent, status, rows, closedMonths 
           prizes — this is a free feature, not a promotion.{" "}
           {isCurrent && (
             <>
-              Want in? <Link href="/competition">Opt in and start trading →</Link>
+              Want in? <Link href="/leaderboard?tab=account">Opt in and start trading →</Link>
             </>
           )}
         </p>
@@ -76,7 +76,7 @@ export function LeaderboardBoard({ month, isCurrent, status, rows, closedMonths 
             <Link
               className="auth-submit"
               style={{ marginTop: 20, width: "auto", padding: "12px 24px", display: "inline-block", textDecoration: "none" }}
-              href="/competition"
+              href="/leaderboard?tab=account"
             >
               Opt In
             </Link>

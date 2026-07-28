@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getClosedMonths, getLeaderboardRows, getMonthStatus } from "@/lib/competition/publicBoard";
 import { nyMonthKey } from "@/lib/competition/marketHours";
-import { LeaderboardBoard } from "@/components/leaderboard/LeaderboardBoard";
+import { LeaderboardTabs } from "@/components/leaderboard/LeaderboardTabs";
 
 export const metadata: Metadata = {
   title: "Monthly Leaderboard",
@@ -21,7 +21,7 @@ export default async function LeaderboardPage() {
 
   return (
     <section className="page active" id="page-leaderboard">
-      <LeaderboardBoard month={month} isCurrent status={status} rows={rows} closedMonths={closedMonths} />
+      <LeaderboardTabs month={month} isCurrent status={status} rows={rows} closedMonths={closedMonths} />
     </section>
   );
 }
