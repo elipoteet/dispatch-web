@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   easterSunday,
   isMarketOpen,
+  isTradingDay,
   lastWeekdayOfMonth,
   nthWeekdayOfMonth,
   nyDateKey,
@@ -115,6 +116,25 @@ describe("isMarketOpen", () => {
     // Midday UTC comfortably inside the same NY calendar day regardless of DST.
     const instant = new Date(Date.UTC(y, m - 1, d, 16, 0, 0));
     expect(isMarketOpen(instant)).toBe(false);
+  });
+});
+
+describe("isTradingDay", () => {
+  it("is false on a weekend regardless of time of day", () => {
+    const satDay = findWeekdayInMonth(2026, 8, 6); // Saturday
+    expect(isTradingDay(new Date(Date.UTC(2026, 7, satDay, 23, 0, 0)))).toBe(false);
+  });
+
+  it("is true on an otherwise-ordinary weekday, even outside trading hours", () => {
+    const tueDay = findWeekdayInMonth(2026, 7, 2);
+    // 3am ET — well before the open, but still a trading day.
+    expect(isTradingDay(new Date(Date.UTC(2026, 6, tueDay, 7, 0, 0)))).toBe(true);
+  });
+
+  it("is false on a holiday even at an hour isMarketOpen would otherwise accept", () => {
+    const christmas = [...nyseHolidays(2026)].find((d) => d.startsWith("2026-12-"))!;
+    const [y, m, d] = christmas.split("-").map(Number);
+    expect(isTradingDay(new Date(Date.UTC(y, m - 1, d, 16, 0, 0)))).toBe(false);
   });
 });
 

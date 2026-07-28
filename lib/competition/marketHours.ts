@@ -133,10 +133,19 @@ export function nyseHolidays(year: number): Set<string> {
   return new Set(dates.map((d) => `${year}-${pad2(d.month)}-${pad2(d.day)}`));
 }
 
-export function isMarketOpen(date: Date = new Date()): boolean {
+// Weekday + holiday check only, no time-of-day component — used by the
+// daily scoring cron (app/api/competition/snapshot/route.ts), which runs
+// well after the close and needs "did the market trade at all today", not
+// "is it open right now".
+export function isTradingDay(date: Date = new Date()): boolean {
   const parts = newYorkParts(date);
   if (parts.weekday === 0 || parts.weekday === 6) return false;
   const dateKey = `${parts.year}-${pad2(parts.month)}-${pad2(parts.day)}`;
-  if (nyseHolidays(parts.year).has(dateKey)) return false;
+  return !nyseHolidays(parts.year).has(dateKey);
+}
+
+export function isMarketOpen(date: Date = new Date()): boolean {
+  if (!isTradingDay(date)) return false;
+  const parts = newYorkParts(date);
   return parts.minutesSinceMidnight >= MARKET_OPEN_MINUTES && parts.minutesSinceMidnight < MARKET_CLOSE_MINUTES;
 }
