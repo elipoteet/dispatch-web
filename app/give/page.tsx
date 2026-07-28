@@ -22,29 +22,31 @@ export default function GivePage() {
         </p>
       </div>
 
-      <div className="give-note">
-        <p>
-          Gather is a charity that&rsquo;s been part of my life since I was a kid — whether that
-          was helping my mom pack food bags or going to the local pantry to help load trucks. I
-          chose Gather because it&rsquo;s personal to me. They provide nutritious food and
-          prepared meals to those experiencing hunger on the Seacoast in NH and Maine, through
-          their pantry market, mobile markets, and innovative food access programs. Gather serves
-          thousands of Seacoast residents each month and distributes over 1.6 million pounds of
-          food each year.
-        </p>
-        <p className="give-note-signature">— Eli Poteet</p>
-      </div>
+      <div className="give-body">
+        <div className="give-note">
+          <p>
+            Gather is a charity that&rsquo;s been part of my life since I was a kid — whether
+            that was helping my mom pack food bags or going to the local pantry to help load
+            trucks. I chose Gather because it&rsquo;s personal to me. They provide nutritious
+            food and prepared meals to those experiencing hunger on the Seacoast in NH and
+            Maine, through their pantry market, mobile markets, and innovative food access
+            programs. Gather serves thousands of Seacoast residents each month and distributes
+            over 1.6 million pounds of food each year.
+          </p>
+          <p className="give-note-signature">— Eli Poteet</p>
+        </div>
 
-      <div className="give-card">
-        <div className="give-card-label">Instead</div>
-        <div className="give-card-name">{CHARITY_NAME}</div>
-        <p className="give-card-desc">
-          Consider a donation to {CHARITY_NAME} — a cause worth more than we&rsquo;d ever charge for
-          research.
-        </p>
-        <a className="give-cta" href={CHARITY_URL} target="_blank" rel="noopener noreferrer">
-          Donate to {CHARITY_NAME} →
-        </a>
+        <div className="give-card">
+          <div className="give-card-label">Instead</div>
+          <div className="give-card-name">{CHARITY_NAME}</div>
+          <p className="give-card-desc">
+            Consider a donation to {CHARITY_NAME} — a cause worth more than we&rsquo;d ever
+            charge for research.
+          </p>
+          <a className="give-cta" href={CHARITY_URL} target="_blank" rel="noopener noreferrer">
+            Donate to {CHARITY_NAME} →
+          </a>
+        </div>
       </div>
 
       <div className="give-footer">
