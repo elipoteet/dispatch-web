@@ -16,7 +16,7 @@ const LINKS = [
   { href: "/research", label: "Research" },
   { href: "/portfolio", label: "Portfolio" },
   { href: "/about", label: "About" },
-  { href: "/pricing", label: "Pricing" },
+  { href: "/give", label: "Give Back" },
 ];
 
 export function TopNav() {

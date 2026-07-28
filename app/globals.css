@@ -1418,13 +1418,13 @@
   }
   .about-signature a { border-bottom-color: var(--rule); }
 
-  /* ——————— PRICING ——————— */
-  .pricing-head {
+  /* ——————— GIVE BACK (formerly Pricing — the site is fully free) ——————— */
+  .give-head {
     padding: 72px 40px 32px;
     text-align: center;
     border-bottom: 1px solid var(--rule);
   }
-  .pricing-head .label {
+  .give-head .label {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 10px;
     letter-spacing: 0.3em;
@@ -1432,7 +1432,7 @@
     color: var(--accent);
     margin-bottom: 16px;
   }
-  .pricing-head h1 {
+  .give-head h1 {
     font-family: 'Inter', system-ui, sans-serif;
     font-size: 48px;
     line-height: 1.05;
@@ -1440,108 +1440,71 @@
     color: var(--navy);
     font-weight: 600;
   }
-  .pricing-head p {
+  .give-head p {
     color: var(--muted);
-    margin-top: 12px;
+    margin-top: 16px;
     font-size: 16px;
+    line-height: 1.6;
     font-family: 'Inter', system-ui, sans-serif;
+    max-width: 560px;
+    margin-left: auto;
+    margin-right: auto;
   }
-  .plans {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    border-bottom: 1px solid var(--rule);
+  .give-card {
+    max-width: 480px;
+    margin: 48px auto;
+    padding: 48px 40px;
+    border: 1px solid var(--rule);
     background: var(--paper);
+    text-align: center;
   }
-  .plan {
-    padding: 48px 32px;
-    border-right: 1px solid var(--rule);
-    display: flex;
-    flex-direction: column;
-  }
-  .plan:last-child { border-right: none; }
-  .plan.featured { background: var(--navy); color: var(--cream); }
-  .plan.featured .plan-desc { color: var(--cream-2); }
-  .plan-name {
+  .give-card-label {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 10px;
-    letter-spacing: 0.25em;
+    letter-spacing: 0.3em;
     text-transform: uppercase;
     color: var(--muted);
-    margin-bottom: 20px;
+    margin-bottom: 12px;
   }
-  .plan.featured .plan-name { color: var(--gold); }
-  .plan-price {
+  .give-card-name {
     font-family: 'Inter', system-ui, sans-serif;
-    font-size: 64px;
-    line-height: 0.9;
+    font-size: 32px;
+    font-weight: 600;
     letter-spacing: -0.02em;
-    font-weight: 500;
+    color: var(--navy);
   }
-  .plan-price .per {
-    font-size: 14px;
+  .give-card-desc {
     color: var(--muted);
-    font-family: 'IBM Plex Mono', monospace;
-    font-weight: 400;
-  }
-  .plan.featured .plan-price .per { color: var(--cream-2); }
-  .plan-desc {
-    color: var(--muted);
-    margin-top: 10px;
+    margin-top: 12px;
     margin-bottom: 28px;
     font-size: 14px;
+    line-height: 1.6;
     font-family: 'Inter', system-ui, sans-serif;
   }
-  .plan ul { list-style: none; margin-bottom: 28px; flex: 1; }
-  .plan li {
-    padding: 10px 0;
-    border-bottom: 1px solid rgba(13,27,42,0.1);
-    font-size: 13px;
-    font-family: 'Inter', sans-serif;
-  }
-  .plan.featured li { border-bottom-color: rgba(245,241,232,0.15); }
-  .plan li::before { content: '✓  '; color: var(--green); font-weight: 600; }
-  .plan.featured li::before { color: var(--gold); }
-  .plan button, .plan a.plan-cta {
-    padding: 14px;
-    background: transparent;
-    border: 1.5px solid currentColor;
+  .give-cta {
+    display: inline-block;
+    padding: 14px 32px;
+    background: var(--navy);
+    border: 1.5px solid var(--navy);
+    color: var(--cream);
     cursor: pointer;
     font-family: 'Inter', system-ui, sans-serif;
     font-size: 17px;
-    color: inherit;
-    transition: all 0.2s;
     font-weight: 600;
     letter-spacing: -0.005em;
-    text-align: center;
     text-decoration: none;
-    display: block;
+    transition: all 0.2s;
   }
-  .plan button:hover, .plan a.plan-cta:hover { background: var(--gold); border-color: var(--gold); color: var(--navy); }
-  .plan button:disabled { opacity: 0.6; cursor: default; }
-  .plan-trial {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
+  .give-cta:hover { background: var(--gold); border-color: var(--gold); color: var(--navy); }
+  .give-footer {
+    text-align: center;
+    padding: 0 40px 72px;
     color: var(--muted);
-    margin-top: 8px;
-    margin-bottom: 16px;
-  }
-  .plan.featured .plan-trial { color: var(--cream-2); }
-
-  /* Checkout result banner — success/cancel redirect from Stripe */
-  .checkout-banner {
-    margin: 0 40px 32px;
-    padding: 16px 24px;
-    border: 1px solid var(--rule);
-    border-left: 3px solid var(--muted);
-    font-family: 'Inter', system-ui, sans-serif;
     font-size: 14px;
-    color: var(--navy-2);
-    background: var(--cream-2);
+    font-family: 'Inter', system-ui, sans-serif;
   }
-  .checkout-banner.success { border-left-color: var(--green); }
-  .checkout-banner strong { color: var(--navy); }
+  .give-footer a { color: var(--navy); border-bottom: 1px solid var(--rule-dark); text-decoration: none; }
+  .give-footer a:hover { color: var(--accent); border-bottom-color: var(--accent); }
 
   /* ═══════════════════════════════════════════════════════════
      Portfolio (paper trading) styles
@@ -2314,21 +2277,20 @@
     nav.topnav { padding: 20px 20px 16px; flex-wrap: wrap; gap: 16px; }
     .masthead { padding: 10px 20px; font-size: 9px; }
     .alert-bell-dropdown { width: calc(100vw - 40px); right: -20px; }
-    .hero, .features, .report-title-row, .report-grid, .risks-catalyst-row, .news-list, .plans, .cta-row {
+    .hero, .features, .report-title-row, .report-grid, .risks-catalyst-row, .news-list, .cta-row {
       grid-template-columns: 1fr !important;
       gap: 28px;
     }
     .hero { padding: 40px 20px; }
     .features { padding: 40px 20px; }
-    .analyzer-head, .search-row input, .chart-section, .report-header, .report-body, .risks-col, .catalyst-col, .news-section, .scorecard-section, .disclaimer, footer, .about, .pricing-head {
+    .analyzer-head, .search-row input, .chart-section, .report-header, .report-body, .risks-col, .catalyst-col, .news-section, .scorecard-section, .disclaimer, footer, .about, .give-head {
       padding-left: 24px; padding-right: 24px;
     }
     .key-stats { grid-template-columns: repeat(2, 1fr); }
     .stat:nth-child(2n) { border-right: none; }
     .cta-text, .risks-col { border-right: none; border-bottom: 1px solid var(--rule); }
-    .plan { border-right: none; border-bottom: 1px solid var(--rule); }
     .report-ticker { font-size: 52px; }
-    .about h1, .pricing-head h1 { font-size: 48px; }
+    .about h1, .give-head h1 { font-size: 48px; }
   }
 
   /* ═══════════════════════════════════════════════════════════
@@ -2520,7 +2482,7 @@
 }
 .auth-user-chip button:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
 
-/* Alert bell — Subscriber alerts (score-change / RSI / MA-cross), TopNav */
+/* Alert bell — free for every signed-in user (score-change / RSI / MA-cross), TopNav */
 .alert-bell {
   position: relative;
 }

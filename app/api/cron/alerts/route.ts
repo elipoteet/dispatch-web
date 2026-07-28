@@ -34,25 +34,9 @@ export async function GET(request: Request) {
 
   const db = createServiceRoleClient();
 
-  // Step 1 — distinct tickers across Subscriber watchlists only. Reader
-  // watchlists don't get checked; this is a paid feature.
-  const { data: subs, error: subsError } = await db
-    .from("subscriptions")
-    .select("user_id")
-    .in("status", ["active", "trialing"]);
-  if (subsError) {
-    console.error("[cron/alerts] failed to load subscriptions:", subsError.message);
-    return NextResponse.json({ error: "Failed to load subscribers." }, { status: 500 });
-  }
-  const subscriberIds = (subs ?? []).map((s) => s.user_id);
-  if (!subscriberIds.length) {
-    return NextResponse.json({ checked: 0, events: 0 });
-  }
-
-  const { data: watchRows, error: watchError } = await db
-    .from("watchlist")
-    .select("ticker")
-    .in("user_id", subscriberIds);
+  // Step 1 — distinct tickers across every watchlist. Alerts are free for
+  // everyone, so there's no subscriber filter here.
+  const { data: watchRows, error: watchError } = await db.from("watchlist").select("ticker");
   if (watchError) {
     console.error("[cron/alerts] failed to load watchlists:", watchError.message);
     return NextResponse.json({ error: "Failed to load watchlists." }, { status: 500 });
@@ -90,9 +74,9 @@ export async function GET(request: Request) {
         : null;
 
       // Step 4 — log events. No separate "fan out" step: the alert_event
-      // RLS policy already scopes visibility to exactly the right
-      // subscribers (watching this ticker + currently subscribed) at read
-      // time, via their own watchlist — see supabase/migrations/0002_alerts.sql.
+      // RLS policy already scopes visibility to anyone watching this
+      // ticker at read time, via their own watchlist — see
+      // supabase/migrations/0002_alerts.sql.
       const alerts = detectAlerts(previous, current);
       if (alerts.length) {
         const { error: insertError } = await db.from("alert_event").insert(
