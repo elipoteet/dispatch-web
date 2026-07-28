@@ -5,8 +5,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 ## Environment variables
 
 Set these in `.env.local` for local development, and in the Vercel project's
-environment variables for production (use Stripe **test** keys for Preview
-deployments, live keys only for Production).
+environment variables for production.
 
 ```
 # Supabase (auth + Postgres)
@@ -19,13 +18,11 @@ TWELVE_DATA_API_KEY
 TIINGO_API_KEY                 # price-history fallback when Twelve Data is rate-limited/down
 FINNHUB_API_KEY
 
-# Stripe (subscriptions)
-STRIPE_SECRET_KEY              # sk_live_… (sk_test_… while developing)
-STRIPE_WEBHOOK_SECRET          # whsec_… from the webhook endpoint in the Stripe dashboard, or `stripe listen` locally
-STRIPE_PRICE_ID                # price_… — the $7/month recurring Price
+# Alerts cron
+CRON_SECRET                    # verifies requests to /api/cron/alerts actually come from Vercel Cron
 
 # Site
-NEXT_PUBLIC_SITE_URL           # https://www.dispatchresearch.com — used for Stripe Checkout success/cancel redirects
+NEXT_PUBLIC_SITE_URL           # https://www.dispatchresearch.com
 ```
 
 ## Getting Started

@@ -50,7 +50,8 @@ flowchart TD
         direction TB
         PROXY["proxy.ts<br/>refreshes the login session"]
         PAGES["Pages (React Server Components)<br/>Home · Research Desk · Time Machine · Portfolio · About"]
-        API["API routes<br/>/api/analyze · /api/watchlist · /api/portfolio/* · /api/tape"]
+        API["API routes<br/>/api/analyze · /api/watchlist · /api/portfolio/* · /api/tape · /api/alerts"]
+        CRON["Daily cron — /api/cron/alerts<br/>rating/RSI/MA-cross detection"]
         ENGINE["Scoring engine — lib/analysis<br/>indicators → scores → memo"]
     end
 
@@ -60,22 +61,27 @@ flowchart TD
         TG["Tiingo<br/>price history (fallback)"]
         FH["Finnhub<br/>fundamentals, news, estimates"]
         SB["Supabase<br/>Postgres + Auth"]
-        ST["Stripe<br/>Subscriber billing"]
     end
 
     U -->|request| PROXY
     PROXY --> PAGES
     PAGES -->|"/research/[ticker]: fetch + build directly"| ENGINE
-    PAGES -->|"client-side re-search, watchlist, trades"| API
+    PAGES -->|"client-side re-search, watchlist, trades, alerts"| API
     API --> ENGINE
+    CRON --> ENGINE
+    CRON -->|read watchlists, log alert_event| SB
     ENGINE -->|needs raw data| TD
     TD -.->|"on rate limit / outage"| TG
     ENGINE -->|needs raw data| FH
     API -->|read / write user data| SB
-    API -->|checkout, portal, webhook| ST
     API -->|finished memo| PAGES
     PAGES -->|rendered page| U
 ```
+
+The site has no paid tier — every feature, including alerts, is free. There's
+a daily background job (Vercel Cron, not triggered by a visitor) that checks
+every ticker on anyone's watchlist for a rating change or a technical
+trigger and logs it; the bell icon in the nav reads those logged events.
 
 ### The request lifecycle, step by step
 
@@ -95,20 +101,18 @@ flowchart TD
 | Hosting | Vercel | Deploys and hosts the app; custom domain `dispatchresearch.com` |
 | Database & auth | Supabase (Postgres + Auth) | User data storage; Google OAuth and email/password sign-in |
 | Market data | Twelve Data (primary), Tiingo (fallback), Finnhub | External price, fundamentals, news and estimate feeds |
-| Billing | Stripe | Subscriber tier: hosted Checkout, Customer Portal, webhook |
 
 ### Where things live
 
 | Path | What it holds |
 |---|---|
-| `app/` | Pages and routes. `page.tsx` (home), `about/`, `research/` (Research Desk + Time Machine, plus server-rendered `research/[ticker]/` memo pages), `portfolio/`, `pricing/`, `auth/callback/` |
-| `app/api/` | Back-office endpoints: `analyze/[ticker]`, `watchlist`, `tape` (homepage ticker strip), `portfolio/account`, `portfolio/trade`, `portfolio/equity-curve`, `stripe/checkout`, `stripe/portal`, `stripe/webhook` |
-| `lib/analysis/` | The scoring engine: `indicators.ts` (RSI, MACD, moving averages, volatility), `scoring.ts` (1–10 scores), `report.ts` (assembles the memo), `loadReport.ts` (shared fetch/cache/build used by both the API route and the SSR ticker pages), `historical.ts` (Time Machine slicing) |
+| `app/` | Pages and routes. `page.tsx` (home), `about/`, `research/` (Research Desk + Time Machine, plus server-rendered `research/[ticker]/` memo pages), `portfolio/`, `give/` (charity donation — no paid tier), `auth/callback/` |
+| `app/api/` | Back-office endpoints: `analyze/[ticker]`, `watchlist`, `tape` (homepage ticker strip), `portfolio/account`, `portfolio/trade`, `portfolio/equity-curve`, `alerts` (reads logged events for the signed-in user), `cron/alerts` (daily Vercel Cron job) |
+| `lib/analysis/` | The scoring engine: `indicators.ts` (RSI, MACD, moving averages, volatility), `scoring.ts` (1–10 scores), `report.ts` (assembles the memo), `loadReport.ts` (shared fetch/cache/build used by both the API route and the SSR ticker pages), `historical.ts` (Time Machine slicing), `compare.ts` + `fundamentalsChange.ts` (Time Machine "Then vs. Now" analysis), `alertState.ts` (rating/RSI/MA-cross change detection for the alerts cron) |
 | `lib/providers.ts` | Server-side wrappers for the Twelve Data, Tiingo, and Finnhub APIs, with per-symbol response caching and a Twelve Data → Tiingo price fallback |
-| `lib/stripe.ts`, `lib/subscription.ts` | Lazily-initialized Stripe client; subscriber-status entitlement helpers |
-| `lib/db.ts`, `lib/supabase/` | Request-scoped Supabase client used by the API routes; `lib/supabase/service.ts` is the service-role client for the two writes that need to bypass RLS (checkout, webhook) |
+| `lib/db.ts`, `lib/supabase/` | Request-scoped Supabase client used by the API routes; `lib/supabase/service.ts` is the service-role client for writes that need to bypass RLS (the alerts cron job) |
 | `lib/portfolio.ts` | Paper-trading logic (positions, cash, equity snapshots) |
-| `components/` | React UI: `research/`, `portfolio/`, `pricing/`, `layout/`, `auth/` |
+| `components/` | React UI: `research/`, `portfolio/`, `layout/`, `auth/` |
 | `proxy.ts` | Session middleware (renamed from `middleware` in Next.js 16) |
 
 ### Data & security notes

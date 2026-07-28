@@ -36,9 +36,11 @@ New Hampshire. Not a company, no team — see the "Who's behind this" section on
 ## Where things live (see `ARCHITECTURE.md` for the full map)
 
 - `app/` — pages: home, `about/`, `research/` (search desk + `research/[ticker]/` for
-  server-rendered memo pages), `portfolio/` (paper trading), `pricing/`
+  server-rendered memo pages), `portfolio/` (paper trading), `give/` (charity donation —
+  the site has no paid tier)
 - `app/api/` — `analyze/[ticker]` (client-side memo fetch), `watchlist`,
-  `tape` (homepage ticker strip), `portfolio/*`
+  `tape` (homepage ticker strip), `portfolio/*`, `alerts` (free for every signed-in
+  user), `cron/alerts` (daily Vercel Cron job — score-change/RSI/MA-cross detection)
 - `lib/analysis/` — the scoring engine: `indicators.ts`, `scoring.ts`, `report.ts`,
   `loadReport.ts` (shared fetch/build logic), `historical.ts` (Time Machine)
 - `lib/providers.ts` — Twelve Data / Finnhub fetch wrappers, server-only
@@ -58,9 +60,7 @@ SUPABASE_SERVICE_ROLE_KEY
 TWELVE_DATA_API_KEY
 TIINGO_API_KEY
 FINNHUB_API_KEY
-STRIPE_SECRET_KEY
-STRIPE_WEBHOOK_SECRET
-STRIPE_PRICE_ID
+CRON_SECRET
 NEXT_PUBLIC_SITE_URL
 ```
 
@@ -137,10 +137,8 @@ in this codebase:
    specific version/bundler combo. When in doubt: build, run a real server
    (`next start`, not just `next dev`), and hit it with `curl` (or force a
    deterministic failure) rather than trusting what should happen. This extends to
-   third-party APIs too, not just Next.js itself — Stripe's Checkout Sessions
-   started requiring an explicit `managed_payments: { enabled: false }` opt-out
-   with no warning in older docs (a newer default-on account feature), caught only
-   by testing a real checkout rather than trusting the original integration plan.
+   third-party APIs too, not just Next.js itself — worth re-confirming against live
+   docs whenever a new external integration goes in, not just trusting the plan.
 7. **`fetchPrices`/`fetchQuotePrice` fall through to Tiingo when Twelve Data fails
    with anything other than a confirmed bad ticker** (rate limit, outage, network —
    see gotcha #4's `NoTickerDataError` distinction, which this fallback depends on
@@ -176,17 +174,24 @@ canonical tags, metadataBase pointed at the real domain), server-rendered per-ti
 memo pages at `/research/[ticker]` (the biggest SEO lever — real content in the initial
 HTML instead of a client-fetched empty shell), a founder's note + real contact info on
 `/about`, the rate-limit/error-messaging fixes described above, `unstable_cache`-based
-provider caching (the `feat/provider-cache` branch — merged), and a paid Subscriber
-tier via Stripe ($7/month, 7-day trial — hosted Checkout + Customer Portal + webhook,
-merged and live in Stripe test mode).
+provider caching (the `feat/provider-cache` branch — merged), the Time Machine's
+"Then vs. Now" analysis (score deltas, realized-performance verdict, "how the business
+changed" revenue/net-income comparison), and Subscriber Alerts (a daily cron job
+detects rating flips and RSI/MA technical triggers for every watched ticker, surfaced
+via a bell icon in the nav).
+
+**The site has no paid tier — decided 2026-07-27.** A paid Subscriber tier via Stripe
+($7/month, 7-day trial) was built and merged but only ever ran in Stripe test mode (no
+real subscribers). It's since been fully removed: no Stripe dependency, no
+checkout/portal/webhook routes, no entitlement gating anywhere (Alerts, which briefly
+gated on Subscriber status, is now free for every signed-in user). `/pricing` was
+renamed to `/give` — a page linking out to a donation page for a charity (Gather, via
+GiveLively) instead of a plans comparison. The `subscriptions` table migration
+(`supabase/migrations/0001_subscriptions.sql`) is left in place as a historical record
+but nothing in the app queries it anymore.
 
 ## What's not done / open threads
 
-- **The Subscriber tier doesn't actually unlock anything yet.** The Stripe plumbing
-  works, but none of the promised perks (extended fundamentals, 20-year history,
-  weekly letter, earnings alerts) are built, and "Portfolio watchlists" is actively
-  wrong copy — that's already free for everyone. Told the user directly: don't flip
-  Stripe to live/real-money mode until at least one real perk exists.
 - The `notFound()` → `noindex` metadata gap (gotcha #2 above) has a best-effort fix
   but wasn't fully confirmed working in local testing — worth re-checking on the
   live domain if SEO of bad-ticker URLs ever matters.
