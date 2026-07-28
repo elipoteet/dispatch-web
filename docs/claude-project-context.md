@@ -107,13 +107,21 @@ in this codebase:
    once a custom `not-found.tsx` exists for that segment**, at least not in local
    testing here. Set `robots: { index: false }` explicitly in `generateMetadata`'s
    catch/fallback path instead of trusting the automatic behavior.
-3. **Twelve Data's free tier is 8 requests/minute — this is tight.** The homepage
-   ticker tape (`app/api/tape/route.ts`) used to fire 9 symbols at once on every cold
-   load, exceeding the limit *by itself* before any visitor searched anything. Fixed
-   by capping it at 5 symbols with a 10-minute cache. If you add anything that fires
-   multiple Twelve Data calls in a burst (a new tape, a batch quote feature, etc.),
-   budget against this 8/minute ceiling and leave headroom for concurrent user
-   searches sharing the same quota.
+3. **Twelve Data's free tier is 8 requests/minute — this is tight, and it's shared
+   with real ticker searches (`fetchPrices`, used by both `/research/[ticker]` and
+   `/api/analyze/[ticker]` via `loadReport`/`loadTickerData`).** Two things used to
+   quietly compete with it for no good reason, both fixed by moving them to Finnhub
+   instead (its quote endpoint, empirically 60 req/min, is a completely separate
+   quota): the homepage ticker tape (`app/api/tape/route.ts`, via
+   `fetchFinnhubDayChange`) used to fire 5 Twelve Data calls on every cold load; and
+   `getLatestPrice` (`lib/portfolio.ts`, via `fetchLatestQuote`) — mark-to-market
+   pricing for every held position — used to fire on *every page load site-wide*
+   once `PortfolioProvider`/`CompetitionProvider` were both mounted globally, which
+   was the actual dominant cause of intermittent search failures, not the tape.
+   If you add anything that fires Twelve Data calls outside of an actual ticker
+   search, ask whether it really needs Twelve Data's historical-series data or just
+   a live quote — if the latter, use Finnhub instead and leave Twelve Data's
+   8/minute ceiling for search alone.
 4. **Distinguish "this ticker doesn't exist" from "the provider is rate-limited/down."**
    `lib/providers.ts` throws `NoTickerDataError` specifically when Twelve Data
    confirms no data for a symbol, vs. a plain `Error` for HTTP-level failures
@@ -139,15 +147,16 @@ in this codebase:
    deterministic failure) rather than trusting what should happen. This extends to
    third-party APIs too, not just Next.js itself — worth re-confirming against live
    docs whenever a new external integration goes in, not just trusting the plan.
-7. **`fetchPrices`/`fetchQuotePrice` fall through to Tiingo when Twelve Data fails
-   with anything other than a confirmed bad ticker** (rate limit, outage, network —
-   see gotcha #4's `NoTickerDataError` distinction, which this fallback depends on
-   to avoid wasting a Tiingo call on a symbol that's simply invalid). Tiingo uses
-   hyphens for share classes where Twelve Data uses dots (`BRK.B` → `BRK-B`) and is
-   end-of-day only, so a quote served via the fallback is the previous close, not
-   real-time — acceptable for a path that only fires when the primary provider is
-   already down, but don't mistake it for live pricing if it's ever surfaced
-   directly.
+7. **`fetchPrices` falls through to Tiingo when Twelve Data fails with anything
+   other than a confirmed bad ticker** (rate limit, outage, network — see gotcha
+   #4's `NoTickerDataError` distinction, which this fallback depends on to avoid
+   wasting a Tiingo call on a symbol that's simply invalid). `fetchLatestQuote`
+   (mark-to-market/trade-execution pricing) has the same Tiingo-fallback shape but
+   falls back from Finnhub, not Twelve Data — see gotcha #3. Tiingo uses hyphens for
+   share classes where Twelve Data uses dots (`BRK.B` → `BRK-B`) and is end-of-day
+   only, so a quote served via either fallback is the previous close, not real-time
+   — acceptable for a path that only fires when the primary provider is already
+   down, but don't mistake it for live pricing if it's ever surfaced directly.
 
 ## Workflow conventions already established
 

@@ -5,16 +5,19 @@
 
 import { getDb } from "./db";
 import { withCache } from "./cache";
-import { fetchQuotePrice } from "./providers";
+import { fetchLatestQuote } from "./providers";
 
 type Db = Awaited<ReturnType<typeof getDb>>;
 
 const QUOTE_TTL_MS = 60 * 1000;
 
 // Latest tradable price for a ticker — short-TTL cache since this backs
-// both trade execution and mark-to-market display.
+// both trade execution and mark-to-market display. Called for every held
+// position on every portfolio/competition page load (both providers are
+// mounted globally), which is why this is Finnhub-backed rather than
+// Twelve Data — see fetchLatestQuote's comment in lib/providers.ts.
 export async function getLatestPrice(ticker: string): Promise<number> {
-  return withCache(`quote:${ticker}`, QUOTE_TTL_MS, () => fetchQuotePrice(ticker));
+  return withCache(`quote:${ticker}`, QUOTE_TTL_MS, () => fetchLatestQuote(ticker));
 }
 
 export type Position = { ticker: string; shares: number; avgCost: number };
