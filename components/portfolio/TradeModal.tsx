@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fmt } from "@/lib/analysis/indicators";
+import { deltaClass, deltaSign, fmt } from "@/lib/analysis/indicators";
 import { usePortfolio } from "./PortfolioProvider";
 
 export function TradeModal() {
@@ -132,8 +132,8 @@ export function TradeModal() {
                 <br />
                 <span style={{ color: "var(--muted)", fontSize: 11, letterSpacing: "0.05em" }}>
                   Realized P&amp;L:{" "}
-                  <span className={realizedPL >= 0 ? "pos" : "neg"}>
-                    {realizedPL >= 0 ? "+" : "-"}${fmt(Math.abs(realizedPL))}
+                  <span className={deltaClass(realizedPL)}>
+                    {deltaSign(realizedPL)}${fmt(Math.abs(realizedPL))}
                   </span>
                 </span>
               </>

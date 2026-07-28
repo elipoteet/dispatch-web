@@ -98,6 +98,22 @@ export function sign(n: number): string {
   return n > 0 ? "+" : "";
 }
 
+// Sign/color for a delta value, based on its ROUNDED magnitude at the
+// given precision — not the raw value. A value like -0.0026 rounds to
+// "0.00" at 2 decimals; showing "-0.00" (or coloring it as a loss) would
+// be misleading since it isn't actually negative at that precision.
+// Always pair with Math.abs(n).toFixed(d) (or fmt(Math.abs(n), d)) for the
+// magnitude, never the raw signed value.
+export function deltaSign(n: number, d = 2): "+" | "-" | "" {
+  if (Number(Math.abs(n).toFixed(d)) === 0) return "";
+  return n >= 0 ? "+" : "-";
+}
+
+export function deltaClass(n: number, d = 2): "pos" | "neg" | "" {
+  if (Number(Math.abs(n).toFixed(d)) === 0) return "";
+  return n >= 0 ? "pos" : "neg";
+}
+
 // "a" -> "a"; "a","b" -> "a and b"; "a","b","c" -> "a, b, and c"
 export function joinWithAnd(items: string[]): string {
   if (items.length <= 1) return items.join("");

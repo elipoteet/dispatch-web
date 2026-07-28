@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { fmt } from "@/lib/analysis/indicators";
+import { deltaClass, deltaSign, fmt } from "@/lib/analysis/indicators";
 import { checkEligibility } from "@/lib/competition/rules";
 import { useCompetition } from "./CompetitionProvider";
 import { CompetitionOptIn } from "./CompetitionOptIn";
@@ -77,9 +77,9 @@ export function CompetitionDesk() {
             <div className="as-main">
               <div className="as-label">Total Account Value</div>
               <div className="as-value">${fmt(summary.equity)}</div>
-              <div className={`as-delta ${summary.returnPct >= 0 ? "pos" : "neg"}`}>
-                {summary.returnPct >= 0 ? "+" : ""}
-                {fmt(summary.returnPct, 2)}% since open
+              <div className={`as-delta ${deltaClass(summary.returnPct)}`}>
+                {deltaSign(summary.returnPct)}
+                {fmt(Math.abs(summary.returnPct), 2)}% since open
               </div>
             </div>
             <div className="as-stat">
@@ -157,12 +157,12 @@ export function CompetitionDesk() {
                             )}
                           </td>
                           <td>${fmt(p.marketValue)}</td>
-                          <td className={p.unrealizedPL >= 0 ? "pos" : "neg"}>
-                            {p.unrealizedPL >= 0 ? "+" : "-"}${fmt(Math.abs(p.unrealizedPL))}
+                          <td className={deltaClass(p.unrealizedPL)}>
+                            {deltaSign(p.unrealizedPL)}${fmt(Math.abs(p.unrealizedPL))}
                             <br />
                             <span style={{ fontSize: 11, opacity: 0.8 }}>
-                              {p.unrealizedPLPct >= 0 ? "+" : ""}
-                              {fmt(p.unrealizedPLPct, 2)}%
+                              {deltaSign(p.unrealizedPLPct)}
+                              {fmt(Math.abs(p.unrealizedPLPct), 2)}%
                             </span>
                           </td>
                           <td className="h-actions">

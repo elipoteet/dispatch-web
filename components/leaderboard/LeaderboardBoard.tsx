@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { deltaClass, deltaSign } from "@/lib/analysis/indicators";
 import type { MonthStatus, PublicLeaderboardRow } from "@/lib/competition/publicBoard";
 import { formatMonthLabel } from "@/lib/competition/publicBoard";
 
@@ -97,8 +98,8 @@ export function LeaderboardBoard({ month, isCurrent, status, rows, closedMonths 
                 <tr key={r.handle} className={rankRowClass(r.rank)}>
                   <td className="l-rank">{r.rank}</td>
                   <td className="l-handle">@{r.handle}</td>
-                  <td className={r.returnPct >= 0 ? "pos" : "neg"}>
-                    {r.returnPct >= 0 ? "+" : "-"}
+                  <td className={deltaClass(r.returnPct)}>
+                    {deltaSign(r.returnPct)}
                     {Math.abs(r.returnPct).toFixed(2)}%
                   </td>
                 </tr>
