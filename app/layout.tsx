@@ -8,6 +8,9 @@ import { PortfolioProvider } from "@/components/portfolio/PortfolioProvider";
 import { OnboardingModal } from "@/components/portfolio/OnboardingModal";
 import { TradeModal } from "@/components/portfolio/TradeModal";
 import { Toast } from "@/components/portfolio/Toast";
+import { CompetitionProvider } from "@/components/competition/CompetitionProvider";
+import { CompetitionTradeModal } from "@/components/competition/CompetitionTradeModal";
+import { CompetitionToast } from "@/components/competition/CompetitionToast";
 import { Masthead } from "@/components/layout/Masthead";
 import { TopNav } from "@/components/layout/TopNav";
 import { Footer } from "@/components/layout/Footer";
@@ -78,14 +81,18 @@ export default async function RootLayout({
         <AuthProvider initialUser={user}>
           <AuthModalProvider>
             <PortfolioProvider>
-              <Masthead />
-              <TopNav />
-              <main>{children}</main>
-              <Footer />
-              <AuthModal />
-              <OnboardingModal />
-              <TradeModal />
-              <Toast />
+              <CompetitionProvider>
+                <Masthead />
+                <TopNav />
+                <main>{children}</main>
+                <Footer />
+                <AuthModal />
+                <OnboardingModal />
+                <TradeModal />
+                <Toast />
+                <CompetitionTradeModal />
+                <CompetitionToast />
+              </CompetitionProvider>
             </PortfolioProvider>
           </AuthModalProvider>
         </AuthProvider>

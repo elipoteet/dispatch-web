@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { CompetitionSignedOut } from "@/components/competition/CompetitionSignedOut";
-import { CompetitionProvider } from "@/components/competition/CompetitionProvider";
 import { CompetitionDesk } from "@/components/competition/CompetitionDesk";
-import { CompetitionTradeModal } from "@/components/competition/CompetitionTradeModal";
-import { CompetitionToast } from "@/components/competition/CompetitionToast";
 
 export const metadata: Metadata = {
   title: "Competition",
@@ -29,15 +26,7 @@ export default async function CompetitionPage() {
         </p>
       </div>
 
-      {user ? (
-        <CompetitionProvider>
-          <CompetitionDesk />
-          <CompetitionTradeModal />
-          <CompetitionToast />
-        </CompetitionProvider>
-      ) : (
-        <CompetitionSignedOut />
-      )}
+      {user ? <CompetitionDesk /> : <CompetitionSignedOut />}
     </section>
   );
 }
