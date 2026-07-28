@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fmt } from "@/lib/analysis/indicators";
+import { STARTING_BALANCE } from "@/lib/competition/rules";
 import { useCompetition } from "./CompetitionProvider";
 
 export function CompetitionTradeModal() {
@@ -9,6 +10,14 @@ export function CompetitionTradeModal() {
   const [shares, setShares] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // No competition_account row exists until the first trade actually
+  // executes (see app/api/competition/trade/route.ts) — before that,
+  // `account` is null, but the real starting cash is still
+  // STARTING_BALANCE, not $0. Falling back to 0 here would show a
+  // brand-new entrant "$0 available" and a spurious negative "cash
+  // after" on their very first order.
+  const cashAvailable = account?.cash ?? STARTING_BALANCE;
 
   useEffect(() => {
     if (tradeModal.open) {
@@ -26,7 +35,7 @@ export function CompetitionTradeModal() {
   function quickAmount(pct: number) {
     const n =
       tradeModal.side === "buy"
-        ? Math.floor(((account?.cash ?? 0) * pct) / tradeModal.price)
+        ? Math.floor((cashAvailable * pct) / tradeModal.price)
         : Math.floor(owned * pct);
     setShares(String(Math.max(n, 0)));
   }
@@ -91,7 +100,7 @@ export function CompetitionTradeModal() {
           <div className="row">
             <span className="lbl">{tradeModal.side === "buy" ? "Cash Available" : "Shares Owned"}</span>
             <span className="val">
-              {tradeModal.side === "buy" ? `$${fmt(account?.cash ?? 0)}` : owned}
+              {tradeModal.side === "buy" ? `$${fmt(cashAvailable)}` : owned}
             </span>
           </div>
         </div>
@@ -122,7 +131,7 @@ export function CompetitionTradeModal() {
                 {fmt(tradeModal.price)} = <strong>${fmt(value)}</strong>.
                 <br />
                 <span style={{ color: "var(--muted)", fontSize: 11, letterSpacing: "0.05em" }}>
-                  Cash after: ${fmt((account?.cash ?? 0) - value)}
+                  Cash after: ${fmt(cashAvailable - value)}
                 </span>
               </>
             ) : (
