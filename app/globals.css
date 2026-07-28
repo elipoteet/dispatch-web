@@ -1837,6 +1837,145 @@
   }
   .settings-pane button.danger:hover { background: var(--accent); color: #fff; }
 
+  /* ═══════════════════════════════════════════════════════════
+     Monthly Leaderboard — public /leaderboard pages. Deliberately
+     more "event" than the rest of the site: a hero stat strip and a
+     gold-weighted top-3 treatment, built entirely from the existing
+     --gold/--navy palette rather than new colors.
+     ═══════════════════════════════════════════════════════════ */
+  .leaderboard-head {
+    padding: 56px 48px 32px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .leaderboard-head .label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+  .leaderboard-head h1 {
+    font-family: 'Inter', sans-serif;
+    font-size: 44px;
+    line-height: 1.05;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    color: var(--navy);
+  }
+  .leaderboard-head p {
+    margin-top: 14px;
+    color: var(--muted);
+    font-size: 15px;
+    max-width: 640px;
+  }
+  .leaderboard-stats {
+    display: flex;
+    gap: 32px;
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid var(--rule);
+  }
+  .leaderboard-stat-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .leaderboard-stat-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--navy);
+  }
+  .leaderboard-stat-value.live { color: var(--gold); }
+
+  .leaderboard-winner-banner {
+    margin: 32px 48px 0;
+    padding: 20px 28px;
+    background: var(--navy);
+    color: var(--cream);
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    font-family: 'Inter', sans-serif;
+  }
+  .leaderboard-winner-banner .wb-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+  .leaderboard-winner-banner .wb-handle {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .leaderboard-section { padding: 32px 48px 48px; background: var(--paper); }
+  .leaderboard-table { width: 100%; border-collapse: collapse; }
+  .leaderboard-table th {
+    text-align: left;
+    padding: 12px 14px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+    border-bottom: 1px solid var(--rule-dark);
+  }
+  .leaderboard-table td {
+    padding: 16px 14px;
+    border-bottom: 1px solid var(--rule);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    color: var(--navy);
+    vertical-align: middle;
+  }
+  .leaderboard-table tr:hover td { background: var(--cream-2); }
+  .leaderboard-table .l-handle {
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--navy);
+  }
+  .leaderboard-table .l-rank {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  /* Top-3 treatment: a gold left-rail at decreasing weight, no new colors. */
+  .leaderboard-table tr.l-top1 td:first-child { border-left: 4px solid var(--gold); }
+  .leaderboard-table tr.l-top1 .l-rank { color: var(--gold); }
+  .leaderboard-table tr.l-top2 td:first-child { border-left: 4px solid var(--gold); }
+  .leaderboard-table tr.l-top2 .l-rank { color: var(--gold); opacity: 0.75; }
+  .leaderboard-table tr.l-top3 td:first-child { border-left: 4px solid var(--gold); }
+  .leaderboard-table tr.l-top3 .l-rank { color: var(--gold); opacity: 0.55; }
+
+  .leaderboard-months {
+    padding: 0 48px 48px;
+    background: var(--paper);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .leaderboard-months a {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    color: var(--navy);
+    border: 1px solid var(--rule-dark);
+    padding: 8px 14px;
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+  .leaderboard-months a:hover { background: var(--navy); color: var(--cream); }
+
   /* Onboarding modal — first-time visit */
   .onboard-backdrop {
     position: fixed; inset: 0;
@@ -2163,6 +2302,11 @@
     .as-main .as-value { font-size: 40px; }
     .holdings-table, .activity-table { font-size: 12px; }
     .holdings-table th, .holdings-table td, .activity-table th, .activity-table td { padding: 10px 8px; }
+    .leaderboard-head, .leaderboard-section, .leaderboard-months { padding-left: 24px; padding-right: 24px; }
+    .leaderboard-winner-banner { margin-left: 24px; margin-right: 24px; }
+    .leaderboard-stats { flex-wrap: wrap; gap: 20px; }
+    .leaderboard-table { font-size: 12px; }
+    .leaderboard-table th, .leaderboard-table td { padding: 10px 8px; }
   }
 
   /* Footer */
@@ -2304,9 +2448,10 @@
     }
     .hero { padding: 40px 20px; }
     .features { padding: 40px 20px; }
-    .analyzer-head, .search-row input, .chart-section, .report-header, .report-body, .risks-col, .catalyst-col, .news-section, .scorecard-section, .disclaimer, footer, .about, .give-head {
+    .analyzer-head, .search-row input, .chart-section, .report-header, .report-body, .risks-col, .catalyst-col, .news-section, .scorecard-section, .disclaimer, footer, .about, .give-head, .leaderboard-head {
       padding-left: 24px; padding-right: 24px;
     }
+    .leaderboard-head h1 { font-size: 32px; }
     .key-stats { grid-template-columns: repeat(2, 1fr); }
     .stat:nth-child(2n) { border-right: none; }
     .cta-text, .risks-col { border-right: none; border-bottom: 1px solid var(--rule); }

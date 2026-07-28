@@ -4,6 +4,8 @@ import { useState } from "react";
 import type { ReportData } from "@/lib/analysis/report";
 import { buildMarkdown } from "@/lib/analysis/markdown";
 import { usePortfolio } from "@/components/portfolio/PortfolioProvider";
+import { useCompetition } from "@/components/competition/CompetitionProvider";
+import { TradeAccountChooser } from "@/components/trade/TradeAccountChooser";
 import { useIsDarkMode } from "@/lib/useTheme";
 import { ChartSVG } from "./ChartSVG";
 
@@ -27,8 +29,22 @@ export function ResultsReport({
   historicalBanner?: React.ReactNode;
 }) {
   const { openTrade } = usePortfolio();
+  const { optedIn, openTrade: openCompetitionTrade } = useCompetition();
+  const [chooserOpen, setChooserOpen] = useState(false);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const isDark = useIsDarkMode();
+
+  // Not opted into the competition: Trade behaves exactly as it always
+  // has, straight into the regular paper-trading modal. Opted in: the one
+  // universal Trade button has to serve two separate accounts, so ask
+  // first — see components/trade/TradeAccountChooser.tsx.
+  function handleTradeClick() {
+    if (optedIn) {
+      setChooserOpen(true);
+    } else {
+      openTrade(report.ticker, report.lastPrice);
+    }
+  }
 
   async function handleCopyMemo() {
     try {
@@ -51,7 +67,7 @@ export function ResultsReport({
               className="trade-action-btn"
               type="button"
               title="Place a paper trade"
-              onClick={() => openTrade(report.ticker, report.lastPrice)}
+              onClick={handleTradeClick}
             >
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
                 <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
@@ -285,6 +301,21 @@ export function ResultsReport({
         predictions. Investors should conduct their own due diligence and consult a qualified advisor before making
         investment decisions. Data sourced from Twelve Data and Finnhub.
       </div>
+
+      {chooserOpen && (
+        <TradeAccountChooser
+          ticker={report.ticker}
+          onChoosePortfolio={() => {
+            setChooserOpen(false);
+            openTrade(report.ticker, report.lastPrice);
+          }}
+          onChooseCompetition={() => {
+            setChooserOpen(false);
+            openCompetitionTrade(report.ticker, report.lastPrice);
+          }}
+          onClose={() => setChooserOpen(false)}
+        />
+      )}
     </div>
   );
 }

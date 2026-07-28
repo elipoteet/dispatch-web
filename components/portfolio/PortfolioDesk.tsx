@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { fmt } from "@/lib/analysis/indicators";
+import { deltaClass, deltaSign, fmt } from "@/lib/analysis/indicators";
 import { usePortfolio } from "./PortfolioProvider";
 import { EquityChart } from "./EquityChart";
 
@@ -78,11 +78,11 @@ export function PortfolioDesk() {
             <div className="as-main">
               <div className="as-label">Total Account Value</div>
               <div className="as-value">${fmt(summary.totalValue)}</div>
-              <div className={`as-delta ${summary.totalReturnPct >= 0 ? "pos" : "neg"}`}>
-                {summary.totalValue - summary.startingCash >= 0 ? "+" : "-"}$
+              <div className={`as-delta ${deltaClass(summary.totalReturnPct)}`}>
+                {deltaSign(summary.totalValue - summary.startingCash)}$
                 {fmt(Math.abs(summary.totalValue - summary.startingCash))} (
-                {summary.totalReturnPct >= 0 ? "+" : ""}
-                {fmt(summary.totalReturnPct, 2)}%) since open
+                {deltaSign(summary.totalReturnPct)}
+                {fmt(Math.abs(summary.totalReturnPct), 2)}%) since open
               </div>
             </div>
             <div className="as-stat">
@@ -97,8 +97,8 @@ export function PortfolioDesk() {
             </div>
             <div className="as-stat">
               <div className="as-label">Unrealized P&amp;L</div>
-              <div className={`as-value ${summary.unrealizedPL >= 0 ? "pos" : "neg"}`}>
-                {summary.unrealizedPL >= 0 ? "+" : "-"}${fmt(Math.abs(summary.unrealizedPL))}
+              <div className={`as-value ${deltaClass(summary.unrealizedPL)}`}>
+                {deltaSign(summary.unrealizedPL)}${fmt(Math.abs(summary.unrealizedPL))}
               </div>
               <div className="as-sub">on cost basis ${fmt(summary.costBasis)}</div>
             </div>
@@ -165,12 +165,12 @@ export function PortfolioDesk() {
                           )}
                         </td>
                         <td>${fmt(p.marketValue)}</td>
-                        <td className={p.unrealizedPL >= 0 ? "pos" : "neg"}>
-                          {p.unrealizedPL >= 0 ? "+" : "-"}${fmt(Math.abs(p.unrealizedPL))}
+                        <td className={deltaClass(p.unrealizedPL)}>
+                          {deltaSign(p.unrealizedPL)}${fmt(Math.abs(p.unrealizedPL))}
                           <br />
                           <span style={{ fontSize: 11, opacity: 0.8 }}>
-                            {p.unrealizedPLPct >= 0 ? "+" : ""}
-                            {fmt(p.unrealizedPLPct, 2)}%
+                            {deltaSign(p.unrealizedPLPct)}
+                            {fmt(Math.abs(p.unrealizedPLPct), 2)}%
                           </span>
                         </td>
                         <td className="h-actions">

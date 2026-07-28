@@ -253,6 +253,22 @@ async function fh<T = unknown>(path: string, params: Record<string, string> = {}
   }
 }
 
+// —— Finnhub: lightweight quote (used by the Monthly Leaderboard's daily
+// scoring cron — app/api/competition/snapshot/route.ts — for shared,
+// once-per-ticker-per-day pricing across every entrant holding that
+// ticker). Not run through unstable_cache like the rest of this file: the
+// cron already dedupes via its own competition_price_cache table, so a
+// second cache layer here would just be redundant. Empirically confirmed
+// (real throttled test, July 2026) that Finnhub's free tier allows 60
+// requests/minute via the x-ratelimit-* response headers, then hard-fails
+// with 429 and remaining=0 for the rest of that rolling window — the
+// cron's own throttle stays comfortably under that.
+export async function fetchFinnhubQuote(symbol: string): Promise<number | null> {
+  const data = await fh<{ c: number }>("quote", { symbol: symbol.toUpperCase() });
+  if (!data || typeof data.c !== "number" || data.c <= 0) return null;
+  return data.c;
+}
+
 // fh() swallows per-endpoint failures to null so one flaky sub-request (of
 // the five below) doesn't kill the whole fundamentals fetch — a ticker with
 // no earnings history yet is a normal, cacheable result. But if *all five*
