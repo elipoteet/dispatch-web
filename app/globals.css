@@ -1890,7 +1890,7 @@
     font-weight: 500;
     color: var(--navy);
   }
-  .leaderboard-stat-value.live { color: var(--gold); }
+  .leaderboard-stat-value.live { color: var(--green); }
 
   .leaderboard-winner-banner {
     margin: 32px 48px 0;

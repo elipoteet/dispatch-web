@@ -30,7 +30,7 @@ export function LeaderboardBoard({ month, isCurrent, status, rows, closedMonths 
         <div className="label">Monthly Leaderboard</div>
         <h1>
           {monthLabel}
-          {isCurrent && !isClosed && <span style={{ color: "var(--gold)" }}> · Live</span>}
+          {isCurrent && !isClosed && <span style={{ color: "var(--accent)" }}> · Live</span>}
         </h1>
         <p>
           A real monthly investing competition: every entrant trades a separate $10,000 paper
