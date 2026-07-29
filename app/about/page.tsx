@@ -75,10 +75,13 @@ export default function AboutPage() {
             Everything above is written as &ldquo;we,&rdquo; because that&rsquo;s how research
             usually reads — but The Dispatch is built and run by one person. I&rsquo;m Eli
             Poteet, a finance student at the University of New Hampshire. I built this because I
-            actually trade, and I was tired of juggling six tabs and a spreadsheet just to get a
-            straight answer on a stock I already cared about. I wanted one page that did the
-            reading for me and showed its work — so I built it, and I use it on my own watchlist
-            every day.
+            actually trade, and if I&rsquo;m being honest I&rsquo;m not particularly good at it
+            yet, which is part of why I built it. I got tired of juggling six tabs and a
+            spreadsheet just to get a straight answer on a stock I already cared about, so I
+            wanted one page that did the reading for me and showed its work. I use it on my own
+            every day, and the goal isn&rsquo;t just to have prettier numbers in front of me,
+            it&rsquo;s to actually develop a strategy I can trust and get better at trading over
+            time.
           </p>
 
           <p>
