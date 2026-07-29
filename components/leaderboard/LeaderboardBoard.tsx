@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { deltaClass, deltaSign } from "@/lib/analysis/indicators";
+import { daysRemainingInMonth } from "@/lib/competition/marketHours";
 import type { MonthStatus, PublicLeaderboardRow } from "@/lib/competition/publicBoard";
 import { formatMonthLabel } from "@/lib/competition/publicBoard";
 
@@ -52,6 +53,14 @@ export function LeaderboardBoard({ month, isCurrent, status, rows, closedMonths 
               {isClosed ? "Final Standings" : status?.status === "closing" ? "Wrapping Up" : "Open"}
             </div>
           </div>
+          {isCurrent && !isClosed && (
+            <div>
+              <div className="leaderboard-stat-label">Time Left</div>
+              <div className="leaderboard-stat-value">
+                {daysRemainingInMonth() === 0 ? "Closes today" : `${daysRemainingInMonth()} days left`}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

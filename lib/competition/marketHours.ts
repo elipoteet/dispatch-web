@@ -57,6 +57,18 @@ export function nyDateKey(date: Date = new Date()): string {
   return `${year}-${pad2(month)}-${pad2(day)}`;
 }
 
+// Days remaining in the current NY calendar month, inclusive of today —
+// the last day of the month returns 0, not -1. Used by the public
+// leaderboard's "X days left" countdown (components/leaderboard/
+// LeaderboardBoard.tsx). Purely a calendar computation, unrelated to
+// trading days/market hours — the competition month itself always runs
+// the full calendar month regardless of holidays/weekends.
+export function daysRemainingInMonth(date: Date = new Date()): number {
+  const { year, month, day } = newYorkParts(date);
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return daysInMonth - day;
+}
+
 // —— NYSE holiday calendar ——
 // Built from rules (nth weekday, Easter-relative, fixed-date-with-weekend-
 // observance) rather than a hardcoded per-year date list, so it doesn't

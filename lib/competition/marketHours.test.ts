@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  daysRemainingInMonth,
   easterSunday,
   isMarketOpen,
   isTradingDay,
@@ -143,5 +144,27 @@ describe("nyMonthKey / nyDateKey", () => {
     const instant = new Date(Date.UTC(2026, 6, 15, 15, 0, 0));
     expect(nyMonthKey(instant)).toBe("2026-07");
     expect(nyDateKey(instant)).toBe("2026-07-15");
+  });
+});
+
+describe("daysRemainingInMonth", () => {
+  it("is 0 on the last day of the month, for every month of the year", () => {
+    for (let month = 1; month <= 12; month++) {
+      const daysInMonth = new Date(Date.UTC(2026, month, 0)).getUTCDate();
+      const instant = new Date(Date.UTC(2026, month - 1, daysInMonth, 15, 0, 0));
+      expect(daysRemainingInMonth(instant)).toBe(0);
+    }
+  });
+
+  it("is daysInMonth - 1 on the first day of the month", () => {
+    // July 2026 has 31 days.
+    const instant = new Date(Date.UTC(2026, 6, 1, 15, 0, 0));
+    expect(daysRemainingInMonth(instant)).toBe(30);
+  });
+
+  it("counts down correctly for a mid-month day", () => {
+    // July 15 of a 31-day month -> 16 days left.
+    const instant = new Date(Date.UTC(2026, 6, 15, 15, 0, 0));
+    expect(daysRemainingInMonth(instant)).toBe(16);
   });
 });
