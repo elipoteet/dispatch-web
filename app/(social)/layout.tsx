@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { SocialHeader } from "@/components/social/SocialHeader";
 import type { HeaderProfile } from "@/components/social/SocialHeader";
+import { Footer } from "@/components/social/Footer";
 
 // Chrome for the new campus-social surface — /, /signup, /login,
 // /onboarding, /p/[id], /u/[handle] (public URL /@handle, see
@@ -44,6 +45,7 @@ export default async function SocialLayout({
     <div className="social">
       <SocialHeader profile={profile} />
       <main className="social-main">{children}</main>
+      <Footer />
     </div>
   );
 }

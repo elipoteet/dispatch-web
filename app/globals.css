@@ -3641,3 +3641,77 @@
 .post-link-url:hover {
   text-decoration: underline;
 }
+
+/* ---------- composer guidelines link ---------- */
+.composer-guidelines-link {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none;
+}
+.composer-guidelines-link:hover {
+  color: var(--gold);
+}
+
+/* ---------- footer ---------- */
+.social-footer {
+  max-width: 640px;
+  margin: 30px auto 0;
+  padding: 20px 20px 40px;
+  border-top: 1px solid var(--rule);
+}
+.social-footer-disclaimer {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+  max-width: 520px;
+}
+.social-footer-links {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+}
+.social-footer-links a {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none;
+}
+.social-footer-links a:hover {
+  color: var(--gold);
+}
+
+/* ---------- legal pages (/disclaimer, /guidelines) ---------- */
+.legal-page {
+  padding: 28px 0 60px;
+  max-width: 620px;
+}
+.legal-page h1 {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 20px;
+}
+.legal-page h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 32px;
+  margin-bottom: 10px;
+}
+.legal-page p {
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--ink);
+  margin-bottom: 14px;
+}
+.legal-page .legal-lead {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.legal-page .legal-lead + p {
+  margin-top: 0;
+}

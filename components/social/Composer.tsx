@@ -8,6 +8,7 @@ import { useAutoGrowTextarea } from "@/lib/social/useAutoGrowTextarea";
 import { firstCashtag, uppercaseCashtags } from "@/lib/social/cashtags";
 import { TickerCard } from "./TickerCard";
 import type { TickerSnapshot } from "@/lib/analysis/tickerSnapshot";
+import Link from "next/link";
 
 type PostType = "take" | "question" | "thesis" | "link";
 
@@ -244,6 +245,9 @@ export function Composer({
         {error && <div className="social-error">{error}</div>}
 
         <div className="composer-foot">
+          <Link href="/guidelines" className="composer-guidelines-link">
+            Guidelines
+          </Link>
           {validationHint && <span className="hint">{validationHint}</span>}
           <button
             className="social-btn social-btn-primary"
