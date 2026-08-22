@@ -11,6 +11,18 @@ const nextConfig: NextConfig = {
       { source: "/competition", destination: "/leaderboard?tab=account", permanent: false },
     ];
   },
+  async rewrites() {
+    return [
+      // Public profile URLs are `/@handle` (see docs/phase-one.md), but a
+      // folder literally named `@[handle]` isn't a route segment in the App
+      // Router — `@folder` is the parallel-routes slot convention, so it
+      // would silently never match a URL. The real page lives at
+      // /u/[handle]; this rewrite is what makes `/@handle` resolve to it
+      // while keeping `/@handle` in the address bar and in every internal
+      // <Link>. `@` needs no escaping in the source pattern.
+      { source: "/@:handle", destination: "/u/:handle" },
+    ];
+  },
 };
 
 export default nextConfig;
