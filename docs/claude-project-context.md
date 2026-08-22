@@ -1,232 +1,166 @@
-# The Dispatch — Claude Project Context
+# The Dispatch — Project Context
 
-Paste this file into a Claude Project's knowledge (along with `ARCHITECTURE.md` and
-`AGENTS.md` from the repo root — see "What else to upload" below). It's written so a
-fresh Claude conversation can pick up this project with no prior history.
+Last updated August 2026, after the phase one social build. A fresh Claude conversation
+should be able to pick up this project from this file plus `docs/product-spec.md`,
+`docs/phase-one.md`, `ARCHITECTURE.md`, and `AGENTS.md`.
+
+## How to talk to Eli — read this first
+
+Eli is a **finance student, not a software engineer.** He is the sole owner of this project
+and makes all the decisions, but he does not read code fluently. When explaining anything —
+what you did, how something works, what a change means, what went wrong, or what you
+recommend — use **plain, everyday language**:
+
+- **Lead with what it means for him and the site**, not how the code works.
+- **Avoid jargon.** If a technical term is truly unavoidable, define it in one short,
+  plain-language aside the first time it appears (e.g. "a branch — a separate copy of the
+  site's code, so nothing changes on your live site until you approve it").
+- **Skip the code walkthroughs unless he asks.** He needs the outcome, the trade-offs, and
+  what decision (if any) is his to make.
+- **Keep it calm and concrete**, matching the site's own editorial voice. Short sentences.
+- This is about **how you explain things to him**, not about lowering the quality or rigor
+  of the actual work.
 
 ## What this is
 
-**The Dispatch** is an equity-research web app. A visitor types a U.S. stock ticker and
-gets back a structured research memo in a few seconds — scorecard, fundamentals,
-technicals, sentiment, risks, catalysts, and an overall rating — built fresh from real
-market data every time, not templated boilerplate. It also has a paper-trading portfolio
-feature and a "Time Machine" that rebuilds any past memo as it would have read on a
-prior date.
+**The Dispatch is being rebuilt** as a campus-verified place for college students to argue
+about markets. You make an argument, you say what would change your mind, other people push
+back. Everyone signs in with a school email and carries their school and class year on a
+badge next to their name. Subjects run across all of finance: stocks, macro, rates,
+commodities, geopolitics, crypto. The research engine sits inside the conversation rather
+than beside it.
 
-Solo project. Built and run by **Eli Poteet**, a finance student at the University of
-New Hampshire. Not a company, no team — see the "Who's behind this" section on the
-`/about` page for the honest framing already established for the site's own copy.
+**`docs/product-spec.md` is the authoritative description of the product.** Read it before
+working on anything user-facing. This file covers stack, brand, and traps.
+
+Phase one shipped on the branch `feat/social-v1`: school-email sign-in, post, reply, edit
+within twelve hours, soft-delete with a tombstone, and a feed readable without an account.
+`docs/phase-one.md` is that brief.
+
+### What it used to be
+
+Until August 2026 this was an equity-research tool: type a ticker, get an auto-generated
+memo with a scorecard and a buy/sell rating. That product is being retired. The rating
+machine had no edge, since the inputs were free-tier data anyone could pull, and no reason
+to return.
+
+The analysis engine survives, but its job changes from producing a verdict to producing
+context inside posts. **There is no rating, no scorecard, no track record, and no
+leaderboard in the new product.** Do not reintroduce one.
 
 - **Live site:** https://www.dispatchresearch.com
-- **GitHub:** https://github.com/elipoteet/dispatch-web (branch: `master`)
-- **Fallback/staging URL:** https://dispatch-web-psi.vercel.app (same deploy, Vercel's
-  default domain — useful if the custom domain is ever misbehaving)
+- **GitHub:** https://github.com/elipoteet/dispatch-web
+- **Fallback URL:** https://dispatch-web-psi.vercel.app
 - **Hosting:** Vercel, auto-deploys on push to `master`
-- **Database/auth:** Supabase (Postgres + Auth — Google OAuth and email/password)
-- **Market data:** Twelve Data (prices, primary) with Tiingo as a fallback when Twelve
-  Data is rate-limited or down, and Finnhub (fundamentals/news/estimates) — all
-  free-tier, all server-side only
+- **Database/auth:** Supabase (Postgres + Auth)
+- **Market data:** Twelve Data, Finnhub, Tiingo, all free-tier, all server-side only
+- **Transactional email:** Resend
 
 ## Tech stack
 
 - Next.js **16.2.10** (App Router, Turbopack) + React 19 + TypeScript
-- `@supabase/ssr` + `@supabase/supabase-js` for auth and Postgres access
+- `@supabase/ssr` + `@supabase/supabase-js`
 - No other runtime dependencies — deliberately lean
 
-## Where things live (see `ARCHITECTURE.md` for the full map)
+## Where things live
 
-- `app/` — pages: home, `about/`, `research/` (search desk + `research/[ticker]/` for
-  server-rendered memo pages), `portfolio/` (paper trading), `give/` (charity donation —
-  the site has no paid tier)
-- `app/api/` — `analyze/[ticker]` (client-side memo fetch), `watchlist`,
-  `tape` (homepage ticker strip), `portfolio/*`, `alerts` (free for every signed-in
-  user), `cron/alerts` (daily Vercel Cron job — score-change/RSI/MA-cross detection)
-- `lib/analysis/` — the scoring engine: `indicators.ts`, `scoring.ts`, `report.ts`,
-  `loadReport.ts` (shared fetch/build logic), `historical.ts` (Time Machine)
-- `lib/providers.ts` — Twelve Data / Finnhub fetch wrappers, server-only
-- `lib/portfolio.ts` — paper-trading math
-- `lib/supabase/`, `lib/db.ts` — Supabase clients
-- `components/` — `research/`, `portfolio/`, `layout/`, `auth/`
+- `app/(social)/` — the new product: feed at `/`, `/signup`, `/login`, `/onboarding`,
+  `/p/[id]`, `/u/[handle]` (public URL is `/@handle` via a rewrite)
+- `app/(research)/` — the retiring product: `/research`, `/portfolio`, `/leaderboard`,
+  `/about`, `/give`, with its own layout and chrome
+- `app/api/auth/request-code/` — the domain-gated, rate-limited OTP request route
+- `lib/analysis/` — the engine: `indicators.ts`, `scoring.ts`, `report.ts`,
+  `loadReport.ts`, `historical.ts`
+- `lib/providers.ts` — market data wrappers, server-only, cached with `unstable_cache`
+- `lib/supabase/` — clients and proxy helpers
+- `components/social/` — the new surface's components
 - `proxy.ts` — session-refresh middleware (Next 16 renamed `middleware.ts` → `proxy.ts`)
+- `supabase/migrations/` — hand-written SQL, pasted into the Supabase SQL editor by hand.
+  This repo has never used the Supabase CLI migration runner.
 
-## Environment variables required
-
-Set in `.env.local` locally and in Vercel's project settings for production:
+## Environment variables
 
 ```
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY
 TWELVE_DATA_API_KEY
-TIINGO_API_KEY
 FINNHUB_API_KEY
-CRON_SECRET
-NEXT_PUBLIC_SITE_URL
 ```
 
 (Values are secrets — never commit them, never paste them into a Claude conversation.)
 
-## Brand / design rules — apply these without being asked
+## Brand / design rules
 
-- **Palette:** navy `--navy`, cream `--cream`, gold `--gold` accent, plus `--accent`
-  (red/error), `--green` (positive). All defined as CSS custom properties in
-  `app/globals.css` that flip values under `[data-theme="dark"]` / `prefers-color-scheme`
-  — light and dark are both first-class, not an afterthought.
-- **Typography:** Inter (body/UI) + IBM Plex Mono (labels, data, uppercase micro-copy
-  with wide letter-spacing). This pairing is load-bearing for the site's "newspaper
-  research desk" feel — don't swap it casually.
-- **Zero border-radius, everywhere**, deliberately — the one exception is the logo
-  mark itself. This is a strict, intentional brand constraint, not an oversight.
-- **Voice:** calm, editorial, declarative. "Do less, read more, stare at fewer charts."
-  Explicitly *not* a trading terminal — the site says so on `/about`. Avoid hype copy,
-  avoid "institutional-grade" style language (deliberately removed from the homepage
-  hero for undercutting the "written for readers" positioning).
-- **Logo mark:** a navy "D" with a gold ascending-arrow line through it (rounded bowl,
-  rounded joints), defined as inline SVG in `components/layout/Logo.tsx` and hardcoded
-  light-mode-only in `app/icon.svg` (favicons render outside page CSS context).
+- **Palette:** navy, cream, gold accent, plus red for error and green for positive, defined
+  as CSS custom properties in `app/globals.css` that flip under `[data-theme="dark"]` and
+  `prefers-color-scheme`. Light and dark are both first-class.
+- **Typography:** Inter for body and UI, IBM Plex Mono for labels, data, and uppercase
+  micro-copy with wide letter-spacing. Load-bearing for the "newspaper research desk" feel.
+- **Radius:** the research surface is zero-radius everywhere, deliberately and strictly.
+  **The social surface loosens this**, with roughly 7 to 10px radius, pill buttons and
+  badges, and circular avatars. Those tokens are scoped under a `.social` wrapper class so
+  the two surfaces never contaminate each other.
+- **Voice:** calm, editorial, declarative. Explicitly not a trading terminal. No hype copy.
+- **Logo mark:** a navy "D" with a gold ascending-arrow line through it, inline SVG in
+  `components/layout/Logo.tsx`, hardcoded light-mode-only in `app/icon.svg`.
 
-## Known, hard-won gotchas — read before touching Next.js internals
+## Known, hard-won gotchas
 
-`AGENTS.md` already warns: **this Next.js version has real breaking changes from
-older training data — read `node_modules/next/dist/docs/` before writing code that
-touches routing, caching, or metadata.** Specific traps already hit and worked around
-in this codebase:
+`AGENTS.md` warns: **this Next.js version has real breaking changes from older training
+data — read `node_modules/next/dist/docs/` before writing code that touches routing,
+caching, or metadata.**
 
-1. **`error.tsx` route boundaries are unreliable in this exact Next 16.2.10 +
-   Turbopack setup.** Documented, standard `error.tsx` (with `unstable_retry`) was
-   built and tested for `/research/[ticker]` — it worked on the *first* render pass
-   (confirmed via the raw RSC payload) but a subsequent re-render sometimes fell
-   through to the framework's generic "page could not be found" fallback instead,
-   even in a minimal, completely isolated repro unrelated to this route. **Verify
-   any `error.tsx` you add actually works with a real forced-throw test before
-   trusting it** — don't assume the documented behavior holds. The current
-   workaround: handle recoverable failures directly in the page component's own
-   render (a normal 200 response with inline messaging) instead of throwing to a
-   boundary.
-2. **`notFound()`'s documented automatic `noindex` injection doesn't reliably apply
-   once a custom `not-found.tsx` exists for that segment**, at least not in local
-   testing here. Set `robots: { index: false }` explicitly in `generateMetadata`'s
-   catch/fallback path instead of trusting the automatic behavior.
-3. **Twelve Data's free tier is 8 requests/minute — this is tight, and it's shared
-   with real ticker searches (`fetchPrices`, used by both `/research/[ticker]` and
-   `/api/analyze/[ticker]` via `loadReport`/`loadTickerData`).** Two things used to
-   quietly compete with it for no good reason, both fixed by moving them to Finnhub
-   instead (its quote endpoint, empirically 60 req/min, is a completely separate
-   quota): the homepage ticker tape (`app/api/tape/route.ts`, via
-   `fetchFinnhubDayChange`) used to fire 5 Twelve Data calls on every cold load; and
-   `getLatestPrice` (`lib/portfolio.ts`, via `fetchLatestQuote`) — mark-to-market
-   pricing for every held position — used to fire on *every page load site-wide*
-   once `PortfolioProvider`/`CompetitionProvider` were both mounted globally, which
-   was the actual dominant cause of intermittent search failures, not the tape.
-   If you add anything that fires Twelve Data calls outside of an actual ticker
-   search, ask whether it really needs Twelve Data's historical-series data or just
-   a live quote — if the latter, use Finnhub instead and leave Twelve Data's
-   8/minute ceiling for search alone.
-4. **Distinguish "this ticker doesn't exist" from "the provider is rate-limited/down."**
-   `lib/providers.ts` throws `NoTickerDataError` specifically when Twelve Data
-   confirms no data for a symbol, vs. a plain `Error` for HTTP-level failures
-   (429, 500, network). `lib/analysis/loadReport.ts` converts `NoTickerDataError`
-   into `TickerDataError`, which the research page 404s on; a plain `Error` shows a
-   "temporarily unavailable, try again" message instead. Keep this distinction if
-   you touch this path — collapsing it back into one generic error message was
-   exactly the bug that got fixed.
-5. **`unstable_cache` (from `next/cache`) is the right tool for durable, per-argument
-   server-side caching on Vercel** — a plain in-memory `Map` (see `lib/cache.ts`,
-   still used by `lib/portfolio.ts`'s trade-quote cache only) does *not* reliably
-   persist across separate serverless invocations. Provider-response caching (this
-   was `feat/provider-cache`, now merged) wraps each `lib/providers.ts` function
-   individually with `unstable_cache` so every caller shares one cache entry per
-   symbol. It also fixes a real gap: `fh()` (the Finnhub helper) swallows failures
-   to `null`, which could otherwise get durably cached as "no data" for a transient
-   Finnhub hiccup — only treated as a real failure when *all five* parallel Finnhub
-   sub-requests come back null.
-6. **Always verify empirically, not just against docs.** Multiple times this
-   session, documented Next.js behavior didn't match actual behavior in this
-   specific version/bundler combo. When in doubt: build, run a real server
-   (`next start`, not just `next dev`), and hit it with `curl` (or force a
-   deterministic failure) rather than trusting what should happen. This extends to
-   third-party APIs too, not just Next.js itself — worth re-confirming against live
-   docs whenever a new external integration goes in, not just trusting the plan.
-7. **`fetchPrices` falls through to Tiingo when Twelve Data fails with anything
-   other than a confirmed bad ticker** (rate limit, outage, network — see gotcha
-   #4's `NoTickerDataError` distinction, which this fallback depends on to avoid
-   wasting a Tiingo call on a symbol that's simply invalid). `fetchLatestQuote`
-   (mark-to-market/trade-execution pricing) has the same Tiingo-fallback shape but
-   falls back from Finnhub, not Twelve Data — see gotcha #3. Tiingo uses hyphens for
-   share classes where Twelve Data uses dots (`BRK.B` → `BRK-B`) and is end-of-day
-   only, so a quote served via either fallback is the previous close, not real-time
-   — acceptable for a path that only fires when the primary provider is already
-   down, but don't mistake it for live pricing if it's ever surfaced directly.
+1. **`error.tsx` route boundaries are unreliable** in this Next 16.2.10 + Turbopack setup.
+   A documented, standard `error.tsx` worked on the first render pass but sometimes fell
+   through to the framework's generic fallback on re-render, even in an isolated repro.
+   Handle recoverable failures in the page component's own render instead. If you add one
+   anyway, prove it works with a real forced throw.
+2. **`notFound()`'s automatic `noindex` doesn't reliably apply** once a custom
+   `not-found.tsx` exists for that segment. Set `robots: { index: false }` explicitly.
+3. **`@folder` is the parallel-routes slot convention, not a URL segment.** A literal
+   `app/@[handle]/` folder silently never routes. The social surface uses a real page at
+   `/u/[handle]` plus a `rewrites()` entry so the public URL stays `/@handle`.
+4. **Twelve Data's free tier is 8 requests per minute.** A feed strains this far harder
+   than a search box ever did. Anything that fans out across symbols must be budgeted
+   against that ceiling.
+5. **Distinguish "this ticker doesn't exist" from "the provider is down."**
+   `lib/providers.ts` throws `NoTickerDataError` when a provider confirms no data, vs a
+   plain `Error` for HTTP failures. Collapsing these back into one message was exactly the
+   bug that got fixed.
+6. **`unstable_cache` is the right tool for durable per-argument caching on Vercel.** A
+   plain in-memory `Map` does not persist across serverless invocations. Provider caching is
+   already done and live.
+7. **Supabase issues eight-digit OTP codes here, not six**, and there is no length setting
+   in the dashboard. The code entry UI accepts any non-empty length up to 12. Do not assume
+   "six-digit" is literal anywhere in the docs.
+8. **Always verify empirically.** Documented Next.js behavior has repeatedly not matched
+   actual behavior in this version and bundler combination. Build, run `next start`, hit it
+   with curl.
 
-## Workflow conventions already established
+## Workflow conventions
 
-- **Small fixes / content edits:** commit directly to `master`, push, then poll
-  production (`curl` the live URL) to confirm the deploy landed before reporting done.
-- **Bigger features:** create a branch, push it, but **do not merge or open a PR
-  unless explicitly asked** — the user reviews on GitHub first and says "merge" when
-  ready.
-- **Always run `npx tsc --noEmit` and `npm run build` before considering something
-  done.** `npm run lint` currently fails on ~8 pre-existing `react-hooks/set-state-in-effect`
-  errors unrelated to any single change (never cleaned up) — don't be alarmed by
-  that specific failure, but don't add new lint errors either.
-- Test files/scratch servers: never commit them; clean up (`kill` background
-  `next dev`/`next start` processes, delete scratch curl output files) before
-  finishing.
+- **Small fixes and content edits:** commit directly to `master`, push, then poll production
+  with curl to confirm the deploy landed before reporting done.
+- **Bigger features:** create a branch, push it, but **do not merge or open a PR unless
+  explicitly asked.**
+- **The social rebuild lives on `feat/social-v1`** alongside the live site. The current site
+  keeps working until the replacement is real.
+- **Always run `npx tsc --noEmit` and `npm run build` before considering something done.**
+  `npm run lint` currently fails on about 11 pre-existing errors on `master` unrelated to
+  any single change — don't be alarmed by those, don't add new ones.
+- Never commit test files or scratch servers. Kill background dev servers and clean up
+  before finishing.
 
-## Current state / what's already done
+## Open items
 
-Phases 1–4 of the original migration (from a single static HTML file) are complete:
-auth, live price proxy, watchlist, paper trading. Since then: mobile responsiveness
-pass, candlestick charts (dark mode) / line chart (light mode) toggle, full brand
-identity (logo, OG images, brand guidelines), SEO audit fixes (robots.txt, sitemap.xml,
-canonical tags, metadataBase pointed at the real domain), server-rendered per-ticker
-memo pages at `/research/[ticker]` (the biggest SEO lever — real content in the initial
-HTML instead of a client-fetched empty shell), a founder's note + real contact info on
-`/about`, the rate-limit/error-messaging fixes described above, `unstable_cache`-based
-provider caching (the `feat/provider-cache` branch — merged), the Time Machine's
-"Then vs. Now" analysis (score deltas, realized-performance verdict, "how the business
-changed" revenue/net-income comparison), and Subscriber Alerts (a daily cron job
-detects rating flips and RSI/MA technical triggers for every watched ticker, surfaced
-via a bell icon in the nav).
-
-**The site has no paid tier — decided 2026-07-27.** A paid Subscriber tier via Stripe
-($7/month, 7-day trial) was built and merged but only ever ran in Stripe test mode (no
-real subscribers). It's since been fully removed: no Stripe dependency, no
-checkout/portal/webhook routes, no entitlement gating anywhere (Alerts, which briefly
-gated on Subscriber status, is now free for every signed-in user). `/pricing` was
-renamed to `/give` — a page linking out to a donation page for a charity (Gather, via
-GiveLively) instead of a plans comparison. The `subscriptions` table migration
-(`supabase/migrations/0001_subscriptions.sql`) is left in place as a historical record
-but nothing in the app queries it anymore.
-
-## What's not done / open threads
-
-- The `notFound()` → `noindex` metadata gap (gotcha #2 above) has a best-effort fix
-  but wasn't fully confirmed working in local testing — worth re-checking on the
-  live domain if SEO of bad-ticker URLs ever matters.
-- Business/positioning decisions flagged by the site audit but deliberately left to
-  the user's judgment, not yet acted on: deeper risk-engine coverage for "clean"
-  mega-cap tickers, and the "not a terminal" positioning vs. the Buy/Sell rating
-  badge + paper-trading button
-  sitting right next to it.
-
-## What else to upload to the Claude Project
-
-- `ARCHITECTURE.md` (repo root) — plain-language explanation up top, full technical
-  diagram/file-map/security-notes in a collapsed appendix at the bottom.
-- `AGENTS.md` (repo root, also aliased as `CLAUDE.md`) — the one-line but important
-  warning about this Next.js version's breaking changes.
-- This file.
-
-## Suggested Project custom instructions (paste into the Project's instructions field)
-
-> This project is **The Dispatch**, a solo-built equity-research web app
-> (dispatchresearch.com, GitHub: elipoteet/dispatch-web, Next.js 16 + Supabase +
-> Vercel). Read `claude-project-context.md` in this Project's knowledge before
-> starting any work — it has the tech stack, brand rules, and several hard-won
-> Next.js 16 gotchas (particularly: `error.tsx` boundaries are unreliable in this
-> setup, verify anything routing/caching/metadata-related empirically rather than
-> trusting documentation). Match the existing brand voice (calm, editorial, zero
-> border-radius, navy/cream/gold, Inter + IBM Plex Mono) in anything user-facing.
-> Small fixes go straight to `master` and get pushed once verified; bigger features
-> go on a branch that gets pushed but not merged without explicit sign-off.
+- `feat/social-v1` is built and pushed, not merged. Awaiting review and sign-off.
+- **SPF and DKIM on `dispatchresearch.com` are not fully confirmed.** Resend marks the
+  domain verified, but the `send` CNAME never confirmed resolving at the authoritative
+  nameserver. This does not block sending but likely affects spam placement, and every user
+  has to receive a code to sign up. Worth settling before real users arrive.
+- The Monthly Leaderboard on `master` belongs to the retiring product and the new spec
+  forbids anything like it. The decision to remove it has not been made.
+- Two independent handle systems exist: `competition_profile.handle` from the leaderboard,
+  and `profiles.handle` from the social product. No shared uniqueness constraint.
+- The old per-ticker memo URLs need 301 redirects to the new ticker pages in phase three.
