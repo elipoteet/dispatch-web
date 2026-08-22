@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfileByHandle, getPostsByAuthor } from "@/lib/social/queries";
 import { PostCard } from "@/components/social/PostCard";
 import { SchoolBadge } from "@/components/social/SchoolBadge";
+import { EmptyState } from "@/components/social/EmptyState";
 import { initials } from "@/lib/social/avatar";
 
 // Public URL is /@handle — see next.config.ts's rewrite. A literal
@@ -42,6 +43,7 @@ export default async function ProfilePage(props: Props) {
         <div className="avatar profile-avatar">{initials(profile.displayName)}</div>
         <div>
           <div className="profile-name">{profile.displayName}</div>
+          <div className="profile-handle">@{profile.handle}</div>
           <div className="profile-badge-row">
             <SchoolBadge shortName={profile.schoolShortName} gradYear={profile.gradYear} />
           </div>
@@ -49,7 +51,7 @@ export default async function ProfilePage(props: Props) {
       </div>
 
       {posts.length === 0 ? (
-        <div className="social-empty">No posts yet.</div>
+        <EmptyState headline="No posts yet." sub={`@${profile.handle} hasn't posted anything so far.`} />
       ) : (
         posts.map((post) => <PostCard key={post.id} post={post} />)
       )}

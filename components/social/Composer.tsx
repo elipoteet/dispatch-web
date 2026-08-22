@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { initials } from "@/lib/social/avatar";
+import { useAutoGrowTextarea } from "@/lib/social/useAutoGrowTextarea";
 
 // Direct client-side insert (RLS: auth.uid() = author_id), same pattern as
 // AccountModal's updateUser call — no dedicated API route needed since
@@ -19,6 +20,7 @@ export function Composer({
   const [body, setBody] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const textareaRef = useAutoGrowTextarea(body);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,7 +44,8 @@ export function Composer({
       <div className="avatar">{initials(authorDisplayName)}</div>
       <div className="composer-body">
         <textarea
-          placeholder="Make an argument. Say what would change your mind."
+          ref={textareaRef}
+          placeholder="What's on your mind, and why does it matter?"
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={3}

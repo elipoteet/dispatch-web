@@ -43,7 +43,7 @@ export function ReplyActions({
   return (
     <div className="post-actions" style={{ marginTop: 2 }}>
       <button type="button" onClick={handleDelete} disabled={loading}>
-        Delete
+        {loading ? "Deleting…" : "Delete"}
       </button>
       {error && <div className="social-error">{error}</div>}
     </div>

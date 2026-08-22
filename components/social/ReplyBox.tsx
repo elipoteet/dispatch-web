@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { initials } from "@/lib/social/avatar";
+import { useAutoGrowTextarea } from "@/lib/social/useAutoGrowTextarea";
 
 export function ReplyBox({
   postId,
@@ -18,6 +19,7 @@ export function ReplyBox({
   const [body, setBody] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const textareaRef = useAutoGrowTextarea(body);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,7 +44,13 @@ export function ReplyBox({
     <form className="reply-box" onSubmit={handleSubmit}>
       <div className="avatar avatar--sm">{initials(authorDisplayName)}</div>
       <div className="composer-body">
-        <textarea placeholder="Push back." value={body} onChange={(e) => setBody(e.target.value)} rows={3} />
+        <textarea
+          ref={textareaRef}
+          placeholder="Push back."
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          rows={3}
+        />
         {error && <div className="social-error">{error}</div>}
         <div className="composer-foot">
           <button

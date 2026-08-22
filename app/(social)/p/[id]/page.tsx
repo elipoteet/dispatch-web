@@ -8,6 +8,7 @@ import { PostActions } from "@/components/social/PostActions";
 import { ReplyItem } from "@/components/social/ReplyItem";
 import { ReplyActions } from "@/components/social/ReplyActions";
 import { ReplyBox } from "@/components/social/ReplyBox";
+import { EmptyState } from "@/components/social/EmptyState";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -86,7 +87,7 @@ export default async function PostDetailPage(props: Props) {
 
       <div className="reply-list">
         {replies.length === 0 ? (
-          <div className="social-empty">No replies yet.</div>
+          <EmptyState headline="No replies yet." sub="Be the first to push back." />
         ) : (
           replies.map((reply) => (
             <ReplyItem

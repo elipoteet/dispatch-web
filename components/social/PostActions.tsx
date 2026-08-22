@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { isWithinEditWindow } from "@/lib/social/time";
+import { useAutoGrowTextarea } from "@/lib/social/useAutoGrowTextarea";
 
 // Author-only edit (within 12 hours, enforced for real by the
 // enforce_post_edit_window trigger in 0006_social.sql — this component's
@@ -28,6 +29,9 @@ export function PostActions({
   const [draft, setDraft] = useState(body);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Called unconditionally, ahead of the early return below, per the Rules
+  // of Hooks — harmless when this component ends up rendering null.
+  const textareaRef = useAutoGrowTextarea(draft);
 
   if (viewerId !== authorId || deletedAt) return null;
 
@@ -73,15 +77,15 @@ export function PostActions({
     return (
       <form onSubmit={handleSave} style={{ marginTop: 10 }}>
         <div className="composer-body">
-          <textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={3} />
+          <textarea ref={textareaRef} value={draft} onChange={(e) => setDraft(e.target.value)} rows={3} />
           {error && <div className="social-error">{error}</div>}
           <div className="composer-foot" style={{ gap: 8 }}>
             <button
               className="social-btn social-btn-primary social-btn-small"
               type="submit"
-              disabled={loading}
+              disabled={loading || !draft.trim()}
             >
-              Save
+              {loading ? "Saving…" : "Save"}
             </button>
             <button
               type="button"
@@ -108,7 +112,7 @@ export function PostActions({
         </button>
       )}
       <button type="button" onClick={handleDelete} disabled={loading}>
-        Delete
+        {loading ? "Deleting…" : "Delete"}
       </button>
       {error && <div className="social-error">{error}</div>}
     </div>

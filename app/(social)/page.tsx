@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getFeedPosts } from "@/lib/social/queries";
 import { PostCard } from "@/components/social/PostCard";
 import { Composer } from "@/components/social/Composer";
+import { EmptyState } from "@/components/social/EmptyState";
 
 const TITLE = "The Dispatch";
 const DESCRIPTION =
@@ -72,7 +73,10 @@ export default async function FeedPage() {
       )}
 
       {posts.length === 0 ? (
-        <div className="social-empty">Nobody has posted yet. Be the first.</div>
+        <EmptyState
+          headline="Nothing here yet."
+          sub="Post an argument, not just a headline — say what you think and what would change your mind."
+        />
       ) : (
         posts.map((post) => <PostCard key={post.id} post={post} />)
       )}
