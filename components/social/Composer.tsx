@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { initials } from "@/lib/social/avatar";
 import { useAutoGrowTextarea } from "@/lib/social/useAutoGrowTextarea";
-import { firstCashtag } from "@/lib/social/cashtags";
+import { firstCashtag, uppercaseCashtags } from "@/lib/social/cashtags";
 import { TickerCard } from "./TickerCard";
 import type { TickerSnapshot } from "@/lib/analysis/tickerSnapshot";
 
@@ -200,7 +200,7 @@ export function Composer({
           ref={textareaRef}
           placeholder={TYPES[type].placeholder}
           value={body}
-          onChange={(e) => setBody(e.target.value)}
+          onChange={(e) => setBody(uppercaseCashtags(e.target.value))}
           rows={type === "thesis" ? 6 : 3}
         />
 

@@ -3557,6 +3557,9 @@
   text-transform: uppercase;
   color: var(--muted);
 }
+.ticker-stat-label::after {
+  content: ":";
+}
 .ticker-stat-value {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 12.5px;
@@ -3591,6 +3594,9 @@
   font-size: 11px;
   color: var(--muted);
   margin-right: 2px;
+}
+.position-toggle-label::after {
+  content: ":";
 }
 .position-line {
   margin-top: 8px;

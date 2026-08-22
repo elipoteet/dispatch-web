@@ -17,6 +17,23 @@ function cashtagPattern(): RegExp {
   return new RegExp(String.raw`\$(${TICKER_PATTERN.source.slice(1, -1)})\b`, "g");
 }
 
+// Same shape as cashtagPattern but case-insensitive, since this one runs
+// against text as the author is actively typing it (see uppercaseCashtags
+// below) — before it's been normalized to uppercase yet.
+function liveCashtagPattern(): RegExp {
+  return new RegExp(String.raw`\$([A-Za-z.\-]{1,10})\b`, "g");
+}
+
+// Live-uppercases the ticker portion of any $-prefixed token as the author
+// types — so typing "$nvda" becomes "$NVDA" immediately, matching
+// TICKER_PATTERN's uppercase-only rule without making the author think
+// about case. Leaves everything outside a $token untouched. Same-length
+// transform (case change only), so it's safe to apply on every keystroke
+// without the textarea's cursor position jumping.
+export function uppercaseCashtags(body: string): string {
+  return body.replace(liveCashtagPattern(), (match, ticker: string) => `$${ticker.toUpperCase()}`);
+}
+
 // Every `$TICKER`-shaped token in a draft, in order of first appearance —
 // "recognized" here means syntactically matches, not provider-confirmed
 // (only the first one gets a live lookup; see docs/phase-two.md). Used by
