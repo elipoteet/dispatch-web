@@ -60,11 +60,16 @@ SUPABASE_SERVICE_ROLE_KEY
 TWELVE_DATA_API_KEY
 TIINGO_API_KEY
 FINNHUB_API_KEY
+ANTHROPIC_API_KEY
 CRON_SECRET
 NEXT_PUBLIC_SITE_URL
 ```
 
 (Values are secrets — never commit them, never paste them into a Claude conversation.)
+`ANTHROPIC_API_KEY` (added for the AI daily digest, `lib/analysis/digest.ts`) must be
+set in Vercel's project settings for production, not just `.env.local` — the digest
+silently no-ops (writes nothing, never throws) if it's missing, so a forgotten Vercel
+env var won't show up as an error, just as empty digests.
 
 ## Brand / design rules — apply these without being asked
 

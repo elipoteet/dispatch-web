@@ -340,6 +340,30 @@ export async function fetchNews(symbol: string): Promise<NewsItem[] | null> {
   }
 }
 
+// General market news (not scoped to one ticker) — used by the AI daily
+// digest's shared "what happened in the market today" note (see
+// app/api/cron/alerts/route.ts). Empirically confirmed on the free tier
+// (July 2026): 200 OK, ~100 items, same shape as company-news, no
+// separate rate limit — shares the same Finnhub quota as everything else
+// in this file.
+async function fetchGeneralNewsRaw(): Promise<NewsItem[]> {
+  console.log("[cache] MISS fetchGeneralNews() — calling Finnhub");
+  const news = await fh<NewsItem[]>("news", { category: "general" });
+  if (!Array.isArray(news)) throw new Error("Finnhub general news request failed");
+  return news.slice(0, 60);
+}
+const cachedFetchGeneralNews = unstable_cache(fetchGeneralNewsRaw, ["fetchGeneralNews"], {
+  revalidate: LIVE_TTL_S,
+});
+export async function fetchGeneralNews(): Promise<NewsItem[] | null> {
+  if (!process.env.FINNHUB_API_KEY) return null;
+  try {
+    return await cachedFetchGeneralNews();
+  } catch {
+    return null;
+  }
+}
+
 // News within ±14 days of a historical date — used by the Time Machine
 // view, where "last 30 days" (fetchNews above) wouldn't be relevant.
 async function fetchNewsAsOfRaw(symbol: string, asOfDate: string): Promise<NewsItem[]> {

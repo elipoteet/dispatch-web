@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { MARKET_TICKER } from "@/lib/analysis/alertState";
 
 type AlertEvent = {
   id: string;
   ticker: string;
-  type: "score_change" | "rsi" | "ma_cross";
+  type: "score_change" | "rsi" | "ma_cross" | "ai_digest";
   old_value: string | null;
   new_value: string;
   created_at: string;
@@ -73,7 +74,14 @@ export function AlertBell() {
           ) : (
             events.map((e) => (
               <div className="alert-bell-item" key={e.id}>
-                <div className="alert-bell-item-text">{describeEvent(e)}</div>
+                {e.type === "ai_digest" && (
+                  <div className="alert-bell-item-label">
+                    {e.ticker === MARKET_TICKER ? "Market · Daily note" : `${e.ticker} · Daily note`}
+                  </div>
+                )}
+                <div className="alert-bell-item-text">
+                  {e.type === "ai_digest" ? e.new_value : describeEvent(e)}
+                </div>
                 <div className="alert-bell-item-date">
                   {new Date(e.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                 </div>

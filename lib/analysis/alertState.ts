@@ -33,6 +33,15 @@ export type TickerState = {
 export type AlertType = "score_change" | "rsi" | "ma_cross";
 export type DetectedAlert = { type: AlertType; oldValue: string; newValue: string };
 
+// Reserved ticker value for the AI daily digest's one shared "what
+// happened in the market today" row (see dispatch-ai-digest-plan.md,
+// app/api/cron/alerts/route.ts, supabase/migrations/0005_ai_digest.sql) —
+// can never collide with a real stock symbol, since every real ticker in
+// this app is uppercase-only. Shared here (rather than defined separately
+// in the cron route and again in AlertBell.tsx) so both sides can never
+// drift out of sync with each other or with the matching RLS policy.
+export const MARKET_TICKER = "__market__";
+
 // Diffs today's computed state against yesterday's stored state. `previous
 // === null` means this ticker has never been checked before — that's a
 // baseline being established, not a change, so it must never produce an

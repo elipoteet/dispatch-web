@@ -2713,6 +2713,14 @@
   border-bottom: 1px solid var(--rule);
 }
 .alert-bell-item:last-child { border-bottom: none; }
+.alert-bell-item-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
 .alert-bell-item-text {
   font-family: 'Inter', sans-serif;
   font-size: 13px;
