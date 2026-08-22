@@ -21,6 +21,7 @@ export function ReplyItem({ reply, actions }: { reply: Reply; actions?: ReactNod
             <Link href={`/@${reply.author.handle}`}>{reply.author.displayName}</Link>
           </span>
           <SchoolBadge shortName={reply.author.schoolShortName} gradYear={reply.author.gradYear} />
+          {reply.isPushback && !isDeleted && <span className="pushback-label">Pushback</span>}
           <span className="post-time">{formatRelativeTime(reply.createdAt)}</span>
         </div>
         <div className="post-body">{isDeleted ? "This reply was deleted." : reply.body}</div>

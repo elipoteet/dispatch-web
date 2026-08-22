@@ -3715,3 +3715,47 @@
 .legal-page .legal-lead + p {
   margin-top: 0;
 }
+
+/* ---------- pushback ---------- */
+.pushback-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2.5px 8px;
+  border-radius: var(--social-pill);
+  background: rgba(139, 26, 26, 0.12);
+  color: var(--accent);
+  font-weight: 600;
+}
+[data-theme="dark"] .pushback-label {
+  background: rgba(214, 109, 109, 0.16);
+}
+
+/* ---------- notification settings (own profile only) ---------- */
+.notify-settings {
+  margin: 18px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--rule);
+  border-radius: var(--social-r);
+  background: var(--paper);
+}
+.notify-settings-title {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.notify-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  padding: 5px 0;
+  cursor: pointer;
+}
+.notify-toggle-row input {
+  cursor: pointer;
+}

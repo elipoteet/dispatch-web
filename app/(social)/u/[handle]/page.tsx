@@ -5,6 +5,7 @@ import { getProfileByHandle, getPostsByAuthor } from "@/lib/social/queries";
 import { PostCard } from "@/components/social/PostCard";
 import { SchoolBadge } from "@/components/social/SchoolBadge";
 import { EmptyState } from "@/components/social/EmptyState";
+import { NotificationSettings } from "@/components/social/NotificationSettings";
 import { initials } from "@/lib/social/avatar";
 
 // Public URL is /@handle — see next.config.ts's rewrite. A literal
@@ -35,7 +36,27 @@ export default async function ProfilePage(props: Props) {
   const profile = await getProfileByHandle(supabase, handle.toLowerCase());
   if (!profile) notFound();
 
-  const posts = await getPostsByAuthor(supabase, profile.id);
+  const [posts, userResult] = await Promise.all([
+    getPostsByAuthor(supabase, profile.id),
+    supabase.auth.getUser(),
+  ]);
+  const isOwnProfile = userResult.data.user?.id === profile.id;
+
+  let notifyPrefs: { notifyReplies: boolean; notifyPushback: boolean; notifyDigest: boolean } | null = null;
+  if (isOwnProfile) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("notify_replies, notify_pushback, notify_digest")
+      .eq("id", profile.id)
+      .maybeSingle();
+    if (data) {
+      notifyPrefs = {
+        notifyReplies: data.notify_replies,
+        notifyPushback: data.notify_pushback,
+        notifyDigest: data.notify_digest,
+      };
+    }
+  }
 
   return (
     <>
@@ -49,6 +70,8 @@ export default async function ProfilePage(props: Props) {
           </div>
         </div>
       </div>
+
+      {isOwnProfile && notifyPrefs && <NotificationSettings profileId={profile.id} initial={notifyPrefs} />}
 
       {posts.length === 0 ? (
         <EmptyState headline="No posts yet." sub={`@${profile.handle} hasn't posted anything so far.`} />

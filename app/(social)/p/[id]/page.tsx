@@ -73,7 +73,7 @@ export default async function PostDetailPage(props: Props) {
       />
 
       {user && profile ? (
-        <ReplyBox postId={post.id} authorId={profile.id} authorDisplayName={profile.display_name} />
+        <ReplyBox postId={post.id} authorDisplayName={profile.display_name} />
       ) : user ? (
         <div className="sign-in-prompt">
           Almost there — <Link href="/onboarding">finish setting up your profile</Link> to reply.

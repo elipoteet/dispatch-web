@@ -19,10 +19,15 @@ TIINGO_API_KEY                 # price-history fallback when Twelve Data is rate
 FINNHUB_API_KEY
 
 # Alerts cron
-CRON_SECRET                    # verifies requests to /api/cron/alerts actually come from Vercel Cron
+CRON_SECRET                    # verifies requests to /api/cron/alerts and /api/cron/digest actually come from Vercel Cron
 
 # Site
 NEXT_PUBLIC_SITE_URL           # https://www.dispatchresearch.com
+
+# Notification emails (phase two, Part B) — a Resend API key, distinct from the SMTP
+# credentials configured in the Supabase dashboard for sign-in codes. Powers
+# pushback/reply/weekly-digest emails (lib/email/resend.ts); sends quietly no-op without it.
+RESEND_API_KEY
 ```
 
 ## Getting Started

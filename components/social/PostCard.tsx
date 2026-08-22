@@ -73,6 +73,9 @@ export function PostCard({ post, actions }: { post: FeedPost; actions?: ReactNod
           <Link href={`/p/${post.id}`}>
             {post.replyCount} {post.replyCount === 1 ? "reply" : "replies"}
           </Link>
+          <Link href={`/p/${post.id}`}>
+            {post.pushbackCount} pushback{post.pushbackCount === 1 ? "" : "s"}
+          </Link>
         </div>
 
         {actions}
