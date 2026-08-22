@@ -3082,13 +3082,14 @@
   flex: 1;
   min-width: 0;
 }
-.composer textarea {
+.composer textarea,
+.reply-box textarea {
   width: 100%;
   display: block;
   background: var(--paper);
   border: 1px solid var(--rule);
   border-radius: var(--social-r);
-  padding: 12px 14px;
+  padding: 14px 16px;
   /* Auto-grows via useAutoGrowTextarea (height set inline per keystroke) —
      a manual resize handle would just get overwritten on the next
      keystroke, so it's turned off rather than left to fight the JS. */
@@ -3097,10 +3098,11 @@
   font-family: 'Inter', sans-serif;
   font-size: 15px;
   color: var(--ink);
-  min-height: 68px;
-  line-height: 1.5;
+  min-height: 84px;
+  line-height: 1.55;
 }
-.composer textarea:focus {
+.composer textarea:focus,
+.reply-box textarea:focus {
   outline: none;
   border-color: var(--gold);
 }
@@ -3655,15 +3657,35 @@
   color: var(--gold);
 }
 
-/* ---------- footer ---------- */
+/* ---------- footer ----------
+   Fully self-contained on purpose: the equity-research surface has a
+   generic `footer { background: navy; color: cream-2; text-transform:
+   uppercase; font-family: monospace; letter-spacing: 0.15em; ... }` rule
+   keyed off the bare <footer> element (not a class), and this component
+   also renders a real <footer> tag — every one of those inherited
+   properties has to be explicitly reset here or it leaks straight through
+   underneath these class rules, which is exactly what happened the first
+   time (a dark navy, uppercase, letter-spaced block instead of a plain
+   quiet footnote). */
 .social-footer {
   max-width: 640px;
   margin: 30px auto 0;
   padding: 20px 20px 40px;
   border-top: 1px solid var(--rule);
+  background: transparent;
+  color: var(--ink);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  letter-spacing: normal;
+  text-transform: none;
+  display: block;
+  opacity: 1;
 }
 .social-footer-disclaimer {
+  font-family: 'Inter', sans-serif;
   font-size: 12px;
+  letter-spacing: normal;
+  text-transform: none;
   line-height: 1.6;
   color: var(--muted);
   max-width: 520px;
@@ -3680,9 +3702,11 @@
   text-transform: uppercase;
   color: var(--muted);
   text-decoration: none;
+  border-bottom: none;
 }
 .social-footer-links a:hover {
   color: var(--gold);
+  border-color: transparent;
 }
 
 /* ---------- legal pages (/disclaimer, /guidelines) ---------- */
