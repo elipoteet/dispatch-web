@@ -4,16 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { AuthModalProvider } from "@/components/auth/AuthModalContext";
 import { AuthModal } from "@/components/auth/AuthModal";
-import { PortfolioProvider } from "@/components/portfolio/PortfolioProvider";
-import { OnboardingModal } from "@/components/portfolio/OnboardingModal";
-import { TradeModal } from "@/components/portfolio/TradeModal";
-import { Toast } from "@/components/portfolio/Toast";
-import { CompetitionProvider } from "@/components/competition/CompetitionProvider";
-import { CompetitionTradeModal } from "@/components/competition/CompetitionTradeModal";
-import { CompetitionToast } from "@/components/competition/CompetitionToast";
-import { Masthead } from "@/components/layout/Masthead";
-import { TopNav } from "@/components/layout/TopNav";
-import { Footer } from "@/components/layout/Footer";
 
 const SITE_NAME = "The Dispatch";
 const SITE_DESCRIPTION =
@@ -80,20 +70,8 @@ export default async function RootLayout({
       <body>
         <AuthProvider initialUser={user}>
           <AuthModalProvider>
-            <PortfolioProvider>
-              <CompetitionProvider>
-                <Masthead />
-                <TopNav />
-                <main>{children}</main>
-                <Footer />
-                <AuthModal />
-                <OnboardingModal />
-                <TradeModal />
-                <Toast />
-                <CompetitionTradeModal />
-                <CompetitionToast />
-              </CompetitionProvider>
-            </PortfolioProvider>
+            {children}
+            <AuthModal />
           </AuthModalProvider>
         </AuthProvider>
       </body>

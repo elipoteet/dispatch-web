@@ -12,7 +12,6 @@ import { AlertBell } from "./AlertBell";
 import { Logo } from "./Logo";
 
 const LINKS = [
-  { href: "/", label: "Home" },
   { href: "/research", label: "Research" },
   { href: "/portfolio", label: "Portfolio" },
   { href: "/leaderboard", label: "Leaderboard" },
@@ -37,7 +36,7 @@ export function TopNav() {
 
   return (
     <nav className="topnav">
-      <Link href="/" className="logo" style={{ textDecoration: "none" }}>
+      <Link href="/research" className="logo" style={{ textDecoration: "none" }}>
         <Logo size={30} />
         <span>
           DISPATCH
