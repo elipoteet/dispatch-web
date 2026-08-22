@@ -57,6 +57,7 @@ export async function POST(request: Request) {
     ]);
 
   if (emailCountError || ipCountError) {
+    console.error("request-code: rate-limit count query failed", emailCountError, ipCountError);
     return NextResponse.json(
       { error: (emailCountError ?? ipCountError)?.message ?? "Something went wrong. Try again." },
       { status: 500 },
@@ -78,6 +79,7 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (schoolError) {
+    console.error("request-code: schools lookup failed", schoolError);
     return NextResponse.json({ error: "Something went wrong. Try again." }, { status: 500 });
   }
   if (!school) {
@@ -91,6 +93,7 @@ export async function POST(request: Request) {
   // repeatedly and successfully."
   const { error: logError } = await service.from("auth_code_requests").insert({ email, ip });
   if (logError) {
+    console.error("request-code: auth_code_requests insert failed", logError);
     return NextResponse.json({ error: "Something went wrong. Try again." }, { status: 500 });
   }
 
@@ -100,7 +103,12 @@ export async function POST(request: Request) {
   });
 
   if (otpError) {
-    return NextResponse.json({ error: otpError.message }, { status: 500 });
+    // Don't pass otpError.message straight through — it can be an opaque,
+    // unhelpful string (e.g. a raw SMTP relay failure surfaces as
+    // "{}" from AuthRetryableFetchError). Log the real thing server-side,
+    // show a clean message everywhere else already does.
+    console.error("request-code: signInWithOtp failed", otpError);
+    return NextResponse.json({ error: "Something went wrong. Try again." }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });
