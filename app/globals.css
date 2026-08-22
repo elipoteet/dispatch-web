@@ -3420,3 +3420,218 @@
 .profile-badge-row {
   margin-top: 7px;
 }
+
+/* ============================================================
+   Phase two — the composer (type pills, ticker card, change-my-mind,
+   position disclosure, cashtags). See docs/phase-two.md.
+   ============================================================ */
+
+/* ---------- type pills ---------- */
+.type-pills {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.type-pill {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 6px 13px;
+  border-radius: var(--social-pill);
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.type-pill:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.type-pill.on {
+  background: #0d1b2a;
+  color: #f5f1e8;
+  border-color: #0d1b2a;
+}
+
+/* ---------- post type badge (feed/detail display) ---------- */
+.post-type {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 2.5px 8px;
+  border-radius: var(--social-pill);
+  background: var(--cream-2);
+  color: var(--muted);
+  font-weight: 600;
+}
+.post-type--question {
+  background: rgba(166, 124, 0, 0.14);
+  color: var(--gold);
+}
+.post-type--thesis {
+  background: #0d1b2a;
+  color: #f5f1e8;
+}
+
+/* ---------- cashtags ---------- */
+.cashtag {
+  color: var(--gold);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.95em;
+  font-weight: 500;
+}
+
+/* ---------- ticker card ---------- */
+.ticker-card {
+  margin-top: 12px;
+  border: 1px solid var(--rule);
+  border-radius: var(--social-r);
+  background: var(--paper);
+  overflow: hidden;
+}
+.ticker-card-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+}
+.ticker-card-id {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ticker-card-symbol {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.ticker-card-name {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ticker-card-price {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 15px;
+  text-align: right;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.ticker-card-change {
+  display: block;
+  font-size: 11.5px;
+  margin-top: 2px;
+}
+.ticker-card-change.up {
+  color: var(--green);
+}
+.ticker-card-change.down {
+  color: var(--accent);
+}
+.ticker-card-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 1px;
+  background: var(--rule);
+  border-top: 1px solid var(--rule);
+}
+.ticker-stat {
+  background: var(--paper);
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ticker-stat-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ticker-stat-value {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.ticker-card-stamp {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 6px 14px;
+  border-top: 1px solid var(--rule);
+}
+.ticker-card-loading {
+  margin-top: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* ---------- position disclosure ---------- */
+.position-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.position-toggle-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  margin-right: 2px;
+}
+.position-line {
+  margin-top: 8px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+/* ---------- change-my-mind ---------- */
+.cmind-field {
+  margin-top: 12px;
+}
+.cmind {
+  margin-top: 12px;
+  border-left: 2px solid var(--gold);
+  padding: 10px 0 10px 14px;
+}
+.cmind-label {
+  display: block;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 4px;
+}
+.cmind p {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+/* ---------- link post ---------- */
+.post-link-url {
+  display: inline-block;
+  margin-top: 8px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12.5px;
+  color: var(--gold);
+  word-break: break-all;
+}
+.post-link-url:hover {
+  text-decoration: underline;
+}

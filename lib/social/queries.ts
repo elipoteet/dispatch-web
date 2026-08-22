@@ -1,4 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { TickerSnapshot } from "@/lib/analysis/tickerSnapshot";
+
+export type PostType = "take" | "question" | "thesis" | "link";
 
 // Hand-written row types, mapped at the query call site — same convention
 // as lib/portfolio.ts and lib/competition/publicBoard.ts (this repo has no
@@ -22,6 +25,12 @@ export type FeedPost = {
   deletedAt: string | null;
   author: PostAuthor;
   replyCount: number;
+  type: PostType;
+  ticker: string | null;
+  tickerSnapshot: TickerSnapshot | null;
+  position: "owns" | "none" | null;
+  changeMyMind: string | null;
+  linkUrl: string | null;
 };
 
 export type Reply = {
@@ -36,6 +45,7 @@ export type ProfileDetail = PostAuthor;
 
 const POST_SELECT = `
   id, body, created_at, edited_at, deleted_at,
+  type, ticker, ticker_snapshot, position, change_my_mind, link_url,
   author:profiles (
     id, handle, display_name, grad_year,
     school:schools ( short_name )
@@ -78,6 +88,12 @@ function mapPostRow(row: unknown, replyCount: number): FeedPost {
     edited_at: string | null;
     deleted_at: string | null;
     author: unknown;
+    type: PostType;
+    ticker: string | null;
+    ticker_snapshot: TickerSnapshot | null;
+    position: "owns" | "none" | null;
+    change_my_mind: string | null;
+    link_url: string | null;
   };
   return {
     id: r.id,
@@ -87,6 +103,12 @@ function mapPostRow(row: unknown, replyCount: number): FeedPost {
     deletedAt: r.deleted_at,
     author: mapAuthor(r.author),
     replyCount,
+    type: r.type,
+    ticker: r.ticker,
+    tickerSnapshot: r.ticker_snapshot,
+    position: r.position,
+    changeMyMind: r.change_my_mind,
+    linkUrl: r.link_url,
   };
 }
 
