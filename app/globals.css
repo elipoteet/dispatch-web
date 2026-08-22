@@ -3358,3 +3358,24 @@
   font-size: 12px;
   letter-spacing: 0.03em;
 }
+
+/* ---------- profile page ---------- */
+.profile-head {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 22px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.profile-avatar {
+  width: 56px;
+  height: 56px;
+  font-size: 17px;
+}
+.profile-name {
+  font-size: 19px;
+  font-weight: 600;
+}
+.profile-badge-row {
+  margin-top: 5px;
+}

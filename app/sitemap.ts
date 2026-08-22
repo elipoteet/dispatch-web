@@ -10,7 +10,12 @@ const FEATURED_TICKERS = ["AAPL", "MSFT", "NVDA", "TSLA", "GOOGL", "AMZN", "META
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
-    { url: SITE_URL, changeFrequency: "weekly", priority: 1 },
+    // '/' used to be the ticker-search homepage (priority 1) but is now
+    // the phase-one social feed, which ships noindex on purpose — see
+    // docs/phase-one.md. TODO: once indexing is switched on for the new
+    // social surface, add '/' back here (it's the feed's home, not this
+    // old ticker-search content, so don't just paste the old line back
+    // unchanged).
     { url: `${SITE_URL}/research`, changeFrequency: "weekly", priority: 0.9 },
     { url: `${SITE_URL}/leaderboard`, changeFrequency: "daily", priority: 0.7 },
     { url: `${SITE_URL}/give`, changeFrequency: "monthly", priority: 0.6 },
