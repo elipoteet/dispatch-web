@@ -42,7 +42,7 @@ export function ReplyBox({
     <form className="reply-box" onSubmit={handleSubmit}>
       <div className="avatar avatar--sm">{initials(authorDisplayName)}</div>
       <div className="composer-body">
-        <textarea placeholder="Push back." value={body} onChange={(e) => setBody(e.target.value)} rows={2} />
+        <textarea placeholder="Push back." value={body} onChange={(e) => setBody(e.target.value)} rows={3} />
         {error && <div className="social-error">{error}</div>}
         <div className="composer-foot">
           <button
