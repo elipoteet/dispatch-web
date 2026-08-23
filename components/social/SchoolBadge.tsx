@@ -8,6 +8,13 @@ import { isAlumni } from "@/lib/social/badge";
 // The checkmark stays the badge's own default/alum color regardless, so
 // it still reads as a distinct "verified" mark rather than part of the
 // school's own color.
+//
+// Set as a --school-accent custom property, not a literal `color`, so
+// app/globals.css's [data-theme="dark"] rule can still win: most school
+// colors (UNH's navy blue, e.g.) are unreadable against a dark badge, so
+// dark mode ignores colorPrimary entirely and always shows near-white
+// instead — an inline `color` couldn't be overridden by a stylesheet rule
+// at all, only another inline style.
 export function SchoolBadge({
   shortName,
   gradYear,
@@ -24,7 +31,10 @@ export function SchoolBadge({
   return (
     <span className={`school-badge${alum ? " school-badge--alum" : ""}`}>
       <span>✓</span>{" "}
-      <span className="school-badge-school" style={{ color: colorPrimary || "var(--gold)" }}>
+      <span
+        className="school-badge-school"
+        style={{ "--school-accent": colorPrimary || "var(--gold)" } as React.CSSProperties}
+      >
         {shortName} {yearLabel}
       </span>
     </span>

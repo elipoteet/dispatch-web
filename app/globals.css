@@ -2992,6 +2992,21 @@
   align-items: center;
   gap: 10px;
 }
+/* Overrides the research surface's sharp navy-bordered square (.theme-toggle,
+   defined above) with the social surface's rounded, warmer look — same
+   border/hover treatment as .social-btn, sized to sit quietly next to the
+   badge/handle/sign-out row rather than compete with it. */
+.social-header-auth .theme-toggle {
+  border-radius: var(--social-pill);
+  border-color: var(--rule-dark);
+  color: var(--muted);
+  padding: 6px 9px;
+}
+.social-header-auth .theme-toggle:hover {
+  background: transparent;
+  border-color: var(--gold);
+  color: var(--gold);
+}
 .header-handle {
   display: inline-flex;
   align-items: center;
@@ -3093,6 +3108,23 @@
 .school-badge--alum {
   background: var(--cream-2);
   color: var(--muted);
+}
+.school-badge-school {
+  color: var(--school-accent);
+}
+/* Most school colors (UNH's navy blue, e.g.) are unreadable against a dark
+   badge background, so dark mode ignores --school-accent entirely and
+   always shows near-white instead. Mirrors the explicit-toggle +
+   OS-preference pattern used for the theme-toggle icon above: an explicit
+   data-theme="dark" wins outright, and prefers-color-scheme only applies
+   when the visitor hasn't explicitly chosen light. */
+[data-theme="dark"] .school-badge-school {
+  color: var(--ink);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .school-badge-school {
+    color: var(--ink);
+  }
 }
 
 /* ---------- composer ---------- */

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Logo } from "@/components/layout/Logo";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { SchoolBadge } from "./SchoolBadge";
 import { Avatar } from "./Avatar";
 
@@ -35,6 +36,7 @@ export function SocialHeader({ profile }: { profile: HeaderProfile | null }) {
           <span className="brand-word">Dispatch</span>
         </Link>
         <div className="social-header-auth">
+          <ThemeToggle />
           {user && profile ? (
             <>
               <SchoolBadge
