@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { SchoolBadge } from "./SchoolBadge";
 import { TickerCard } from "./TickerCard";
+import { Avatar } from "./Avatar";
 import { formatRelativeTime } from "@/lib/social/time";
-import { initials } from "@/lib/social/avatar";
 import { renderCashtags } from "@/lib/social/cashtags";
 import type { FeedPost } from "@/lib/social/queries";
 
@@ -25,13 +25,17 @@ export function PostCard({ post, actions }: { post: FeedPost; actions?: ReactNod
 
   return (
     <article className={`post-card${isDeleted ? " tombstone" : ""}`}>
-      <div className="avatar">{initials(post.author.displayName)}</div>
+      <Avatar avatarUrl={post.author.avatarUrl} displayName={post.author.displayName} />
       <div className="post-card-body">
         <div className="post-head">
           <span className="post-name">
             <Link href={`/@${post.author.handle}`}>{post.author.displayName}</Link>
           </span>
-          <SchoolBadge shortName={post.author.schoolShortName} gradYear={post.author.gradYear} />
+          <SchoolBadge
+            shortName={post.author.schoolShortName}
+            gradYear={post.author.gradYear}
+            colorPrimary={post.author.schoolColorPrimary}
+          />
           {typeLabel && !isDeleted && <span className={`post-type post-type--${post.type}`}>{typeLabel}</span>}
           {post.editedAt && !isDeleted && <span className="post-edited">edited</span>}
           <span className="post-time">{formatRelativeTime(post.createdAt)}</span>
@@ -71,11 +75,15 @@ export function PostCard({ post, actions }: { post: FeedPost; actions?: ReactNod
 
         <div className="post-actions">
           <Link href={`/p/${post.id}`}>
-            {post.replyCount} {post.replyCount === 1 ? "reply" : "replies"}
+            {post.replyCount === 0
+              ? "Reply"
+              : `${post.replyCount} ${post.replyCount === 1 ? "reply" : "replies"}`}
           </Link>
-          <Link href={`/p/${post.id}`}>
-            {post.pushbackCount} pushback{post.pushbackCount === 1 ? "" : "s"}
-          </Link>
+          {post.pushbackCount > 0 && (
+            <Link href={`/p/${post.id}`}>
+              {post.pushbackCount} pushback{post.pushbackCount === 1 ? "" : "s"}
+            </Link>
+          )}
         </div>
 
         {actions}

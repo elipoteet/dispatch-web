@@ -27,16 +27,18 @@ export default async function SocialLayout({
   if (user) {
     const { data } = await supabase
       .from("profiles")
-      .select("handle, display_name, grad_year, school:schools ( short_name )")
+      .select("handle, display_name, grad_year, avatar_url, school:schools ( short_name, color_primary )")
       .eq("id", user.id)
       .maybeSingle();
     if (data) {
-      const school = data.school as unknown as { short_name: string } | null;
+      const school = data.school as unknown as { short_name: string; color_primary: string | null } | null;
       profile = {
         handle: data.handle,
         displayName: data.display_name,
         gradYear: data.grad_year,
         schoolShortName: school?.short_name ?? "",
+        schoolColorPrimary: school?.color_primary ?? null,
+        avatarUrl: data.avatar_url,
       };
     }
   }

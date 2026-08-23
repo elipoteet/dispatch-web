@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { initials } from "@/lib/social/avatar";
+import { Avatar } from "./Avatar";
 import { useAutoGrowTextarea } from "@/lib/social/useAutoGrowTextarea";
 
 const PUSHBACK_MIN_LENGTH = 80;
@@ -13,9 +13,11 @@ const PUSHBACK_MIN_LENGTH = 80;
 // so this needs a real server hop. See docs/phase-two.md.
 export function ReplyBox({
   postId,
+  authorAvatarUrl,
   authorDisplayName,
 }: {
   postId: string;
+  authorAvatarUrl: string | null;
   authorDisplayName: string;
 }) {
   const router = useRouter();
@@ -55,7 +57,7 @@ export function ReplyBox({
 
   return (
     <form className="reply-box" onSubmit={handleSubmit}>
-      <div className="avatar avatar--sm">{initials(authorDisplayName)}</div>
+      <Avatar avatarUrl={authorAvatarUrl} displayName={authorDisplayName} className="avatar--sm" />
       <div className="composer-body">
         <div className="type-pills">
           <button

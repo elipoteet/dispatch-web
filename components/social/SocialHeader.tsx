@@ -6,12 +6,15 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Logo } from "@/components/layout/Logo";
 import { SchoolBadge } from "./SchoolBadge";
+import { Avatar } from "./Avatar";
 
 export type HeaderProfile = {
   handle: string;
   displayName: string;
   gradYear: number;
   schoolShortName: string;
+  schoolColorPrimary: string | null;
+  avatarUrl: string | null;
 };
 
 export function SocialHeader({ profile }: { profile: HeaderProfile | null }) {
@@ -34,8 +37,13 @@ export function SocialHeader({ profile }: { profile: HeaderProfile | null }) {
         <div className="social-header-auth">
           {user && profile ? (
             <>
-              <SchoolBadge shortName={profile.schoolShortName} gradYear={profile.gradYear} />
+              <SchoolBadge
+                shortName={profile.schoolShortName}
+                gradYear={profile.gradYear}
+                colorPrimary={profile.schoolColorPrimary}
+              />
               <Link href={`/@${profile.handle}`} className="header-handle">
+                <Avatar avatarUrl={profile.avatarUrl} displayName={profile.displayName} className="avatar--sm" />
                 @{profile.handle}
               </Link>
               <button type="button" className="social-btn social-btn-small" onClick={handleSignOut}>

@@ -41,10 +41,14 @@ export function NotificationSettings({ profileId, initial }: { profileId: string
         <label key={t.key} className="notify-toggle-row">
           <input
             type="checkbox"
+            className="tgl-input"
             checked={prefs[t.key]}
             onChange={() => toggle(t.key, t.column)}
             disabled={saving === t.key}
           />
+          <span className="tgl-track">
+            <span className="tgl-knob" />
+          </span>
           <span>{t.label}</span>
         </label>
       ))}

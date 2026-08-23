@@ -6,7 +6,8 @@ import { PostCard } from "@/components/social/PostCard";
 import { SchoolBadge } from "@/components/social/SchoolBadge";
 import { EmptyState } from "@/components/social/EmptyState";
 import { NotificationSettings } from "@/components/social/NotificationSettings";
-import { initials } from "@/lib/social/avatar";
+import { AvatarUpload } from "@/components/social/AvatarUpload";
+import { Avatar } from "@/components/social/Avatar";
 
 // Public URL is /@handle — see next.config.ts's rewrite. A literal
 // app/@[handle]/ folder isn't possible in the App Router (@folder is the
@@ -61,12 +62,20 @@ export default async function ProfilePage(props: Props) {
   return (
     <>
       <div className="profile-head">
-        <div className="avatar profile-avatar">{initials(profile.displayName)}</div>
+        {isOwnProfile ? (
+          <AvatarUpload profileId={profile.id} displayName={profile.displayName} avatarUrl={profile.avatarUrl} />
+        ) : (
+          <Avatar avatarUrl={profile.avatarUrl} displayName={profile.displayName} className="profile-avatar" />
+        )}
         <div>
           <div className="profile-name">{profile.displayName}</div>
           <div className="profile-handle">@{profile.handle}</div>
           <div className="profile-badge-row">
-            <SchoolBadge shortName={profile.schoolShortName} gradYear={profile.gradYear} />
+            <SchoolBadge
+              shortName={profile.schoolShortName}
+              gradYear={profile.gradYear}
+              colorPrimary={profile.schoolColorPrimary}
+            />
           </div>
         </div>
       </div>

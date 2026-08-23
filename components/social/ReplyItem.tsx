@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { SchoolBadge } from "./SchoolBadge";
+import { Avatar } from "./Avatar";
 import { formatRelativeTime } from "@/lib/social/time";
-import { initials } from "@/lib/social/avatar";
 import type { Reply } from "@/lib/social/queries";
 
 // Flat, one level, no edit path — see docs/phase-one.md and
@@ -14,13 +14,17 @@ export function ReplyItem({ reply, actions }: { reply: Reply; actions?: ReactNod
 
   return (
     <div className={`reply${isDeleted ? " tombstone" : ""}`}>
-      <div className="avatar avatar--sm">{initials(reply.author.displayName)}</div>
+      <Avatar avatarUrl={reply.author.avatarUrl} displayName={reply.author.displayName} className="avatar--sm" />
       <div className="post-card-body">
         <div className="post-head">
           <span className="post-name">
             <Link href={`/@${reply.author.handle}`}>{reply.author.displayName}</Link>
           </span>
-          <SchoolBadge shortName={reply.author.schoolShortName} gradYear={reply.author.gradYear} />
+          <SchoolBadge
+            shortName={reply.author.schoolShortName}
+            gradYear={reply.author.gradYear}
+            colorPrimary={reply.author.schoolColorPrimary}
+          />
           {reply.isPushback && !isDeleted && <span className="pushback-label">Pushback</span>}
           <span className="post-time">{formatRelativeTime(reply.createdAt)}</span>
         </div>

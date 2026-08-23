@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { initials } from "@/lib/social/avatar";
+import { Avatar } from "./Avatar";
 import { useAutoGrowTextarea } from "@/lib/social/useAutoGrowTextarea";
 import { firstCashtag, uppercaseCashtags } from "@/lib/social/cashtags";
 import { TickerCard } from "./TickerCard";
@@ -50,9 +50,11 @@ function isValidUrl(value: string): boolean {
 // in 0007_composer.sql back this up regardless of what the UI allows).
 export function Composer({
   authorId,
+  authorAvatarUrl,
   authorDisplayName,
 }: {
   authorId: string;
+  authorAvatarUrl: string | null;
   authorDisplayName: string;
 }) {
   const router = useRouter();
@@ -171,7 +173,7 @@ export function Composer({
 
   return (
     <form className="composer" onSubmit={handleSubmit}>
-      <div className="avatar">{initials(authorDisplayName)}</div>
+      <Avatar avatarUrl={authorAvatarUrl} displayName={authorDisplayName} />
       <div className="composer-body">
         <div className="type-pills">
           {(Object.keys(TYPES) as PostType[]).map((t) => (

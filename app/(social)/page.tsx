@@ -37,11 +37,11 @@ export default async function FeedPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  let profile: { id: string; display_name: string } | null = null;
+  let profile: { id: string; display_name: string; avatar_url: string | null } | null = null;
   if (user) {
     const { data } = await supabase
       .from("profiles")
-      .select("id, display_name")
+      .select("id, display_name, avatar_url")
       .eq("id", user.id)
       .maybeSingle();
     profile = data;
@@ -60,15 +60,15 @@ export default async function FeedPage() {
       </div>
 
       {user && profile ? (
-        <Composer authorId={profile.id} authorDisplayName={profile.display_name} />
+        <Composer authorId={profile.id} authorAvatarUrl={profile.avatar_url} authorDisplayName={profile.display_name} />
       ) : user ? (
         <div className="sign-in-prompt">
           Almost there — <Link href="/onboarding">finish setting up your profile</Link> to post.
         </div>
       ) : (
         <div className="sign-in-prompt">
-          <Link href="/signup">Sign up</Link> with your school email to post and reply. Or{" "}
-          <Link href="/login">sign in</Link> if you already have an account.
+          Posting and replying require a verified school email address.{" "}
+          <Link href="/signup">Sign up</Link> or <Link href="/login">sign in</Link> to join in.
         </div>
       )}
 

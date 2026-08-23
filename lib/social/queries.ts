@@ -15,6 +15,8 @@ export type PostAuthor = {
   displayName: string;
   gradYear: number;
   schoolShortName: string;
+  schoolColorPrimary: string | null;
+  avatarUrl: string | null;
 };
 
 export type FeedPost = {
@@ -49,16 +51,16 @@ const POST_SELECT = `
   id, body, created_at, edited_at, deleted_at,
   type, ticker, ticker_snapshot, position, change_my_mind, link_url,
   author:profiles (
-    id, handle, display_name, grad_year,
-    school:schools ( short_name )
+    id, handle, display_name, grad_year, avatar_url,
+    school:schools ( short_name, color_primary )
   )
 `;
 
 const REPLY_SELECT = `
   id, body, created_at, deleted_at, is_pushback,
   author:profiles (
-    id, handle, display_name, grad_year,
-    school:schools ( short_name )
+    id, handle, display_name, grad_year, avatar_url,
+    school:schools ( short_name, color_primary )
   )
 `;
 
@@ -71,7 +73,8 @@ function mapAuthor(row: unknown): PostAuthor {
     handle: string;
     display_name: string;
     grad_year: number;
-    school: { short_name: string } | null;
+    avatar_url: string | null;
+    school: { short_name: string; color_primary: string | null } | null;
   };
   return {
     id: r.id,
@@ -79,6 +82,8 @@ function mapAuthor(row: unknown): PostAuthor {
     displayName: r.display_name,
     gradYear: r.grad_year,
     schoolShortName: r.school?.short_name ?? "",
+    schoolColorPrimary: r.school?.color_primary ?? null,
+    avatarUrl: r.avatar_url,
   };
 }
 
@@ -225,7 +230,7 @@ export async function getProfileByHandle(
 ): Promise<ProfileDetail | null> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, handle, display_name, grad_year, school:schools ( short_name )")
+    .select("id, handle, display_name, grad_year, avatar_url, school:schools ( short_name, color_primary )")
     .eq("handle", handle)
     .maybeSingle();
   if (error || !data) return null;
