@@ -35,7 +35,13 @@ const MAX_CODE_LENGTH = 12;
 // distinguish new vs. returning users at the request step (see
 // app/api/auth/request-code/route.ts), so the underlying flow is
 // identical; only the copy differs. See docs/phase-one.md's "Auth" section.
-export function EmailCodeForm({ mode }: { mode: "signup" | "login" }) {
+//
+// inviteToken, when present, is only ever carried forward to /onboarding
+// — this form never joins a space itself. It arrives via /j/[token]'s
+// redirect to /signup?invite=..., not a cookie: Next.js can't set a
+// cookie from a plain page render (only a Server Function or Route
+// Handler), so the token travels in the URL through this step instead.
+export function EmailCodeForm({ mode, inviteToken }: { mode: "signup" | "login"; inviteToken?: string }) {
   const router = useRouter();
   const copy = COPY[mode];
   const [step, setStep] = useState<Step>("email");
@@ -80,8 +86,9 @@ export function EmailCodeForm({ mode }: { mode: "signup" | "login" }) {
       return;
     }
     // Onboarding itself decides whether this user already has a profile
-    // and bounces to / if so — see app/(social)/onboarding/page.tsx.
-    router.push("/onboarding");
+    // and bounces to / (or, with an invite token, straight into the
+    // space) if so — see app/(social)/onboarding/page.tsx.
+    router.push(inviteToken ? `/onboarding?invite=${encodeURIComponent(inviteToken)}` : "/onboarding");
     router.refresh();
   }
 

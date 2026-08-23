@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function SignUpPage() {
-  return <EmailCodeForm mode="signup" />;
+type Props = { searchParams: Promise<{ invite?: string }> };
+
+export default async function SignUpPage(props: Props) {
+  const { invite } = await props.searchParams;
+  return <EmailCodeForm mode="signup" inviteToken={invite} />;
 }

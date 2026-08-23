@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "./Avatar";
 import { useAutoGrowTextarea } from "@/lib/social/useAutoGrowTextarea";
-import { firstCashtag, uppercaseCashtags } from "@/lib/social/cashtags";
+import { uppercaseCashtags } from "@/lib/social/cashtags";
+import { useTickerAttach } from "@/lib/social/useTickerAttach";
 import { TickerCard } from "./TickerCard";
-import type { TickerSnapshot } from "@/lib/analysis/tickerSnapshot";
 import Link from "next/link";
 
 type PostType = "take" | "question" | "thesis" | "link";
@@ -31,8 +31,6 @@ const TYPES: Record<PostType, { label: string; placeholder: string; minLength: n
 // — "almost nobody clicks an optional formatting button; almost everybody
 // types into a structure that is already there." docs/phase-two.md.
 const THESIS_SCAFFOLD = "What happened\n\n\nWhy it matters\n\n\nWhat I am watching from here\n";
-
-const DEBOUNCE_MS = 800;
 
 function isValidUrl(value: string): boolean {
   try {
@@ -63,46 +61,24 @@ export function Composer({
   const [linkUrl, setLinkUrl] = useState("");
   const [changeMyMind, setChangeMyMind] = useState("");
   const [position, setPosition] = useState<"owns" | "none" | null>(null);
-  const [snapshot, setSnapshot] = useState<TickerSnapshot | null>(null);
-  const [snapshotLoading, setSnapshotLoading] = useState(false);
-  const [checkedTicker, setCheckedTicker] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const textareaRef = useAutoGrowTextarea(body);
+  const { snapshot, snapshotLoading, reset: resetTicker } = useTickerAttach(body);
 
-  // Debounced first-ticker detection. Only re-fetches when the *first*
-  // recognized ticker actually changes — retyping within the same symbol,
-  // or text after it, doesn't re-trigger. See docs/phase-two.md's rate
-  // limit rules: 800ms debounce, one fetch per draft, both Finnhub-only
-  // (lib/analysis/tickerSnapshot.ts), never Twelve Data.
-  useEffect(() => {
-    const ticker = firstCashtag(body);
-    if (ticker === checkedTicker) return;
-
-    const timeout = setTimeout(async () => {
-      if (!ticker) {
-        setSnapshot(null);
-        setPosition(null);
-        setCheckedTicker(null);
-        return;
-      }
-      setSnapshotLoading(true);
-      try {
-        const res = await fetch(`/api/composer/ticker/${encodeURIComponent(ticker)}`);
-        const data = await res.json().catch(() => ({ snapshot: null }));
-        setSnapshot(data.snapshot ?? null);
-        if (!data.snapshot) setPosition(null);
-      } catch {
-        setSnapshot(null);
-        setPosition(null);
-      } finally {
-        setCheckedTicker(ticker);
-        setSnapshotLoading(false);
-      }
-    }, DEBOUNCE_MS);
-
-    return () => clearTimeout(timeout);
-  }, [body, checkedTicker]);
+  // Position is per-ticker, not per-draft — clear it whenever the resolved
+  // symbol changes (including to/from no ticker at all), same as before
+  // this logic moved into the shared useTickerAttach hook. Adjusted during
+  // render (React's documented pattern for "reset state when a derived
+  // value changes") rather than in a useEffect, which would trip
+  // react-hooks/set-state-in-effect — the same lint rule already flagged
+  // (pre-existing, not introduced here) in ResearchDesk.tsx and
+  // lib/useTheme.ts.
+  const [lastSymbol, setLastSymbol] = useState(snapshot?.symbol);
+  if (snapshot?.symbol !== lastSymbol) {
+    setLastSymbol(snapshot?.symbol);
+    setPosition(null);
+  }
 
   function handleTypeChange(next: PostType) {
     // Auto-insert the scaffold only into a genuinely empty box; clear it
@@ -165,8 +141,7 @@ export function Composer({
     setLinkUrl("");
     setChangeMyMind("");
     setPosition(null);
-    setSnapshot(null);
-    setCheckedTicker(null);
+    resetTicker();
     setType("take");
     router.refresh();
   }

@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getPostById, getReplies } from "@/lib/social/queries";
 import { PostCard } from "@/components/social/PostCard";
 import { PostActions } from "@/components/social/PostActions";
+import { PromoteAction } from "@/components/social/PromoteAction";
+import { PromotedMarker, FromSpaceMarker } from "@/components/social/PromotionMarker";
 import { ReplyItem } from "@/components/social/ReplyItem";
 import { ReplyActions } from "@/components/social/ReplyActions";
 import { ReplyBox } from "@/components/social/ReplyBox";
@@ -61,14 +63,19 @@ export default async function PostDetailPage(props: Props) {
       <PostCard
         post={post}
         actions={
-          <PostActions
-            postId={post.id}
-            authorId={post.author.id}
-            viewerId={user?.id}
-            body={post.body}
-            createdAt={post.createdAt}
-            deletedAt={post.deletedAt}
-          />
+          <>
+            {post.spaceId && post.promotedToId && <PromotedMarker publicPostId={post.promotedToId} />}
+            {post.spaceId && !post.promotedToId && <PromoteAction post={post} viewerId={user?.id} />}
+            {!post.spaceId && post.promotedFrom && <FromSpaceMarker />}
+            <PostActions
+              postId={post.id}
+              authorId={post.author.id}
+              viewerId={user?.id}
+              body={post.body}
+              createdAt={post.createdAt}
+              deletedAt={post.deletedAt}
+            />
+          </>
         }
       />
 

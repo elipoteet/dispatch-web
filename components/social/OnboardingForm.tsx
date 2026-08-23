@@ -14,10 +14,12 @@ export function OnboardingForm({
   userId,
   schoolId,
   defaultDisplayName,
+  inviteToken,
 }: {
   userId: string;
   schoolId: string;
   defaultDisplayName: string;
+  inviteToken?: string;
 }) {
   const router = useRouter();
   const [handle, setHandle] = useState("");
@@ -61,6 +63,20 @@ export function OnboardingForm({
         setError("That handle isn't available. Pick another.");
       }
       return;
+    }
+
+    // The profile row now exists, so join_space_via_token's "finish
+    // setting up your profile first" check passes. A failed/invalid token
+    // degrades to the normal "/" landing rather than blocking account
+    // creation, which already succeeded — the invite was a bonus, not the
+    // primary action here.
+    if (inviteToken) {
+      const { data: joined } = await supabase.rpc("join_space_via_token", { p_token: inviteToken });
+      if (joined && joined.length > 0) {
+        router.push(`/s/${joined[0].slug}`);
+        router.refresh();
+        return;
+      }
     }
 
     router.push("/");

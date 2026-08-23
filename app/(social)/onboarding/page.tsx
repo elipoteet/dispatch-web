@@ -8,17 +8,24 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+type Props = { searchParams: Promise<{ invite?: string }> };
+
 // Only reachable with a session and no profile row yet, per
 // docs/phase-one.md. Redirects to /signup with no session, and to / if a
-// profile already exists.
-export default async function OnboardingPage() {
+// profile already exists — both preserve ?invite= so a Space invite link
+// clicked mid-onboarding (or by someone who already has an account) still
+// resolves. See app/(social)/j/[token]/page.tsx for where this token
+// originates and why it travels as a query param rather than a cookie.
+export default async function OnboardingPage(props: Props) {
+  const { invite } = await props.searchParams;
+  const inviteSuffix = invite ? `?invite=${encodeURIComponent(invite)}` : "";
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/signup");
+    redirect(`/signup${inviteSuffix}`);
   }
 
   const { data: existingProfile } = await supabase
@@ -28,6 +35,16 @@ export default async function OnboardingPage() {
     .maybeSingle();
 
   if (existingProfile) {
+    // Someone who already has an account opened an invite link while
+    // signed in but somehow landed here — join now rather than just
+    // bouncing to /. A failed/invalid token degrades to the normal "/"
+    // redirect rather than blocking anything.
+    if (invite) {
+      const { data: joined } = await supabase.rpc("join_space_via_token", { p_token: invite });
+      if (joined && joined.length > 0) {
+        redirect(`/s/${joined[0].slug}`);
+      }
+    }
     redirect("/");
   }
 
@@ -61,6 +78,11 @@ export default async function OnboardingPage() {
   const defaultDisplayName = user.email?.split("@")[0] ?? "";
 
   return (
-    <OnboardingForm userId={user.id} schoolId={school.id} defaultDisplayName={defaultDisplayName} />
+    <OnboardingForm
+      userId={user.id}
+      schoolId={school.id}
+      defaultDisplayName={defaultDisplayName}
+      inviteToken={invite}
+    />
   );
 }

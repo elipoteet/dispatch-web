@@ -2965,7 +2965,12 @@
   border-bottom: 1px solid var(--rule);
 }
 .social-header-inner {
-  max-width: 640px;
+  /* Matches .social-shell's max-width (below) so the brand mark lines up
+     with the nav column's left edge and the auth controls line up with
+     the content column's right edge, now that phase three widens the
+     page from a single centered 640px column into a sidebar+content
+     layout. */
+  max-width: 920px;
   margin: 0 auto;
   padding: 12px 20px;
   display: flex;
@@ -3026,10 +3031,123 @@
   font-size: 9px;
 }
 
-.social-main {
-  max-width: 640px;
+/* Phase three: the page shell moves from a single centered column to a
+   sidebar+content grid — the one genuinely wide-blast-radius CSS change
+   this phase makes, since every page under app/(social)/ renders through
+   this same layout. */
+.social-shell {
+  max-width: 920px;
   margin: 0 auto;
   padding: 0 20px 60px;
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+.social-main {
+  max-width: 640px;
+  min-width: 0;
+}
+
+.social-nav {
+  position: sticky;
+  top: 76px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-top: 22px;
+}
+.nav-link {
+  padding: 10px 14px;
+  border-radius: var(--social-pill);
+  font-size: 14px;
+  color: var(--muted);
+  text-decoration: none;
+}
+.nav-link:hover {
+  background: var(--cream-2);
+  color: var(--ink);
+}
+.nav-link.active {
+  background: rgba(166, 124, 0, 0.13);
+  color: var(--gold);
+  font-weight: 500;
+}
+[data-theme="dark"] .nav-link.active {
+  background: rgba(212, 168, 67, 0.14);
+}
+.nav-section-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+  margin: 20px 0 6px 14px;
+}
+.nav-space-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 14px;
+  border-radius: var(--social-pill);
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: none;
+}
+.nav-space-row:hover {
+  background: var(--cream-2);
+  color: var(--ink);
+}
+.nav-space-row.active {
+  background: rgba(166, 124, 0, 0.13);
+  color: var(--gold);
+  font-weight: 500;
+}
+[data-theme="dark"] .nav-space-row.active {
+  background: rgba(212, 168, 67, 0.14);
+}
+.nav-space-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.nav-space-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nav-space-count {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px;
+  color: var(--gold);
+  flex-shrink: 0;
+}
+.nav-new-space {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 9px 14px;
+  text-decoration: none;
+  display: block;
+}
+.nav-new-space:hover {
+  color: var(--gold);
+}
+/* No mobile nav rebuild in this phase — matching the prototype's own
+   narrow-viewport treatment (hide the rail entirely) rather than adding a
+   bottom tab bar; feed/post/profile pages already work fine without it. */
+@media (max-width: 900px) {
+  .social-shell {
+    grid-template-columns: 1fr;
+  }
+  .social-nav {
+    display: none;
+  }
 }
 
 .social-orientation {
@@ -3923,4 +4041,293 @@
   .social-tape {
     display: none;
   }
+}
+
+/* ---------- space page ---------- */
+.space-head {
+  padding: 22px 0;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 4px;
+}
+.space-head-top h1 {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.space-head-desc {
+  font-size: 13.5px;
+  color: var(--muted);
+  margin-top: 6px;
+  line-height: 1.5;
+  max-width: 52ch;
+}
+.space-head-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.space-lock-chip {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--rule-dark);
+  border-radius: var(--social-pill);
+  padding: 4px 10px;
+}
+.space-avatar-stack {
+  display: flex;
+  align-items: center;
+}
+.space-avatar-stack .avatar--sm {
+  margin-left: -7px;
+  border: 2px solid var(--cream);
+}
+.space-avatar-stack .avatar--sm:first-child {
+  margin-left: 0;
+}
+.space-member-chip {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.space-owner-chip {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold);
+  border: 1px solid var(--gold);
+  border-radius: var(--social-pill);
+  padding: 4px 10px;
+}
+
+.space-invite {
+  margin-top: 16px;
+  border: 1px dashed var(--rule-dark);
+  border-radius: var(--social-r);
+  padding: 13px 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--paper);
+}
+.space-invite-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  width: 100%;
+}
+.space-invite-url {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12.5px;
+  color: var(--ink);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.space-invite-hint {
+  width: 100%;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.space-manage-toggle {
+  margin-top: 14px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.space-manage-toggle:hover {
+  color: var(--gold);
+}
+.space-manage {
+  margin-top: 4px;
+  border: 1px solid var(--rule);
+  border-radius: var(--social-r);
+  padding: 16px;
+  background: var(--paper);
+}
+.space-manage-section {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.space-manage-section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.space-manage-label {
+  display: block;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.space-manage-member-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 0;
+  font-size: 13.5px;
+}
+.space-manage-section select {
+  background: var(--cream);
+  border: 1px solid var(--rule);
+  border-radius: var(--social-rs);
+  padding: 8px 10px;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 13.5px;
+  color: var(--ink);
+}
+
+/* ---------- promotion markers ---------- */
+.promotion-marker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 8px;
+}
+.promotion-marker-published {
+  color: var(--gold);
+  text-decoration: none;
+}
+.promotion-marker-published:hover {
+  text-decoration: underline;
+}
+.promotion-marker-from-space {
+  color: var(--muted);
+}
+.promote-btn {
+  margin-top: 8px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--rule-dark);
+  border-radius: var(--social-pill);
+  padding: 5px 11px;
+}
+.promote-btn:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+/* ---------- promote modal ---------- */
+/* This surface's first modal — the scrim+modal pattern itself already
+   exists for the research surface's sign-in (.auth-backdrop/.auth-modal,
+   below), reused here rather than invented fresh. */
+.promote-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 27, 42, 0.55);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.promote-modal {
+  background: var(--paper);
+  border: 1px solid var(--rule-dark);
+  border-radius: var(--social-r);
+  max-width: 540px;
+  width: 100%;
+  max-height: 88vh;
+  overflow: auto;
+}
+.promote-modal-head {
+  padding: 20px 22px;
+  border-bottom: 1px solid var(--rule);
+}
+.promote-modal-kicker {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+.promote-modal-head h2 {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.promote-modal-head p {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 7px;
+  line-height: 1.55;
+}
+.promote-modal-body {
+  padding: 18px 22px;
+}
+.promote-modal-section {
+  margin-bottom: 18px;
+}
+.promote-modal-section:last-child {
+  margin-bottom: 0;
+}
+.promote-modal-section > label {
+  display: block;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.promote-quoted {
+  border-left: 2px solid var(--rule-dark);
+  padding: 2px 0 2px 13px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.promote-modal-section input {
+  width: 100%;
+  background: var(--cream);
+  border: 1px solid var(--rule);
+  border-radius: var(--social-rs);
+  padding: 10px 11px;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  color: var(--ink);
+}
+.promote-modal-section input:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+.promote-modal-note {
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.6;
+  background: var(--cream-2);
+  border-radius: var(--social-rs);
+  padding: 12px 14px;
+}
+.promote-modal-foot {
+  padding: 14px 22px;
+  border-top: 1px solid var(--rule);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
 }

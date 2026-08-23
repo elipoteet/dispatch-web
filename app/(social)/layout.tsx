@@ -1,15 +1,20 @@
 import { createClient } from "@/lib/supabase/server";
 import { SocialHeader } from "@/components/social/SocialHeader";
 import type { HeaderProfile } from "@/components/social/SocialHeader";
+import { SocialNav } from "@/components/social/SocialNav";
 import { Footer } from "@/components/social/Footer";
 import { TickerTape } from "@/components/home/TickerTape";
+import { getUserSpaces } from "@/lib/social/spaces";
+import type { SpaceNavItem } from "@/lib/social/spaces";
 
 // Chrome for the new campus-social surface — /, /signup, /login,
 // /onboarding, /p/[id], /u/[handle] (public URL /@handle, see
-// next.config.ts). Deliberately minimal: just the brand mark and
-// sign-in/out state, no research-desk nav. Scoped under .social so the
-// loosened radius (defined in app/globals.css) stays out of the
-// equity-research surface in app/(research)/.
+// next.config.ts), /s/[slug], /s/new, /j/[token]. Header on top, a left
+// nav (phase three — Feed/Research/Spaces, new chrome for this surface,
+// first of its kind here) plus the page content in a sidebar+content grid
+// below it (.social-shell, app/globals.css). Scoped under .social so the
+// loosened radius stays out of the equity-research surface in
+// app/(research)/.
 export default async function SocialLayout({
   children,
 }: Readonly<{
@@ -25,6 +30,7 @@ export default async function SocialLayout({
   // signed-in/out toggle itself (see SocialHeader), this just supplies the
   // profile data useAuth()'s raw Supabase user object doesn't carry.
   let profile: HeaderProfile | null = null;
+  let spaces: SpaceNavItem[] = [];
   if (user) {
     const { data } = await supabase
       .from("profiles")
@@ -41,13 +47,19 @@ export default async function SocialLayout({
         schoolColorPrimary: school?.color_primary ?? null,
         avatarUrl: data.avatar_url,
       };
+      // Only fetched once onboarding is actually done (profile exists) —
+      // the Spaces nav section means nothing to a mid-onboarding user.
+      spaces = await getUserSpaces(supabase, user.id);
     }
   }
 
   return (
     <div className="social">
       <SocialHeader profile={profile} />
-      <main className="social-main">{children}</main>
+      <div className="social-shell">
+        <SocialNav spaces={spaces} canCreateSpace={Boolean(profile)} />
+        <main className="social-main">{children}</main>
+      </div>
       <Footer />
       {/* Ambient status, not the point of the page — fixed to the viewport
           bottom on desktop, hidden on mobile (.social-tape, app/globals.css)
