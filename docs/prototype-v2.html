@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Dispatch — Prototype v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy:#0E1D33; --cream:#F6F2E9; --gold:#B08430;
+    --font:'Inter',system-ui,sans-serif; --mono:'IBM Plex Mono','SF Mono',monospace;
+    --bg:var(--cream); --surface:#FFFDF7; --surface2:#EDE7DA;
+    --border:rgba(14,29,51,.13); --border-strong:rgba(14,29,51,.28);
+    --text:var(--navy); --dim:#5B6472; --accent:var(--gold);
+    --green:#2F7D4F; --red:#A33A32;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --bg:#0B1727; --surface:#101F35; --surface2:#16283F;
+    --border:rgba(246,242,233,.12); --border-strong:rgba(246,242,233,.26);
+    --text:#F0EBE0; --dim:#93A0B2; --accent:#D2A44E; --green:#63B583; --red:#D97A70;
+  }}
+  *{margin:0;padding:0;box-sizing:border-box;border-radius:0}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--font);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;font-size:15px;line-height:1.5}
+  a{color:inherit;text-decoration:none}
+  button{font-family:inherit;font-size:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  .mono{font-family:var(--mono)}
+
+  /* ---------- TOP BAR ---------- */
+  .topbar{position:sticky;top:0;z-index:50;background:var(--bg);border-bottom:1px solid var(--border)}
+  .topbar__in{max-width:1240px;margin:0 auto;height:56px;padding:0 20px;display:flex;align-items:center;gap:24px}
+  .brand{display:flex;align-items:center;gap:9px;flex-shrink:0}
+  .brand span{font-family:var(--mono);font-size:12px;letter-spacing:2.6px;text-transform:uppercase}
+  .searchbox{position:relative;flex:1;max-width:340px}
+  .searchbox input{width:100%;background:var(--surface2);border:1px solid var(--border);padding:7px 11px 7px 30px;font-family:var(--mono);font-size:12px;color:var(--text);letter-spacing:.6px}
+  .searchbox input:focus{outline:none;border-color:var(--accent)}
+  .searchbox svg{position:absolute;left:9px;top:8px;opacity:.45}
+  .searchdrop{position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border-strong);border-top:none;z-index:60;max-height:280px;overflow:auto}
+  .searchdrop div{padding:9px 12px;font-size:13px;display:flex;gap:10px;align-items:baseline;border-bottom:1px solid var(--border)}
+  .searchdrop div:hover{background:var(--surface2)}
+  .searchdrop b{font-family:var(--mono);font-size:12px;letter-spacing:1px;min-width:52px}
+  .searchdrop em{font-style:normal;color:var(--dim);font-size:12px}
+  .topbar__me{margin-left:auto;display:flex;align-items:center;gap:10px}
+
+  /* ---------- LAYOUT ---------- */
+  .shell{max-width:1180px;margin:0 auto;padding:0 20px;display:grid;grid-template-columns:196px minmax(0,1fr) 258px;gap:28px;align-items:start}
+  .rail{position:sticky;top:76px;padding:22px 0}
+  .rail--r{padding-top:22px}
+
+  /* ---------- NAV ---------- */
+  .nav{display:flex;flex-direction:column;gap:1px}
+  .nav button{display:flex;align-items:center;gap:11px;padding:10px 12px;text-align:left;color:var(--dim);font-size:14px;width:100%;border-left:2px solid transparent}
+  .nav button:hover{background:var(--surface2);color:var(--text)}
+  .nav button.active{color:var(--text);border-left-color:var(--accent);background:var(--surface2);font-weight:500}
+  .nav svg{flex-shrink:0;opacity:.75}
+  .nav .badge{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--accent)}
+
+  .me{border:1px solid var(--border);background:var(--surface);padding:14px;margin-top:22px}
+  .me__name{font-weight:500;font-size:14px}
+  .me__stat{font-family:var(--mono);font-size:10px;letter-spacing:1.1px;text-transform:uppercase;color:var(--dim);margin-top:8px}
+
+  /* ---------- MAIN ---------- */
+  .main{border-left:1px solid var(--border);border-right:1px solid var(--border);min-height:100vh;background:var(--surface)}
+  .viewhead{padding:16px 22px;border-bottom:1px solid var(--border);position:sticky;top:56px;background:var(--surface);z-index:20}
+  .viewhead h1{font-size:19px;font-weight:500;letter-spacing:-.4px}
+  .viewhead p{font-size:12.5px;color:var(--dim);margin-top:3px}
+  .tabs{display:flex;gap:0;border-bottom:1px solid var(--border);position:sticky;top:56px;background:var(--surface);z-index:19}
+  .tabs button{padding:12px 20px;font-size:13px;color:var(--dim);border-bottom:2px solid transparent;font-family:var(--mono);letter-spacing:1.2px;text-transform:uppercase;font-size:11px}
+  .tabs button.active{color:var(--text);border-bottom-color:var(--accent)}
+  .tabs button:hover{background:var(--surface2)}
+
+  /* ---------- COMPOSER ---------- */
+  .composer{padding:18px 22px;border-bottom:8px solid var(--bg);display:flex;gap:12px}
+  .composer textarea{flex:1;background:transparent;border:none;resize:none;font-family:var(--font);font-size:16px;color:var(--text);min-height:52px;line-height:1.45}
+  .composer textarea:focus{outline:none}
+  .composer textarea::placeholder{color:var(--dim)}
+  .composer__foot{display:flex;align-items:center;gap:8px;margin-top:8px}
+  .chipbtn{font-family:var(--mono);font-size:10.5px;letter-spacing:1.1px;text-transform:uppercase;color:var(--dim);border:1px solid var(--border);padding:5px 9px}
+  .chipbtn:hover{border-color:var(--accent);color:var(--accent)}
+  .postbtn{margin-left:auto;background:var(--navy);color:var(--cream);font-family:var(--mono);font-size:11px;letter-spacing:1.4px;text-transform:uppercase;padding:8px 18px}
+  @media (prefers-color-scheme:dark){.postbtn{background:var(--accent);color:#0B1727}}
+  .postbtn:disabled{opacity:.35;cursor:default}
+
+  /* ---------- PINNED ---------- */
+  .pinned{margin:0;padding:16px 22px;border-bottom:1px solid var(--border);background:var(--surface2);display:flex;gap:14px;align-items:center;cursor:pointer}
+  .pinned:hover{background:var(--border)}
+  .pinned__k{font-family:var(--mono);font-size:10px;letter-spacing:1.6px;text-transform:uppercase;color:var(--accent)}
+  .pinned h3{font-size:16px;font-weight:500;margin-top:4px;letter-spacing:-.3px}
+  .pinned p{font-size:12.5px;color:var(--dim);margin-top:3px}
+  .pinned__n{margin-left:auto;text-align:right;font-family:var(--mono);font-size:11px;color:var(--dim);flex-shrink:0}
+  .pinned__n b{display:block;font-size:21px;font-weight:400;color:var(--text)}
+
+  /* ---------- POST ---------- */
+  .post{padding:17px 22px;border-bottom:1px solid var(--border);display:flex;gap:12px}
+  .post:hover{background:var(--surface2)}
+  .av{width:38px;height:38px;flex-shrink:0;background:var(--navy);color:var(--cream);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.5px}
+  @media (prefers-color-scheme:dark){.av{background:var(--surface2);color:var(--text);border:1px solid var(--border-strong)}}
+  .av--gold{background:var(--gold);color:#fff}
+  .post__b{flex:1;min-width:0}
+  .post__hd{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;margin-bottom:5px}
+  .post__hd .nm{font-weight:500;font-size:14.5px}
+  .edu{font-family:var(--mono);font-size:10px;letter-spacing:.9px;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);padding:1.5px 5px;white-space:nowrap}
+  .edu--alum{color:var(--dim);border-color:var(--border-strong)}
+  .edu__tick{margin-right:3px}
+  .beat{font-family:var(--mono);font-size:10px;letter-spacing:.9px;text-transform:uppercase;color:var(--dim)}
+  .post__t{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--dim);flex-shrink:0}
+  .post__x{font-size:15px;line-height:1.55;overflow-wrap:break-word}
+  .cash{color:var(--accent);font-family:var(--mono);font-size:13.5px;font-weight:500;letter-spacing:.3px;border-bottom:1px solid transparent}
+  .cash:hover{border-bottom-color:var(--accent)}
+  .theme{color:var(--dim);font-weight:500}
+  .theme:hover{color:var(--text);text-decoration:underline}
+
+  /* data chip attached to a post */
+  .chip{margin-top:12px;border:1px solid var(--border);background:var(--bg);display:flex;align-items:stretch;cursor:pointer}
+  .chip:hover{border-color:var(--accent)}
+  .chip__l{padding:12px 14px;flex:1;min-width:0}
+  .chip__sym{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:1.2px}
+  .chip__nm{font-size:12px;color:var(--dim);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chip__px{font-family:var(--mono);font-size:17px;margin-top:8px;font-variant-numeric:tabular-nums}
+  .chip__d{font-family:var(--mono);font-size:11.5px;margin-top:2px}
+  .chip__r{width:132px;flex-shrink:0;display:flex;align-items:center;padding:10px;border-left:1px solid var(--border)}
+  .chip__stamp{font-family:var(--mono);font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);padding:6px 14px;border-top:1px solid var(--border)}
+  .up{color:var(--green)} .down{color:var(--red)}
+
+  .tags{display:flex;gap:6px;margin-top:11px;flex-wrap:wrap}
+  .tag{font-family:var(--mono);font-size:10px;letter-spacing:1.1px;text-transform:uppercase;color:var(--dim);border:1px solid var(--border);padding:3px 7px}
+  .tag:hover{border-color:var(--accent);color:var(--accent)}
+
+  .acts{display:flex;gap:26px;margin-top:12px}
+  .acts button{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--dim)}
+  .acts button:hover{color:var(--accent)}
+  .acts button.on{color:var(--accent)}
+  .acts svg{opacity:.7}
+
+  /* ---------- RIGHT RAIL ---------- */
+  .card{border:1px solid var(--border);background:var(--surface);margin-bottom:18px}
+  .card__h{padding:11px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+  .card__h h3{font-family:var(--mono);font-size:10px;letter-spacing:1.7px;text-transform:uppercase;color:var(--dim);font-weight:600}
+  .card__h .more{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:.8px}
+  .wrow{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer}
+  .wrow:last-child{border-bottom:none}
+  .wrow:hover{background:var(--surface2)}
+  .wrow__s{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:1px;width:52px;flex-shrink:0}
+  .wrow__p{font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;margin-left:auto}
+  .wrow__d{font-family:var(--mono);font-size:11px;font-variant-numeric:tabular-nums;width:60px;text-align:right;flex-shrink:0}
+  .trow{display:flex;align-items:baseline;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer}
+  .trow:last-child{border-bottom:none}
+  .trow:hover{background:var(--surface2)}
+  .trow__n{font-family:var(--mono);font-size:10px;color:var(--accent);width:16px;flex-shrink:0}
+  .trow__t{font-size:13px;font-weight:500}
+  .trow__c{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--dim);flex-shrink:0}
+  .rail__note{font-family:var(--mono);font-size:10px;line-height:1.7;color:var(--dim);letter-spacing:.5px;padding:0 2px}
+
+  /* ---------- TICKER PAGE ---------- */
+  .tk{padding:22px}
+  .tk__top{display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap}
+  .tk__sym{font-family:var(--mono);font-size:30px;font-weight:600;letter-spacing:2px;line-height:1}
+  .tk__nm{font-size:14px;color:var(--dim);margin-top:6px}
+  .tk__px{margin-left:auto;text-align:right}
+  .tk__px b{font-family:var(--mono);font-size:34px;font-weight:400;font-variant-numeric:tabular-nums;letter-spacing:-1px;display:block;line-height:1}
+  .tk__px span{font-family:var(--mono);font-size:13px;display:block;margin-top:6px}
+  .tk__acts{display:flex;gap:8px;margin-top:18px}
+  .btn{font-family:var(--mono);font-size:11px;letter-spacing:1.3px;text-transform:uppercase;padding:9px 16px;border:1px solid var(--border-strong);color:var(--text)}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .btn--on{background:var(--navy);color:var(--cream);border-color:var(--navy)}
+  @media (prefers-color-scheme:dark){.btn--on{background:var(--accent);color:#0B1727;border-color:var(--accent)}}
+  .chartbox{margin-top:20px;border:1px solid var(--border);background:var(--bg);padding:16px}
+  .grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);margin-top:20px}
+  .stat{background:var(--surface);padding:13px 14px;min-width:0}
+  .stat__k{font-family:var(--mono);font-size:9.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--dim)}
+  .stat__v{font-family:var(--mono);font-size:17px;margin-top:6px;font-variant-numeric:tabular-nums}
+  .secthead{padding:14px 22px;border-top:8px solid var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+  .secthead h2{font-family:var(--mono);font-size:10.5px;letter-spacing:1.8px;text-transform:uppercase;color:var(--dim);font-weight:600}
+  .secthead .c{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--dim)}
+
+  /* ---------- RESEARCH TAB ---------- */
+  .rsearch{padding:22px}
+  .rsearch__in{position:relative}
+  .rsearch input{width:100%;background:var(--bg);border:1px solid var(--border-strong);padding:15px 15px 15px 44px;font-family:var(--mono);font-size:15px;letter-spacing:1.4px;color:var(--text);text-transform:uppercase}
+  .rsearch input:focus{outline:none;border-color:var(--accent)}
+  .rsearch svg{position:absolute;left:15px;top:16px;opacity:.5}
+  .rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);margin-top:20px}
+  .rcell{background:var(--surface);padding:14px;cursor:pointer;min-width:0}
+  .rcell:hover{background:var(--surface2)}
+  .rcell__s{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:1.2px}
+  .rcell__n{font-size:11.5px;color:var(--dim);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rcell__p{font-family:var(--mono);font-size:13px;margin-top:10px;font-variant-numeric:tabular-nums}
+  .rcell__d{font-family:var(--mono);font-size:11px;margin-top:2px}
+
+  /* ---------- WATCHLISTS ---------- */
+  .wl{padding:22px}
+  .wl__hd{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  .wl__hd .av{width:34px;height:34px}
+  .bigrow{display:flex;align-items:center;gap:14px;padding:13px 0;border-bottom:1px solid var(--border);cursor:pointer}
+  .bigrow:hover{padding-left:6px;transition:padding .12s}
+  .bigrow__s{font-family:var(--mono);font-size:14px;font-weight:600;letter-spacing:1.3px;width:66px;flex-shrink:0}
+  .bigrow__n{font-size:13.5px;color:var(--dim);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bigrow__adds{font-family:var(--mono);font-size:10.5px;color:var(--dim);margin-left:auto;flex-shrink:0;text-align:right}
+  .bigrow__p{font-family:var(--mono);font-size:14px;width:82px;text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums}
+
+  .empty{padding:50px 22px;text-align:center;color:var(--dim);font-family:var(--mono);font-size:12px;letter-spacing:1px}
+
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--navy);color:var(--cream);font-family:var(--mono);font-size:11px;letter-spacing:1.2px;text-transform:uppercase;padding:11px 20px;opacity:0;transition:.25s;pointer-events:none;z-index:99}
+  @media (prefers-color-scheme:dark){.toast{background:var(--accent);color:#0B1727}}
+  .toast.show{opacity:1;transform:translateX(-50%)}
+
+  .protonote{max-width:1240px;margin:0 auto;padding:14px 20px 40px;font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);text-align:center}
+
+
+
+  /* ============ SUBSTANCE PASS ============ */
+  .typills{display:flex;gap:7px;margin-bottom:13px;flex-wrap:wrap}
+  .typill{font-family:var(--mono);font-size:10px;letter-spacing:1.3px;text-transform:uppercase;padding:6px 13px;border:1px solid var(--border);border-radius:var(--pill);color:var(--dim);transition:.14s}
+  .typill:hover{border-color:var(--accent);color:var(--accent)}
+  .typill.on{background:var(--navy);color:var(--cream);border-color:var(--navy)}
+  @media (prefers-color-scheme:dark){.typill.on{background:var(--accent);color:#0B1727;border-color:var(--accent)}}
+
+  .draftcard{margin-top:13px;border:1px solid var(--accent);border-radius:var(--r);overflow:hidden;background:var(--bg)}
+  .draftcard__h{display:flex;align-items:center;gap:9px;padding:9px 14px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent)}
+  .draftcard__b{display:flex;align-items:center;gap:16px;padding:13px 14px;flex-wrap:wrap}
+  .draftcard__sym{font-family:var(--mono);font-size:15px;font-weight:600;letter-spacing:1.3px}
+  .draftcard__px{font-family:var(--mono);font-size:15px;font-variant-numeric:tabular-nums}
+  .dstat{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.5px}
+  .dstat b{color:var(--text);font-weight:500}
+
+  .cmindfield{margin-top:13px;border-top:1px dashed var(--border-strong);padding-top:13px}
+  .cmindfield label{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);margin-bottom:7px}
+  .cmindfield input{width:100%;background:transparent;border:none;border-bottom:1px solid var(--border);padding:7px 0;font-family:var(--font);font-size:14.5px;color:var(--text)}
+  .cmindfield input:focus{outline:none;border-bottom-color:var(--accent)}
+  .cmindfield input::placeholder{color:var(--dim)}
+
+  .hint{font-family:var(--mono);font-size:10px;letter-spacing:1.1px;text-transform:uppercase;color:var(--dim)}
+
+  .ty{font-family:var(--mono);font-size:9px;letter-spacing:1.4px;text-transform:uppercase;padding:2.5px 8px;border-radius:var(--pill);background:var(--surface2);color:var(--dim);font-weight:600}
+  .ty--question{background:rgba(176,132,48,.16);color:var(--accent)}
+  .ty--thesis{background:var(--navy);color:var(--cream)}
+  @media (prefers-color-scheme:dark){.ty--thesis{background:var(--accent);color:#0B1727}}
+
+  .deskmark{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:9.5px;letter-spacing:1.6px;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+  .deskmark::after{content:'';flex:1;height:1px;background:var(--border)}
+
+  .cmind{margin-top:13px;border-left:2px solid var(--accent);padding:11px 0 11px 14px}
+  .cmind__k{font-family:var(--mono);font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);display:block;margin-bottom:5px}
+  .cmind p{font-size:14.5px;line-height:1.5;color:var(--dim)}
+
+  .reply{margin-top:16px;padding:14px 0 0 16px;border-left:1px solid var(--border);display:flex;gap:11px}
+  .reply .av{width:32px;height:32px;font-size:10.5px}
+  .reply__x{font-size:14.5px;line-height:1.55;margin-top:4px}
+  .pbtag{font-family:var(--mono);font-size:9px;letter-spacing:1.4px;text-transform:uppercase;padding:2.5px 8px;border-radius:var(--pill);background:rgba(163,58,50,.13);color:var(--red);font-weight:600}
+  @media (prefers-color-scheme:dark){.pbtag{background:rgba(217,122,112,.16)}}
+
+  .deskrow{display:flex;gap:11px;padding:11px 16px;border-bottom:1px solid var(--border);cursor:pointer;align-items:flex-start}
+  .deskrow:last-child{border-bottom:none}
+  .deskrow:hover{background:var(--surface2)}
+  .deskrow__n{font-family:var(--mono);font-size:10px;color:var(--accent);flex-shrink:0;margin-top:2px}
+  .deskrow__t{font-size:12.5px;line-height:1.4}
+  .deskrow__w{font-family:var(--mono);font-size:10px;color:var(--dim);display:block;margin-top:3px}
+
+  /* ============ PROOF OF LIFE RAIL ============ */
+  .alive{padding:16px}
+  .alive__n{font-size:26px;font-weight:300;letter-spacing:-1px;line-height:1.15}
+  .alive__n b{font-weight:400}
+  .alive__sub{font-family:var(--mono);font-size:10px;letter-spacing:1.3px;text-transform:uppercase;color:var(--dim);margin-top:7px}
+  .alive__stack{display:flex;align-items:center;margin-top:14px}
+  .alive__stack .av{width:28px;height:28px;font-size:9.5px;margin-left:-8px;border:2px solid var(--surface)}
+  .alive__stack .av:first-child{margin-left:0}
+  .newrow{display:flex;align-items:center;gap:10px;padding:10px 16px;border-top:1px solid var(--border);cursor:pointer}
+  .newrow:hover{background:var(--surface2)}
+  .newrow .av{width:26px;height:26px;font-size:9px;flex-shrink:0}
+  .newrow__n{font-size:12.5px;font-weight:500;line-height:1.3;min-width:0}
+  .newrow__s{font-family:var(--mono);font-size:9px;letter-spacing:.9px;color:var(--dim);display:block;margin-top:2px}
+  .sprow{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border);cursor:pointer}
+  .sprow:last-child{border-bottom:none}
+  .sprow:hover{background:var(--surface2)}
+  .sprow__n{font-size:12.5px;line-height:1.3;min-width:0;flex:1}
+  .sprow__new{font-family:var(--mono);font-size:9.5px;letter-spacing:1px;color:var(--accent);flex-shrink:0}
+
+  /* ============ PROMOTE MODAL ============ */
+  .scrim{position:fixed;inset:0;background:rgba(14,29,51,.55);z-index:200;display:flex;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(2px)}
+  .modal{background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--r);max-width:560px;width:100%;max-height:88vh;overflow:auto}
+  .modal__h{padding:20px 24px;border-bottom:1px solid var(--border)}
+  .modal__k{font-family:var(--mono);font-size:9.5px;letter-spacing:1.7px;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+  .modal__h h2{font-size:19px;font-weight:500;letter-spacing:-.4px}
+  .modal__h p{font-size:13px;color:var(--dim);margin-top:7px;line-height:1.55}
+  .modal__b{padding:20px 24px}
+  .modal__f{padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:center;justify-content:flex-end}
+  .modal__sec{margin-bottom:20px}
+  .modal__sec>label{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin-bottom:9px}
+  .quoted{border-left:2px solid var(--border-strong);padding:2px 0 2px 14px;font-size:14px;line-height:1.55;color:var(--dim)}
+  .modal__cm{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);padding:11px 12px;font-family:var(--font);font-size:14px;color:var(--text)}
+  .modal__cm:focus{outline:none;border-color:var(--accent)}
+  .poschoice{display:flex;gap:8px}
+  .poschoice button{flex:1;font-family:var(--mono);font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;border:1px solid var(--border);border-radius:var(--pill);padding:10px}
+  .poschoice button.on{background:var(--navy);color:var(--cream);border-color:var(--navy)}
+  @media (prefers-color-scheme:dark){.poschoice button.on{background:var(--accent);color:#0B1727;border-color:var(--accent)}}
+  .modal__note{font-size:12.5px;color:var(--dim);line-height:1.6;background:var(--surface2);border-radius:var(--rs);padding:12px 14px}
+
+  /* ============ SPACES ============ */
+  .nav__sec{font-family:var(--mono);font-size:9px;letter-spacing:1.8px;text-transform:uppercase;color:var(--dim);margin:22px 0 8px 15px}
+  .nav__sp{display:flex;align-items:center;gap:10px;padding:9px 15px;text-align:left;width:100%;color:var(--dim);font-size:13.5px;border-radius:var(--pill)}
+  .nav__sp:hover{background:var(--surface2);color:var(--text)}
+  .nav__sp.active{background:rgba(176,132,48,.13);color:var(--accent);font-weight:500}
+  .nav__dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .nav__new-ct{margin-left:auto;font-family:var(--mono);font-size:9.5px;letter-spacing:.8px;color:var(--accent);flex-shrink:0}
+  .nav__new{font-family:var(--mono);font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--dim);padding:9px 15px;display:block;text-align:left;width:100%}
+  .nav__new:hover{color:var(--accent)}
+
+  .sphead{padding:24px;border-bottom:1px solid var(--border);background:var(--surface2)}
+  .sphead__top{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap}
+  .sphead h1{font-size:22px;font-weight:500;letter-spacing:-.5px;line-height:1.15}
+  .sphead__desc{font-size:13.5px;color:var(--dim);margin-top:7px;line-height:1.5;max-width:56ch}
+  .sphead__meta{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:12px}
+  .lockchip{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9.5px;letter-spacing:1.3px;text-transform:uppercase;color:var(--dim);border:1px solid var(--border-strong);border-radius:var(--pill);padding:4px 10px}
+  .memchip{font-family:var(--mono);font-size:9.5px;letter-spacing:1.3px;text-transform:uppercase;color:var(--dim)}
+  .ownerchip{font-family:var(--mono);font-size:9.5px;letter-spacing:1.3px;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:var(--pill);padding:4px 10px}
+
+  .invite{margin-top:18px;border:1px dashed var(--border-strong);border-radius:var(--r);padding:13px 15px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--bg)}
+  .invite__k{font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);width:100%}
+  .invite__url{font-family:var(--mono);font-size:13px;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .invite__hint{width:100%;font-size:12px;color:var(--dim);line-height:1.5}
+
+  .avstack{display:flex;align-items:center}
+  .avstack .av{width:26px;height:26px;font-size:9px;margin-left:-7px;border:2px solid var(--surface2)}
+  .avstack .av:first-child{margin-left:0}
+
+  .pubmark{display:flex;align-items:center;gap:8px;margin-top:13px;padding-top:11px;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent)}
+  .pubbtn{font-family:var(--mono);font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--dim);border:1px solid var(--border);border-radius:var(--pill);padding:5px 11px;margin-top:13px}
+  .pubbtn:hover{border-color:var(--accent);color:var(--accent)}
+
+  /* ============ SIGNUP ============ */
+  .su{max-width:470px;margin:0 auto;padding:44px 24px 60px}
+  .su__steps{display:flex;gap:6px;margin-bottom:30px}
+  .su__step{flex:1;height:2px;background:var(--border)}
+  .su__step.on{background:var(--accent)}
+  .su h2{font-size:24px;font-weight:500;letter-spacing:-.6px;line-height:1.2}
+  .su__sub{font-size:14px;color:var(--dim);margin-top:9px;line-height:1.55}
+  .su__f{margin-top:26px}
+  .su__f label{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+  .su__f input,.su__f select{width:100%;background:var(--bg);border:1px solid var(--border-strong);border-radius:var(--rs);padding:13px 14px;font-family:var(--font);font-size:15px;color:var(--text)}
+  .su__f input:focus,.su__f select:focus{outline:none;border-color:var(--accent)}
+  .su__f input.mono{font-family:var(--mono);letter-spacing:3px;text-align:center;font-size:19px}
+  .su__go{width:100%;margin-top:22px;background:var(--navy);color:var(--cream);font-family:var(--mono);font-size:11.5px;letter-spacing:1.5px;text-transform:uppercase;padding:14px;border-radius:var(--pill)}
+  @media (prefers-color-scheme:dark){.su__go{background:var(--accent);color:#0B1727}}
+  .su__go:disabled{opacity:.35;cursor:default}
+  .su__alt{margin-top:24px;padding-top:22px;border-top:1px solid var(--border);text-align:center}
+  .su__alt p{font-size:13px;color:var(--dim);margin-bottom:13px}
+  .su__li{display:inline-flex;align-items:center;gap:9px;border:1px solid var(--border-strong);border-radius:var(--pill);padding:11px 20px;font-size:14px}
+  .su__li:hover{border-color:var(--accent);color:var(--accent)}
+  .su__back{font-family:var(--mono);font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--dim);margin-top:20px;display:inline-block}
+  .su__back:hover{color:var(--accent)}
+  .su__note{font-size:12.5px;color:var(--dim);line-height:1.6;margin-top:18px;padding:13px 15px;background:var(--surface2);border-radius:var(--rs)}
+  .su__done{text-align:center;padding:10px 0 0}
+  .su__badgebox{border:1px solid var(--border);border-radius:var(--r);padding:26px 20px;margin-top:24px;background:var(--bg)}
+  .su__cmp{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-top:26px}
+  .su__cmpcell{background:var(--bg);padding:18px 15px;text-align:center}
+  .su__cmpcell h4{font-family:var(--mono);font-size:9px;letter-spacing:1.4px;text-transform:uppercase;color:var(--dim);margin-bottom:12px}
+  .su__cmpcell p{font-size:11.5px;color:var(--dim);line-height:1.5;margin-top:11px}
+
+  /* ============ PROFILE ============ */
+  a.nm{border-bottom:1px solid transparent}
+  a.nm:hover{border-bottom-color:var(--accent)}
+  .pro{padding:26px 24px 22px;border-bottom:1px solid var(--border)}
+  .pro__top{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}
+  .pro .av{width:66px;height:66px;font-size:20px}
+  .pro__id{min-width:0;flex:1}
+  .pro__nm{font-size:25px;font-weight:500;letter-spacing:-.6px;line-height:1.1}
+  .pro__meta{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:9px}
+  .pro__handle{font-family:var(--mono);font-size:11.5px;letter-spacing:.9px;color:var(--dim);margin-top:8px}
+  .pro__url{font-family:var(--mono);font-size:10.5px;letter-spacing:.9px;color:var(--dim);border:1px dashed var(--border-strong);border-radius:var(--pill);padding:5px 12px;display:inline-block;margin-top:14px}
+  .pro__now{font-size:14px;color:var(--text);margin-top:12px}
+  .pro__now span{font-family:var(--mono);font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);display:block;margin-bottom:3px}
+  .pro__li{display:inline-flex;align-items:center;gap:7px;margin-top:12px;font-size:13.5px;color:var(--accent);border:1px solid var(--border);border-radius:var(--pill);padding:7px 14px}
+  .pro__li:hover{border-color:var(--accent)}
+  .pro__self{font-family:var(--mono);font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:var(--dim);margin-left:9px;align-self:center}
+  .wl2{padding:4px 0}
+  .wl2__row{display:flex;gap:16px;padding:14px 24px;border-bottom:1px solid var(--border);cursor:pointer;align-items:baseline}
+  .wl2__row:last-child{border-bottom:none}
+  .wl2__row:hover{background:var(--surface2)}
+  .wl2__s{font-family:var(--mono);font-size:13.5px;font-weight:600;letter-spacing:1.2px;width:62px;flex-shrink:0}
+  .wl2__why{font-size:14px;line-height:1.5;color:var(--dim);min-width:0}
+
+  /* ============ THESIS TESTED ============ */
+  .trig{margin:0;padding:17px 24px;border-bottom:1px solid var(--border);background:var(--bg);border-left:3px solid var(--accent);cursor:pointer}
+  .trig:hover{background:var(--surface2)}
+  .trig__k{font-family:var(--mono);font-size:9.5px;letter-spacing:1.7px;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+  .trig p{font-size:15px;line-height:1.55}
+  .trig p b{font-weight:500}
+  .trig__go{font-family:var(--mono);font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent);margin-top:10px;display:inline-block}
+  .watchrow{padding:11px 16px;border-bottom:1px solid var(--border);cursor:pointer}
+  .watchrow:last-child{border-bottom:none}
+  .watchrow:hover{background:var(--surface2)}
+  .watchrow__w{font-size:12.5px;line-height:1.45;color:var(--dim)}
+  .watchrow__w b{color:var(--text);font-weight:500}
+  .watchrow__m{font-family:var(--mono);font-size:9.5px;letter-spacing:1.1px;text-transform:uppercase;color:var(--accent);margin-top:5px}
+
+  /* ============ ORIENTATION ============ */
+  .orient{padding:15px 24px;border-bottom:1px solid var(--border);background:var(--surface2);display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+  .orient b{font-size:14.5px;font-weight:500;letter-spacing:-.2px}
+  .orient span{font-size:13px;color:var(--dim);line-height:1.5}
+  .pinned p em{font-style:normal;color:var(--text);font-weight:500}
+
+  /* ============ FIXES ============ */
+  .grid4{grid-template-columns:repeat(3,minmax(0,1fr))}
+  @media (max-width:620px){.grid4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .composer textarea{width:100%;display:block}
+  .wrow__s{width:auto;min-width:54px;display:flex;align-items:center;gap:5px;white-space:nowrap}
+  .wrow__p{margin-left:auto}
+
+  /* ============ TOGGLE ============ */
+  .tgl{display:inline-block;width:32px;height:18px;background:var(--border-strong);border-radius:999px;position:relative;cursor:pointer;transition:background .16s;flex-shrink:0;vertical-align:middle}
+  .tgl.on{background:var(--accent)}
+  .tgl i{position:absolute;top:2px;left:2px;width:14px;height:14px;background:var(--surface);border-radius:50%;transition:transform .16s}
+  .tgl.on i{transform:translateX(14px)}
+  .tglwrap{display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--dim)}
+
+  /* ============ LOOSER PASS ============ */
+  :root{ --r:10px; --rs:7px; --pill:999px; }
+  .av{border-radius:50%;width:42px;height:42px;font-size:13px}
+  .me .av,.wl__hd .av{border-radius:50%}
+  .topbar__me .av{width:34px;height:34px;font-size:11px}
+  .edu{border-radius:var(--pill);border:none;background:rgba(176,132,48,.14);padding:3px 9px;font-weight:500}
+  .edu--alum{background:var(--surface2);color:var(--dim)}
+  @media (prefers-color-scheme:dark){.edu{background:rgba(210,164,78,.16)}}
+  .tag,.chipbtn,.btn,.postbtn{border-radius:var(--pill)}
+  .btn{padding:10px 18px}
+  .postbtn{padding:9px 22px}
+  .card,.chip,.grid4,.rgrid,.searchdrop{border-radius:var(--r);overflow:hidden}
+  .chip__stamp{border-radius:0}
+  .searchbox input,.rsearch input{border-radius:var(--pill)}
+  .rsearch input{padding-left:48px}
+  .chartbox{border-radius:var(--r)}
+  .nav button{border-radius:var(--pill);border-left:none;padding:11px 15px}
+  .nav button.active{background:rgba(176,132,48,.13);color:var(--accent)}
+  @media (prefers-color-scheme:dark){.nav button.active{background:rgba(210,164,78,.14)}}
+  .me{border-radius:var(--r);padding:16px}
+  .main{border-radius:var(--r);border:1px solid var(--border);overflow:visible;margin-top:22px}
+  .viewhead{border-radius:var(--r) var(--r) 0 0;top:56px}
+  .tabs{border-radius:var(--r) var(--r) 0 0;overflow:hidden}
+  .post{padding:20px 24px;transition:background .14s}
+  .post:hover{background:var(--surface2)}
+  .post__x{font-size:15.5px;line-height:1.6}
+  .composer{padding:22px 24px}
+  .pinned{border-radius:0;padding:18px 24px}
+  .acts{margin-top:14px;gap:30px}
+  .acts button{padding:5px 10px;border-radius:var(--pill);margin-left:-10px;transition:background .14s}
+  .acts button:hover{background:rgba(176,132,48,.12)}
+  .wrow,.trow{border-radius:0;padding:11px 16px}
+  .card__h{padding:13px 16px}
+  .bigrow{padding:15px 0}
+  .stat{padding:15px 16px}
+  .rcell{padding:16px}
+  .toast{border-radius:var(--pill)}
+  .viewhead{padding:20px 24px}
+  .secthead{padding:16px 24px}
+  .tk,.wl,.rsearch{padding:24px}
+
+  @media (max-width:1080px){.shell{grid-template-columns:196px minmax(0,1fr)}.rail--r{display:none}}
+  @media (max-width:760px){
+    .shell{grid-template-columns:1fr;padding:0}
+    .rail{display:none}
+    .main{border:none}
+    .viewhead,.tabs{top:56px}
+    .mobnav{display:flex !important}
+    body{padding-bottom:56px}
+  }
+  .mobnav{display:none;position:fixed;bottom:0;left:0;right:0;height:56px;background:var(--surface);border-top:1px solid var(--border);z-index:60}
+  .mobnav button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-family:var(--mono);font-size:8.5px;letter-spacing:1px;text-transform:uppercase;color:var(--dim)}
+  .mobnav button.active{color:var(--accent)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar__in">
+    <div class="brand">
+      <svg width="24" height="24" viewBox="0 0 30 30" fill="none" aria-hidden="true">
+        <path d="M4 3h9a12 12 0 0 1 0 24H4V3z" stroke="currentColor" stroke-width="2.6" fill="none"/>
+        <path d="M7 22L25 6" stroke="var(--gold)" stroke-width="2.6" stroke-linecap="round"/>
+        <path d="M18 6h7v7" stroke="var(--gold)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Dispatch</span>
+    </div>
+    <div class="searchbox">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.6"/><path d="M11 11l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <input id="gsearch" placeholder="SEARCH TICKERS" autocomplete="off">
+      <div class="searchdrop" id="gdrop" style="display:none"></div>
+    </div>
+    <div class="topbar__me">
+      <span class="edu"><span class="edu__tick">✓</span>UNH '27</span>
+      <div class="av av--gold">EP</div>
+    </div>
+  </div>
+</div>
+
+<div class="shell">
+  <!-- LEFT RAIL -->
+  <aside class="rail">
+    <nav class="nav" id="nav">
+      <button data-v="feed" class="active">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M2 3h12M2 8h12M2 13h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Feed</button>
+      <button data-v="research">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.6"/><path d="M11 11l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Research</button>
+    </nav>
+    <div class="nav__sec">Spaces</div>
+    <nav class="nav" id="navspaces">
+      <button class="nav__sp" data-sp="unh-investment-club" onclick="go('space','unh-investment-club')">
+        <span class="nav__dot" style="background:#003591"></span>UNH Investment Club<span class="nav__new-ct">4</span></button>
+      <button class="nav__sp" data-sp="pitch-team-fall" onclick="go('space','pitch-team-fall')">
+        <span class="nav__dot" style="background:#B08430"></span>Pitch Team, Fall<span class="nav__new-ct">1</span></button>
+      <button class="nav__new" onclick="toast('Creates a space and gives you an invite link to share')">+ New space</button>
+    </nav>
+    <nav class="nav" style="margin-top:18px">
+      <button data-v="signup">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5.5" r="2.8" stroke="currentColor" stroke-width="1.5"/><path d="M2.5 14a5.5 5.5 0 0111 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Sign-up<span class="badge">DEMO</span></button>
+    </nav>
+    <div class="me" style="cursor:pointer" onclick="go('profile','elipoteet')">
+      <div style="display:flex;gap:9px;align-items:center">
+        <div class="av av--gold" style="width:32px;height:32px;font-size:11px">EP</div>
+        <div style="min-width:0">
+          <div class="me__name">Eli Poteet</div>
+          <div class="mono" style="font-size:10.5px;color:var(--dim);letter-spacing:.8px">@elipoteet</div>
+        </div>
+      </div>
+      <div class="me__stat">UNH '27 · covers Energy</div>
+      <div class="me__stat" style="margin-top:4px" id="wcount">4 public · 2 private</div>
+    </div>
+    <div class="rail__note" style="margin-top:20px">Prototype.<br>Data is illustrative.</div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main" id="main"></main>
+
+  <aside class="rail rail--r" id="rrail"></aside>
+
+</div>
+
+<div class="protonote">The Dispatch · prototype v2 · spaces, promotion, and the public feed</div>
+
+<nav class="mobnav" id="mobnav">
+  <button data-v="feed" class="active">Feed</button>
+  <button data-v="research">Research</button>
+  <button data-v="watchlists">Lists</button>
+  <button data-v="themes">Themes</button>
+</nav>
+
+<div id="scrim"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================ DATA ============================ */
+var T = {
+  NVDA:{n:'NVIDIA Corp',p:184.22,d:1.84,mc:'4.48T',pe:'52.1',ry:'+62%',gm:'74.6%',v:'41.2M',hi:'195.10',lo:'86.62',sec:'Semiconductors'},
+  AMD:{n:'Advanced Micro Devices',p:171.40,d:-0.92,mc:'277B',pe:'88.4',ry:'+24%',gm:'53.1%',v:'28.7M',hi:'187.28',lo:'76.48',sec:'Semiconductors'},
+  VST:{n:'Vistra Corp',p:158.73,d:3.41,mc:'53.8B',pe:'22.7',ry:'+18%',gm:'31.4%',v:'6.4M',hi:'168.40',lo:'62.10',sec:'Utilities'},
+  XOM:{n:'Exxon Mobil Corp',p:119.05,d:2.27,mc:'472B',pe:'14.8',ry:'+4%',gm:'23.9%',v:'14.1M',hi:'126.34',lo:'99.93',sec:'Energy'},
+  CMG:{n:'Chipotle Mexican Grill',p:47.86,d:-1.65,mc:'64.2B',pe:'41.3',ry:'+13%',gm:'26.7%',v:'19.8M',hi:'69.26',lo:'44.05',sec:'Restaurants'},
+  PLTR:{n:'Palantir Technologies',p:158.90,d:0.74,mc:'373B',pe:'214',ry:'+48%',gm:'80.2%',v:'52.3M',hi:'190.00',lo:'21.23',sec:'Software'},
+  TSM:{n:'Taiwan Semiconductor ADR',p:242.18,d:1.12,mc:'1.26T',pe:'27.9',ry:'+35%',gm:'58.6%',v:'11.9M',hi:'251.30',lo:'134.25',sec:'Semiconductors'},
+  DUOL:{n:'Duolingo Inc',p:288.40,d:-3.18,mc:'13.1B',pe:'128',ry:'+38%',gm:'72.8%',v:'2.1M',hi:'544.93',lo:'251.10',sec:'Consumer Software'},
+  CEG:{n:'Constellation Energy',p:312.55,d:2.86,mc:'98.2B',pe:'31.6',ry:'+11%',gm:'28.3%',v:'4.8M',hi:'352.00',lo:'160.60',sec:'Utilities'},
+  OXY:{n:'Occidental Petroleum',p:48.12,d:1.44,mc:'47.4B',pe:'19.2',ry:'-2%',gm:'34.1%',v:'12.6M',hi:'62.15',lo:'34.78',sec:'Energy'},
+  NKE:{n:'Nike Inc',p:71.33,d:-0.41,mc:'105B',pe:'33.8',ry:'-8%',gm:'43.2%',v:'9.7M',hi:'92.30',lo:'52.28',sec:'Apparel'},
+  DKNG:{n:'DraftKings Inc',p:39.66,d:2.03,mc:'19.8B',pe:'—',ry:'+21%',gm:'40.5%',v:'11.2M',hi:'53.61',lo:'27.50',sec:'Gaming'}
+};
+
+var POSTS = [
+  { id:1, nm:'Priya Raghunathan', h:'praghu', sc:"BENTLEY '26", beat:'Semis', t:'14m',
+    x:"New export rule drafts leaked this morning and the read on $NVDA is too clean. The China revenue line was already de-risked over four quarters. The one nobody is pricing is $TSM, because packaging capacity is the actual chokepoint and it does not move on a policy memo. #semis #china",
+    tk:'NVDA', th:['semis','china','policy'], r:12, pb:4, ty:'thesis',
+    chg:"If packaging capacity gets added faster than I think, or if the rule lands narrower than the draft, the whole argument goes away.",
+    rep:[{nm:'Marcus Webb',sc:"UNH '27",av:'MW',pb:true,x:"Packaging is the chokepoint but you are assuming the policy actually ships. The last three drafts got watered down between leak and rule. What makes this one different?"}] },
+
+  { id:2, nm:'Marcus Webb', h:'mwebb', sc:"UNH '27", beat:'Energy', t:'41m',
+    x:"Datacenter load growth is a utilities story before it is a chips story. $VST and $CEG are both trading like power is a commodity and not a constraint. If you think AI capex holds through 2027 you cannot be bullish the chip and neutral the electron. #energy #ai",
+    tk:'VST', th:['energy','ai','utilities'], r:23, pb:9, ty:'thesis', fromSpace:true,
+    chg:"A serious efficiency jump in inference, or a couple of these datacenter announcements quietly getting cancelled." },
+
+  { id:3, nm:'Dana Okonjo', h:'dokonjo', sc:"NORTHEASTERN '25", beat:'Macro', t:'1h', alum:false,
+    x:"Ten year back above 4.4 and nobody in my group chat noticed because they only look at their own tickers. This is the thing that actually reprices everything you own. Long duration growth names have been trading like rates are going down in a straight line. #rates #macro",
+    tk:null, th:['rates','macro'], r:41, pb:6, ty:'take' },
+
+  { id:4, nm:'Sam Ferrara', h:'sferrara', sc:"UMAINE '28", beat:null, t:'2h',
+    x:"Genuine question and not a pitch. $CMG is down 31% on the year and the store count story has not changed. Is the market saying the unit economics broke, or is it saying the premium fast casual consumer is done? Those are very different problems and I cannot tell which one this is.",
+    tk:'CMG', th:['consumer'], r:34, pb:2, ty:'question' },
+
+  { id:5, nm:'Jordan Alvarez', h:'jalvarez', sc:"BU '24", beat:'Geopolitics', t:'3h', alum:true,
+    x:"Reminder from someone who watched 2022: shipping disruption does not show up in the tape for about three weeks. It shows up in the freight rates first, then the input costs, then the guidance. If you are trading the headline you are already late. Watch the rates, not $XOM. #geopolitics #energy",
+    tk:'XOM', th:['geopolitics','energy','shipping'], r:29, pb:3, ty:'take' },
+
+  { id:7, nm:'Tom Brennan', h:'tbrennan', sc:"UNH '29", beat:null, t:'3h', ty:'question',
+    x:"Genuine question and I am very new to this. People keep saying $NVDA is expensive but it just keeps going up. What am I actually supposed to look at to decide whether something is overpriced, or is that not really knowable?",
+    tk:'NVDA', th:['semis'], r:11, pb:0,
+    rep:[{nm:'Priya Raghunathan',sc:"BENTLEY '26",av:'PR',pb:false,x:"Not a dumb question, it is most of the job. Price alone tells you nothing. Look at what you are paying per dollar of earnings and then ask what has to be true about future earnings to justify it. For $NVDA the multiple is not crazy, the growth assumption behind it is. That is the actual argument, and it is why people disagree."}] },
+
+  { id:8, nm:'Tom Brennan', h:'tbrennan', sc:"UNH '29", beat:null, t:'5h', ty:'take',
+    x:"Added $OXY to my watchlist. Honestly just because energy keeps coming up here and I do not know much about it yet. Going to read for a while before I post anything real about it.",
+    tk:null, th:['energy'], r:4, pb:0 },
+
+  { id:6, nm:'Katie Lin', h:'klin', sc:"UNH '26", beat:'Consumer', t:'4h',
+    x:"Spent the weekend on $DUOL user data instead of the model. DAU growth is decelerating in the two markets that carry the monetization story, and the AI feature launch has not changed the curve. The multiple assumes it does. #consumer",
+    tk:'DUOL', th:['consumer','ai'], r:18, pb:7, ty:'thesis',
+    chg:"A re-acceleration in those two markets next quarter, or evidence the AI tier is pulling paid conversion rather than just engagement." }
+];
+
+var THEMES = [
+  {t:'semis',c:284,d:'Chips, foundries, export policy'},
+  {t:'energy',c:211,d:'Power, oil, the AI load story'},
+  {t:'macro',c:196,d:'Rates, inflation, the Fed'},
+  {t:'geopolitics',c:173,d:'Conflict, trade, shipping lanes'},
+  {t:'ai',c:158,d:'Capex, adoption, who actually pays'},
+  {t:'consumer',c:104,d:'Spending, brands, the young consumer'},
+  {t:'china',c:87,d:'Policy, demand, decoupling'},
+  {t:'rates',c:79,d:'The curve and what it reprices'},
+  {t:'crypto',c:142,d:'Tokens, flows, and the macro tie-in'}
+];
+
+var TRENDING = [
+  {s:'NVDA',adds:41},{s:'VST',adds:38},{s:'CEG',adds:29},{s:'TSM',adds:24},{s:'OXY',adds:19}
+];
+
+var PEOPLE_LISTS = [
+  {nm:'Marcus Webb', h:'mwebb', sc:"UNH '27", av:'MW', list:['VST','CEG','OXY','XOM','NVDA']},
+  {nm:'Priya Raghunathan', h:'praghu', sc:"BENTLEY '26", av:'PR', list:['NVDA','TSM','AMD','PLTR']},
+  {nm:'Dana Okonjo', h:'dokonjo', sc:"NORTHEASTERN '25", av:'DO', list:['XOM','NKE','CMG']}
+];
+
+var PROFILES = {
+  elipoteet:{nm:'Eli Poteet',av:'EP',sc:"UNH '27",covers:'Energy',li:'in/elipoteet',now:null,gold:true,
+    list:[{s:'NVDA',why:'Own it to understand the whole AI capex chain, not because I have an edge on it'},
+          {s:'VST',why:'The power-scarcity thesis I keep arguing about here'},
+          {s:'PLTR',why:'Watching purely to see whether the multiple ever breaks'},
+          {s:'XOM',why:'Ballast, and it keeps me honest about the energy beat'}]},
+  praghu:{nm:'Priya Raghunathan',av:'PR',sc:"BENTLEY '26",covers:'Semis',li:'in/praghunathan',now:'Incoming SA, equity research',
+    list:[{s:'NVDA',why:'Coverage name. Everything in semis routes through it.'},
+          {s:'TSM',why:'The actual chokepoint, and the one nobody prices correctly'},
+          {s:'AMD',why:'Holding it to check my own semis thesis against a second read'}]},
+  mwebb:{nm:'Marcus Webb',av:'MW',sc:"UNH '27",covers:'Energy',li:'in/marcuswebb',now:null,
+    list:[{s:'VST',why:'Core of the power-demand argument'},
+          {s:'CEG',why:'Same thesis, cleaner balance sheet'},
+          {s:'OXY',why:'Watching whether the buyback pace holds'}]},
+  dokonjo:{nm:'Dana Okonjo',av:'DO',sc:"NORTHEASTERN '25",covers:'Macro',li:'in/danaokonjo',now:'Rates desk intern',
+    list:[{s:'XOM',why:'Cheapest way to be long an inflation surprise'},
+          {s:'CMG',why:'Consumer read. If this cracks, the soft landing story cracks.'}]},
+  jalvarez:{nm:'Jordan Alvarez',av:'JA',sc:"BU '24",covers:'Geopolitics',li:'in/jordanalvarez',now:'Analyst, commodities research',alum:true,
+    list:[{s:'XOM',why:'Been long since 2022 and still think shipping risk is underpriced'},
+          {s:'OXY',why:'The leveraged version of the same view'}]},
+  klin:{nm:'Katie Lin',av:'KL',sc:"UNH '26",covers:'Consumer',li:'in/katielin',now:null,
+    list:[{s:'DUOL',why:'Bearish, and I want to be forced to look at it every day'},
+          {s:'NKE',why:'Watching the turnaround without owning it'}]},
+  tbrennan:{nm:'Tom Brennan',av:'TB',sc:"UNH '29",covers:null,li:null,now:null,
+    list:[{s:'OXY',why:'Everyone here talks about energy so I am trying to learn it'},
+          {s:'NVDA',why:'First stock I ever bought, honestly because I had heard of it'}]},
+  sferrara:{nm:'Sam Ferrara',av:'SF',sc:"UMAINE '28",covers:null,li:'in/samferrara',now:null,
+    list:[{s:'CMG',why:'Trying to work out whether the unit economics actually broke'}]}
+};
+
+var TRIGGERS = [
+  {who:'Marcus Webb', tk:'VST', said:'a couple of these datacenter announcements quietly getting cancelled',
+   happened:'Two projects in the ERCOT queue were withdrawn this morning.', t:'2h'}
+];
+var INPLAY = [
+  {who:'Priya Raghunathan', tk:'NVDA', cond:'packaging capacity gets added faster than expected'},
+  {who:'Katie Lin', tk:'DUOL', cond:'DAU re-accelerates in the two monetizing markets'},
+  {who:'Marcus Webb', tk:'CEG', cond:'a serious efficiency jump in inference'}
+];
+var WATCH = [{s:'NVDA',pub:true},{s:'VST',pub:true},{s:'PLTR',pub:true},{s:'XOM',pub:true},{s:'CMG',pub:false},{s:'DKNG',pub:false}];
+var LIKED = {};
+var view = 'feed', ctx = null;
+
+/* ============================ HELPERS ============================ */
+function el(h){var d=document.createElement('div');d.innerHTML=h.trim();return d.firstChild;}
+function fmt(n){return n.toFixed(2);}
+function dcls(d){return d>=0?'up':'down';}
+function dtxt(d){return (d>=0?'+':'')+d.toFixed(2)+'%';}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function linkify(s){
+  return esc(s)
+    .replace(/\$([A-Z]{1,5})\b/g, function(m,sym){
+      return T[sym] ? '<a class="cash" href="#" onclick="go(\'ticker\',\''+sym+'\');return false">$'+sym+'</a>' : m;
+    })
+    .replace(/#([a-z]+)\b/g, '<a class="theme" href="#" onclick="go(\'theme\',\'$1\');return false">#$1</a>');
+}
+
+function spark(sym,w,h,strokeW){
+  var seed=0; for(var i=0;i<sym.length;i++) seed+=sym.charCodeAt(i);
+  var pts=[], v=50;
+  for(var j=0;j<40;j++){ seed=(seed*9301+49297)%233280; v+= (seed/233280-0.46)*9; v=Math.max(8,Math.min(92,v)); pts.push(v); }
+  var up = T[sym] ? T[sym].d>=0 : true;
+  var d = pts.map(function(p,i){ return (i?'L':'M')+(i/(pts.length-1)*w).toFixed(1)+' '+(h-(p/100*h)).toFixed(1); }).join(' ');
+  return '<svg width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" style="display:block;width:100%"><path d="'+d+'" fill="none" stroke="var(--'+(up?'green':'red')+')" stroke-width="'+(strokeW||1.5)+'" stroke-linejoin="round"/></svg>';
+}
+
+function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._x);t._x=setTimeout(function(){t.classList.remove('show')},1700);}
+
+function wIdx(s){for(var i=0;i<WATCH.length;i++){if(WATCH[i].s===s)return i;}return -1;}
+function inWatch(s){return wIdx(s)>-1;}
+function isPub(s){var i=wIdx(s);return i>-1&&WATCH[i].pub;}
+function pubList(){return WATCH.filter(function(w){return w.pub})}
+function toggleWatch(s){
+  var i=wIdx(s);
+  if(i>-1){WATCH.splice(i,1);toast('Removed '+s);}
+  else{WATCH.push({s:s,pub:true});toast('Added '+s+' · public');}
+  render();
+}
+function togglePriv(s,ev){
+  if(ev)ev.stopPropagation();
+  var i=wIdx(s); if(i<0)return;
+  WATCH[i].pub=!WATCH[i].pub;
+  toast(s+' is now '+(WATCH[i].pub?'public':'private'));
+  render();
+}
+var LOCK='<svg width="11" height="11" viewBox="0 0 16 16" fill="none" style="opacity:.75"><rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2" stroke="currentColor" stroke-width="1.5"/></svg>';
+function switchHTML(s){
+  var on=isPub(s);
+  return '<span class="tgl'+(on?' on':'')+'" title="'+(on?'Public':'Private')+'" onclick="togglePriv(\''+s+'\',event)"><i></i></span>';
+}
+
+function go(v,c){ view=v; ctx=c||null; window.scrollTo({top:0,behavior:'instant'}); render(); }
+
+/* ============================ COMPONENTS ============================ */
+function replyHTML(r){
+  return '<div class="reply">'+
+    '<div class="av">'+r.av+'</div>'+
+    '<div style="flex:1;min-width:0">'+
+      '<div class="post__hd" style="margin-bottom:3px">'+
+        '<span class="nm" style="font-size:13.5px">'+r.nm+'</span>'+
+        '<span class="edu"><span class="edu__tick">&#10003;</span>'+r.sc+'</span>'+
+        (r.pb?'<span class="pbtag">Pushback</span>':'')+
+      '</div>'+
+      '<div class="reply__x">'+linkify(r.x)+'</div>'+
+    '</div></div>';
+}
+
+function postHTML(p){
+  var initials = p.nm.split(' ').map(function(w){return w[0]}).join('').slice(0,2);
+  var chip = '';
+  if(p.tk && T[p.tk]){
+    var d=T[p.tk];
+    chip = '<div class="chip" onclick="go(\'ticker\',\''+p.tk+'\')">'+
+      '<div class="chip__l"><div class="chip__sym">'+p.tk+'</div><div class="chip__nm">'+d.n+'</div>'+
+      '<div class="chip__px">'+fmt(d.p)+'</div><div class="chip__d '+dcls(d.d)+'">'+dtxt(d.d)+' today</div></div>'+
+      '<div class="chip__r">'+spark(p.tk,120,52)+'</div></div>'+
+      '<div class="chip__stamp">Attached at post time &middot; '+p.t+' ago</div>';
+  }
+  var ty = (p.ty && p.ty!=='take') ? '<span class="ty ty--'+p.ty+'">'+p.ty+'</span>' : '';
+  var desk = p.fromSpace ? '<div class="deskmark">Published from a space</div>' : '';
+  var cmind = p.chg ? '<div class="cmind"><span class="cmind__k">What would change my mind</span><p>'+esc(p.chg)+'</p></div>' : '';
+  var reps = (p.rep||[]).map(replyHTML).join('');
+
+  return '<article class="post">'+
+    '<div class="av" style="cursor:pointer" onclick="go(\'profile\',\''+p.h+'\')">'+initials+'</div>'+
+    '<div class="post__b">'+
+      desk+
+      '<div class="post__hd">'+
+        '<a class="nm" href="#" onclick="go(\'profile\',\''+p.h+'\');return false">'+p.nm+'</a>'+
+        '<span class="edu'+(p.alum?' edu--alum':'')+'"><span class="edu__tick">&#10003;</span>'+p.sc+(p.alum?' ALUM':'')+'</span>'+
+        ty+
+        (p.beat?'<span class="beat">covers '+p.beat+'</span>':'')+
+        '<span class="post__t">'+p.t+'</span>'+
+      '</div>'+
+      '<div class="post__x">'+linkify(p.x)+'</div>'+
+      cmind+
+      chip+
+      '<div class="tags">'+p.th.map(function(t){return '<a class="tag" href="#" onclick="go(\''+'theme'+'\',\''+t+'\');return false">#'+t+'</a>'}).join('')+'</div>'+
+      '<div class="acts">'+
+        '<button onclick="toast(\'Replies open the thread\')"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M14 7.5c0 3-2.7 5.5-6 5.5-.9 0-1.7-.2-2.5-.5L2 14l1.2-2.8C2.4 10.2 2 8.9 2 7.5 2 4.5 4.7 2 8 2s6 2.5 6 5.5z" stroke="currentColor" stroke-width="1.4"/></svg>'+p.r+' replies</button>'+
+        '<button onclick="toast(\'Push back requires a reason. That is the point.\')"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M9.5 3L4 8l5.5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 8h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'+(p.pb||0)+' pushback</button>'+
+        '<button class="'+(LIKED[p.id]?'on':'')+'" onclick="LIKED['+p.id+']=!LIKED['+p.id+'];render()" title="No public count"><svg width="13" height="13" viewBox="0 0 16 16" fill="'+(LIKED[p.id]?'currentColor':'none')+'"><path d="M8 13.5S2 10 2 6.2A3.2 3.2 0 018 4.4a3.2 3.2 0 016 1.8C14 10 8 13.5 8 13.5z" stroke="currentColor" stroke-width="1.4"/></svg></button>'+
+      '</div>'+
+      reps+
+    '</div></article>';
+}
+
+var NETWORK = {
+  students:14, schools:4,
+  stack:['MW','PR','KL','DO','TB','JA'],
+  newest:[
+    {av:'TB', nm:'Tom Brennan', sc:"UNH '29", h:'tbrennan'},
+    {av:'SF', nm:'Sam Ferrara', sc:"UMAINE '28", h:'sferrara'},
+    {av:'DO', nm:'Dana Okonjo', sc:"NORTHEASTERN '25", h:'dokonjo'}
+  ]
+};
+
+function railHTML(){
+  var alive = '<div class="card">'+
+    '<div class="card__h"><h3>Who\'s here</h3></div>'+
+    '<div class="alive">'+
+      '<div class="alive__n"><b>'+NETWORK.students+'</b> students &middot; <b>'+NETWORK.schools+'</b> schools</div>'+
+      '<div class="alive__sub">All verified by school email</div>'+
+      '<div class="alive__stack">'+NETWORK.stack.map(function(a){return '<div class="av">'+a+'</div>'}).join('')+'</div>'+
+    '</div>'+
+    NETWORK.newest.map(function(n){
+      return '<div class="newrow" onclick="go(\'profile\',\''+n.h+'\')">'+
+        '<div class="av">'+n.av+'</div>'+
+        '<div class="newrow__n">'+n.nm+'<span class="newrow__s">'+n.sc+'</span></div></div>'}).join('')+
+  '</div>';
+
+  return alive +
+    '<div class="rail__note">Everyone here signed in with a school email.<br>No anonymous accounts.</div>';
+}
+
+/* ============================ VIEWS ============================ */
+var TYPES = {
+  take:    {lab:'Take',     ph:'What is moving, and why?',                                  min:0},
+  question:{lab:'Question', ph:'What are you trying to work out? Say what you already know.',min:0},
+  thesis:  {lab:'Thesis',   ph:'Make the argument. What is happening, why it matters, and what you are watching.', min:320},
+  link:    {lab:'Link',     ph:'Paste the link, then say why it matters. Links without a reason get skipped.', min:0}
+};
+var cType='take', cText='', cChange='';
+
+var SCAFFOLD = "What happened\n\n\nWhy it matters\n\n\nWhat I am watching from here\n";
+
+function draftSym(){ var m=(cText||'').match(/\$([A-Z]{1,5})\b/); return (m && T[m[1]]) ? m[1] : null; }
+
+function draftCardHTML(){
+  var sym=draftSym(); if(!sym) return '';
+  var d=T[sym];
+  return '<div class="draftcard">'+
+    '<div class="draftcard__h">Pulled in automatically &middot; frozen to this post</div>'+
+    '<div class="draftcard__b">'+
+      '<span class="draftcard__sym">'+sym+'</span>'+
+      '<span class="draftcard__px '+dcls(d.d)+'">'+fmt(d.p)+' <span style="font-size:11px">'+dtxt(d.d)+'</span></span>'+
+      '<span class="dstat">P/E <b>'+d.pe+'</b></span>'+
+      '<span class="dstat">Rev <b>'+d.ry+'</b></span>'+
+      '<span class="dstat">GM <b>'+d.gm+'</b></span>'+
+      '<span class="dstat">52wk <b>'+d.lo+' &ndash; '+d.hi+'</b></span>'+
+    '</div></div>';
+}
+
+function cmindHTML(){
+  if(!draftSym()) return '';
+  return '<div class="cmindfield">'+
+    '<label>What would change your mind?</label>'+
+    '<input id="cmindin" value="'+esc(cChange).replace(/"/g,'&quot;')+'" placeholder="Optional, and the most useful line in most posts." oninput="cChange=this.value">'+
+  '</div>';
+}
+
+function postReady(){
+  var min=TYPES[cType].min;
+  return cText.trim().length >= Math.max(1,min);
+}
+
+function footHint(){
+  var min=TYPES[cType].min, len=cText.trim().length;
+  if(min && len<min) return '<span class="hint">'+(min-len)+' more characters for a thesis</span>';
+  if(cType==='thesis' && len<40) return '<span class="hint">No length limit here</span>';
+  return '';
+}
+
+function onDraft(v){
+  cText=v;
+  var dc=document.getElementById('draftslot');
+  if(dc && dc.innerHTML!==draftCardHTML()+cmindHTML()){
+    var hadFocus=document.activeElement && document.activeElement.id==='cmindin';
+    dc.innerHTML=draftCardHTML()+cmindHTML();
+    if(hadFocus){var el2=document.getElementById('cmindin'); if(el2){el2.focus();el2.selectionStart=el2.value.length;}}
+  }
+  var pb=document.getElementById('postbtn'); if(pb) pb.disabled=!postReady();
+  var fh=document.getElementById('foothint'); if(fh) fh.innerHTML=footHint();
+}
+
+function setType(t){
+  cType=t;
+  if(t==='thesis' && !cText.trim()) cText=SCAFFOLD;
+  if(t!=='thesis' && cText===SCAFFOLD) cText='';
+  render();
+  var ta=document.getElementById('composer'); if(ta){ta.focus();ta.selectionStart=0;}
+}
+
+function composerHTML(){
+  return '<div class="composer">'+
+    '<div class="av av--gold">EP</div>'+
+    '<div style="flex:1;min-width:0">'+
+      '<div class="typills">'+Object.keys(TYPES).map(function(k){
+        return '<button class="typill'+(cType===k?' on':'')+'" onclick="setType(\''+k+'\')">'+TYPES[k].lab+'</button>'}).join('')+'</div>'+
+      '<textarea id="composer" placeholder="'+TYPES[cType].ph.replace(/"/g,'&quot;')+'" oninput="onDraft(this.value)" style="min-height:'+(cType==='thesis'?'132px':'54px')+'">'+esc(cText)+'</textarea>'+
+      '<div id="draftslot">'+draftCardHTML()+cmindHTML()+'</div>'+
+      '<div class="composer__foot">'+
+        '<button class="chipbtn" onclick="toast(\'Type a $TICKER and the data attaches itself\')">+ Ticker</button>'+
+        '<button class="chipbtn" onclick="toast(\'Themes are how macro and geopolitics posts find readers\')">+ Theme</button>'+
+        '<span id="foothint" style="margin-left:10px">'+footHint()+'</span>'+
+        '<button class="postbtn" id="postbtn" onclick="doPost()"'+(postReady()?'':' disabled')+'>Post</button>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+}
+
+function vFeed(){
+  return '<div class="orient">'+
+      '<b>Where finance groups do their thinking, and the best of it becomes public.</b>'+
+      '<span>College students under their real name and school. Work it out in your club space, publish what holds up.</span>'+
+    '</div>'+
+    composerHTML()+
+    POSTS.map(postHTML).join('');
+}
+
+function vTicker(sym){
+  var d=T[sym]; if(!d) return '<div class="empty">Unknown ticker</div>';
+  var rel = POSTS.filter(function(p){return p.tk===sym || p.x.indexOf('$'+sym)>-1});
+
+  return '<div class="tk" style="padding-bottom:14px">'+
+    '<div class="tk__top">'+
+      '<div><div class="tk__sym">'+sym+'</div><div class="tk__nm">'+d.n+' &middot; '+d.sec+'</div></div>'+
+      '<div class="tk__px"><b>'+fmt(d.p)+'</b><span class="'+dcls(d.d)+'">'+dtxt(d.d)+' today</span></div>'+
+    '</div>'+
+    '<div class="tk__acts">'+
+      '<button class="btn '+(inWatch(sym)?'btn--on':'')+'" onclick="toggleWatch(\''+sym+'\')">'+(inWatch(sym)?'✓ On your list':'+ Add to watchlist')+'</button>'+
+      (inWatch(sym)?'<span class="tglwrap">'+switchHTML(sym)+'<span>'+(isPub(sym)?'Public':'Private')+'</span></span>':'')+
+      '<button class="btn" onclick="toast(\'Opens the composer with this ticker attached\')">Post about '+sym+'</button>'+
+    '</div>'+
+  '</div>'+
+
+  '<div class="secthead"><h2>What the network is saying</h2><span class="c">'+rel.length+' posts</span></div>'+
+  (rel.length?rel.map(postHTML).join(''):'<div class="empty">Nobody has posted about '+sym+' yet.<br>Be first.</div>')+
+
+  '<div class="secthead"><h2>The numbers</h2><span class="c">supporting the argument</span></div>'+
+  '<div class="tk" style="padding-top:18px">'+
+    '<div class="chartbox" style="margin-top:0">'+spark(sym,600,150,2)+
+      '<div style="display:flex;justify-content:space-between;margin-top:10px;font-family:var(--mono);font-size:10px;letter-spacing:1.2px;color:var(--dim);text-transform:uppercase"><span>52wk low '+d.lo+'</span><span>1Y</span><span>52wk high '+d.hi+'</span></div>'+
+    '</div>'+
+    '<div class="grid4">'+
+      '<div class="stat"><div class="stat__k">Market cap</div><div class="stat__v">'+d.mc+'</div></div>'+
+      '<div class="stat"><div class="stat__k">P/E</div><div class="stat__v">'+d.pe+'</div></div>'+
+      '<div class="stat"><div class="stat__k">Rev growth</div><div class="stat__v">'+d.ry+'</div></div>'+
+      '<div class="stat"><div class="stat__k">Gross margin</div><div class="stat__v">'+d.gm+'</div></div>'+
+      '<div class="stat"><div class="stat__k">Avg volume</div><div class="stat__v">'+d.v+'</div></div>'+
+      '<div class="stat"><div class="stat__k">On watchlists</div><div class="stat__v">'+(TRENDING.filter(function(x){return x.s===sym})[0]||{adds:12}).adds+'</div></div>'+
+    '</div>'+
+  '</div>';
+}
+
+var SPACES = {
+  'unh-investment-club':{
+    name:'UNH Investment Club', color:'#003591', school:'UNH', owner:'elipoteet', members:14,
+    desc:'Where the pitch discussion actually lives. Logistics stay in the GroupMe.',
+    invite:'dispatchresearch.com/j/8FQ2L7', avs:['MW','KL','TB','JR','SD']},
+  'pitch-team-fall':{
+    name:'Pitch Team, Fall', color:'#B08430', school:'UNH', owner:'mwebb', members:5,
+    desc:'Five of us prepping the fall competition pitch. Working notes, not polished.',
+    invite:'dispatchresearch.com/j/K3P9WQ', avs:['MW','EP','TB']}
+};
+
+var SPACEPOSTS = [
+  { id:101, sp:'unh-investment-club', nm:'Marcus Webb', h:'mwebb', sc:"UNH '27", beat:'Energy', t:'22m', ty:'thesis',
+    x:"For the meeting Thursday: I want to pitch $VST and I think the room is going to push back on the multiple. Here is the argument. Datacenter load growth is a utilities story before it is a chips story, and the market is pricing power like a commodity rather than a constraint.",
+    tk:'VST', th:['energy','ai'], r:9, pb:3,
+    chg:"A couple of these datacenter announcements quietly getting cancelled." },
+
+  { id:102, sp:'unh-investment-club', nm:'Eli Poteet', h:'elipoteet', sc:"UNH '28", beat:'Energy', t:'1h', ty:'take',
+    x:"Reminder that whoever presents Thursday needs a bear case slide. Last semester we got taken apart on that and it was avoidable.",
+    tk:null, th:[], r:4, pb:0 },
+
+  { id:103, sp:'unh-investment-club', nm:'Tom Brennan', h:'tbrennan', sc:"UNH '29", beat:null, t:'3h', ty:'question',
+    x:"Newer here so sorry if this is obvious. When we say the multiple is stretched, are we comparing to the sector or to where the company itself has traded historically? I have seen both used in the same conversation.",
+    tk:null, th:[], r:7, pb:0,
+    rep:[{nm:'Katie Lin',sc:"UNH '26",av:'KL',pb:false,x:"Both, and people are sloppy about saying which. Against its own history tells you sentiment has changed. Against the sector tells you the market thinks this business is different. They answer different questions."}] },
+
+  { id:104, sp:'unh-investment-club', nm:'Eli Poteet', h:'elipoteet', sc:"UNH '28", beat:'Energy', t:'2d', ty:'thesis',
+    x:"Writing this up properly because it kept coming up in the chat. $XOM is not the trade if you think shipping risk is underpriced. The refiners are, and the market keeps treating the two as the same exposure.",
+    tk:'XOM', th:['energy','geopolitics'], r:6, pb:2, published:true,
+    chg:"Freight rates normalising for two straight months without a policy change behind it." },
+
+  { id:106, sp:'unh-investment-club', nm:'Eli Poteet', h:'elipoteet', sc:"UNH '28", beat:'Energy', t:'6h', ty:'take',
+    x:"Rough note before Thursday. I keep coming back to $CEG over $VST on the same thesis. Cleaner balance sheet, and the contracted revenue means you are not betting on the spot market staying kind. Someone talk me out of this.",
+    tk:'CEG', th:['energy'], r:5, pb:1 },
+
+  { id:105, sp:'pitch-team-fall', nm:'Marcus Webb', h:'mwebb', sc:"UNH '27", beat:'Energy', t:'4h', ty:'link',
+    x:"Slide deck template from last year is in the drive, but read this first. It is the clearest breakdown of the power constraint I have found and it will save you an hour.",
+    tk:null, th:['energy'], r:2, pb:0 }
+];
+
+var SU = {step:1, path:'edu', email:'', school:'', year:'', now:''};
+var SCHOOLS = ['University of New Hampshire','Bentley University','Boston University','Northeastern University','University of Maine'];
+var YEARS = [2030,2029,2028,2027,2026,2025,2024,2023,2022,2021,2020];
+var THIS_YEAR = 2026;
+function isAlum(y){ return y && Number(y) < THIS_YEAR; }
+function suSetYear(v){ SU.year=v; render(); }
+function suSet(k,v){ SU[k]=v; var b=document.getElementById('sugo'); if(b) b.disabled=!suReady(); }
+function suReady(){
+  if(SU.step===1) return /^[^@\s]+@[^@\s]+\.edu$/i.test(SU.email.trim());
+  if(SU.step===2) return SU.code && SU.code.length>=6;
+  if(SU.step===3) return !!SU.year && (SU.path==='edu' || !!SU.school);
+  return true;
+}
+function suNext(){ if(!suReady())return; SU.step++; render(); }
+function suGo(step){ SU.step=step; render(); }
+function suLinkedIn(){ SU.path='li'; SU.step=3; toast('LinkedIn returns your name and photo, nothing else'); render(); }
+function suReset(){ SU={step:1,path:'edu',email:'',school:'',year:'',now:''}; render(); }
+
+function badgePreview(verified, school, year){
+  return verified
+    ? '<span class="edu" style="font-size:12px;padding:5px 12px"><span class="edu__tick">&#10003;</span>'+school+" '"+String(year).slice(2)+(isAlum(year)?' ALUM':'')+'</span>'
+    : '<span class="edu edu--alum" style="font-size:12px;padding:5px 12px">'+school+" '"+String(year).slice(2)+(isAlum(year)?' ALUM':'')+'</span>';
+}
+
+function vSignup(){
+  var st=SU.step;
+  var bars='<div class="su__steps">'+[1,2,3,4].map(function(i){return '<div class="su__step'+(i<=st?' on':'')+'"></div>'}).join('')+'</div>';
+
+  if(st===1) return '<div class="su">'+bars+
+    '<h2>Sign in with your school email</h2>'+
+    '<p class="su__sub">Everyone on The Dispatch posts under their real name and school. That starts here.</p>'+
+    '<div class="su__f"><label>School email</label>'+
+      '<input id="suemail" type="email" placeholder="you@unh.edu" value="'+esc(SU.email)+'" oninput="suSet(\'email\',this.value)"></div>'+
+    '<button class="su__go" id="sugo" onclick="suNext()"'+(suReady()?'':' disabled')+'>Send me a code</button>'+
+    '<div class="su__alt"><p>Graduated and lost your school email?</p>'+
+      '<a class="su__li" href="#" onclick="suLinkedIn();return false">'+
+      '<svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor"><path d="M3 6h2.4v8H3V6zm1.2-4a1.4 1.4 0 110 2.8 1.4 1.4 0 010-2.8zM7 6h2.3v1.1h.03A2.5 2.5 0 0111.6 5.8c2.4 0 2.9 1.6 2.9 3.6V14h-2.4v-4.1c0-1 0-2.2-1.4-2.2s-1.6 1-1.6 2.1V14H7V6z"/></svg>'+
+      'Continue with LinkedIn</a></div>'+
+    '</div>';
+
+  if(st===2) return '<div class="su">'+bars+
+    '<h2>Check your inbox</h2>'+
+    '<p class="su__sub">We sent a six digit code to <b>'+esc(SU.email)+'</b>. Your email address is never shown to anyone and is only used to confirm your school.</p>'+
+    '<div class="su__f"><label>Verification code</label>'+
+      '<input class="mono" maxlength="6" placeholder="000000" oninput="suSet(\'code\',this.value)"></div>'+
+    '<button class="su__go" id="sugo" onclick="suNext()" disabled>Verify</button>'+
+    '<a class="su__back" href="#" onclick="suGo(1);return false">&larr; Different email</a>'+
+    '</div>';
+
+  if(st===3) return '<div class="su">'+bars+
+    '<h2>'+(SU.path==='edu'?'When do you graduate?':'Where did you go, and when?')+'</h2>'+
+    '<p class="su__sub">'+(SU.path==='edu'
+      ? 'Pick a past year if you have already graduated. Your badge changes on its own, and everything you write stays with you.'
+      : 'LinkedIn confirmed who you are. It does not confirm where you studied, so this part is your word and your badge will say so.')+'</p>'+
+    (SU.path==='li'?'<div class="su__f"><label>School</label><select onchange="suSet(\'school\',this.value)">'+
+      '<option value="">Select a school</option>'+SCHOOLS.map(function(x){return '<option'+(SU.school===x?' selected':'')+'>'+x+'</option>'}).join('')+
+      '</select></div>':'')+
+    '<div class="su__f"><label>Graduation year</label><select onchange="suSetYear(this.value)">'+
+      '<option value="">Select a year</option>'+YEARS.map(function(y){return '<option'+(String(SU.year)===String(y)?' selected':'')+'>'+y+'</option>'}).join('')+
+      '</select></div>'+
+    (isAlum(SU.year)?'<div class="su__f"><label>Now at (optional)</label>'+
+      '<input placeholder="Analyst, equity research" value="'+esc(SU.now)+'" oninput="suSet(\'now\',this.value)"></div>':'')+
+    '<button class="su__go" id="sugo" onclick="suNext()"'+(suReady()?'':' disabled')+'>Finish</button>'+
+    (SU.path==='li'?'<div class="su__note">Nobody checks a LinkedIn profile\'s school or job, including LinkedIn. So this route gets you in, and your badge shows the school as stated rather than confirmed.</div>':'')+
+    '</div>';
+
+  var verified = SU.path==='edu';
+  var school = SU.path==='edu' ? 'UNH' : (SU.school||'').split(' ').map(function(w){return w[0]}).join('').toUpperCase();
+  return '<div class="su">'+bars+
+    '<div class="su__done">'+
+      '<h2>You\'re in.</h2>'+
+      '<p class="su__sub">This is how you will appear next to everything you write.</p>'+
+      '<div class="su__badgebox">'+badgePreview(verified, school, SU.year||2027)+
+        (SU.now?'<div style="font-size:13px;color:var(--dim);margin-top:12px">Now at '+esc(SU.now)+'</div>':'')+
+      '</div>'+
+      '<div class="su__cmp">'+
+        '<div class="su__cmpcell"><h4>School email</h4>'+badgePreview(true,'UNH',2027)+
+          '<p>Checkmark. The school was confirmed by email.</p></div>'+
+        '<div class="su__cmpcell"><h4>LinkedIn</h4>'+badgePreview(false,'BU',2019)+
+          '<p>No checkmark. The school is stated, not confirmed.</p></div>'+
+      '</div>'+
+      '<div class="su__note" style="text-align:left">Both routes get you in and both let you post. The only difference is what the badge claims, because a checkmark that means two different things means nothing.</div>'+
+      '<a class="su__back" href="#" onclick="suReset();return false">&larr; Run it again</a>'+
+    '</div></div>';
+}
+
+var PROMO = {open:false, id:null, type:'thesis', pos:null, cm:''};
+function promoOpen(id){
+  var p = SPACEPOSTS.filter(function(x){return x.id===id})[0];
+  PROMO = {open:true, id:id, type:'thesis', pos:null, cm:(p&&p.chg)||''};
+  render();
+}
+function promoClose(){ PROMO.open=false; render(); }
+function promoSet(k,v){ PROMO[k]=v; render(); }
+function promoReady(){
+  var p = SPACEPOSTS.filter(function(x){return x.id===PROMO.id})[0];
+  if(!p) return false;
+  return !p.tk || !!PROMO.pos;
+}
+function promoConfirm(){
+  if(!promoReady())return;
+  var p = SPACEPOSTS.filter(function(x){return x.id===PROMO.id})[0];
+  p.published = true;
+  POSTS.unshift({id:Date.now(), nm:p.nm, h:p.h, sc:p.sc, beat:p.beat, t:'now', ty:PROMO.type,
+    x:p.x, tk:p.tk, th:p.th, r:0, pb:0, chg:PROMO.cm.trim()||null, fromSpace:true});
+  PROMO.open=false;
+  toast('Published to the feed. Replies stayed in the space.');
+  go('feed');
+}
+
+function promoModal(){
+  if(!PROMO.open) return '';
+  var p = SPACEPOSTS.filter(function(x){return x.id===PROMO.id})[0];
+  if(!p) return '';
+  var types = [['take','Take'],['question','Question'],['thesis','Thesis'],['link','Link']];
+  return '<div class="scrim" onclick="if(event.target===this)promoClose()"><div class="modal">'+
+    '<div class="modal__h">'+
+      '<div class="modal__k">Publish to the feed</div>'+
+      '<h2>This becomes public, under your name and school.</h2>'+
+      '<p>It stays in the space too. The replies and pushback here do not travel with it, so the working discussion stays private.</p>'+
+    '</div>'+
+    '<div class="modal__b">'+
+      '<div class="modal__sec"><label>What you wrote</label>'+
+        '<div class="quoted">'+esc(p.x.slice(0,220))+(p.x.length>220?'&hellip;':'')+'</div></div>'+
+
+      '<div class="modal__sec"><label>What kind of post is this?</label>'+
+        '<div class="typills" style="margin-bottom:0">'+types.map(function(t){
+          return '<button class="typill'+(PROMO.type===t[0]?' on':'')+'" onclick="promoSet(\'type\',\''+t[0]+'\')">'+t[1]+'</button>'}).join('')+
+        '</div></div>'+
+
+      (p.tk ? '<div class="modal__sec"><label>What would change your mind? &mdash; optional</label>'+
+        '<input class="modal__cm" value="'+esc(PROMO.cm).replace(/"/g,'&quot;')+'" placeholder="The most useful line in most posts that have one." oninput="PROMO.cm=this.value"></div>'+
+
+        '<div class="modal__sec"><label>Do you hold a position in $'+p.tk+'? &mdash; required</label>'+
+        '<div class="poschoice">'+
+          '<button class="'+(PROMO.pos==='owns'?'on':'')+'" onclick="promoSet(\'pos\',\'owns\')">I own this</button>'+
+          '<button class="'+(PROMO.pos==='none'?'on':'')+'" onclick="promoSet(\'pos\',\'none\')">No position</button>'+
+        '</div></div>' : '')+
+
+      '<div class="modal__note">Structure gets chosen here rather than while you were writing, because this is the moment a working note becomes a public claim.</div>'+
+    '</div>'+
+    '<div class="modal__f">'+
+      '<button class="btn" onclick="promoClose()">Cancel</button>'+
+      '<button class="su__go" style="width:auto;margin:0;padding:11px 22px" onclick="promoConfirm()"'+(promoReady()?'':' disabled')+'>Publish</button>'+
+    '</div>'+
+  '</div></div>';
+}
+
+function spacePostHTML(p){
+  var base = postHTML(p);
+  var extra = p.published
+    ? '<div class="pubmark"><svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M8 12V3m0 0L4.5 6.5M8 3l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Published to the feed &rarr;</div>'
+    : (p.h==='elipoteet'
+       ? '<button class="pubbtn" onclick="promoOpen('+p.id+')">Publish to the feed</button>'
+       : '');
+  if(!extra) return base;
+  return base.replace('</div></article>', extra + '</div></article>');
+}
+
+function vSpace(slug){
+  var sp = SPACES[slug]; if(!sp) return '<div class="empty">No such space</div>';
+  var isOwner = sp.owner==='elipoteet';
+  var posts = SPACEPOSTS.filter(function(p){return p.sp===slug});
+
+  return '<div class="sphead">'+
+    '<div class="sphead__top">'+
+      '<span class="nav__dot" style="background:'+sp.color+';width:12px;height:12px;margin-top:8px"></span>'+
+      '<div style="flex:1;min-width:0">'+
+        '<h1>'+sp.name+'</h1>'+
+        '<p class="sphead__desc">'+sp.desc+'</p>'+
+        '<div class="sphead__meta">'+
+          '<span class="lockchip">'+LOCK+' Private &middot; members only</span>'+
+          '<div class="avstack">'+sp.avs.map(function(a){return '<div class="av">'+a+'</div>'}).join('')+'</div>'+
+          '<span class="memchip">'+sp.members+' members</span>'+
+          (isOwner?'<span class="ownerchip">You own this</span>':'')+
+        '</div>'+
+        (isOwner
+          ? '<div class="invite">'+
+              '<span class="invite__k">Invite link</span>'+
+              '<span class="invite__url">'+sp.invite+'</span>'+
+              '<button class="btn" onclick="toast(\'Link copied. Drop it in the club GroupMe.\')">Copy</button>'+
+              '<button class="btn" onclick="toast(\'Old link stops working immediately\')">Regenerate</button>'+
+              '<span class="invite__hint">Anyone with a verified school email who opens this link joins the space. Regenerate it if it ends up somewhere it should not be.</span>'+
+            '</div>'
+          : '')+
+      '</div>'+
+    '</div>'+
+  '</div>'+
+  composerHTML()+
+  (posts.length? posts.map(spacePostHTML).join('') : '<div class="empty">Nothing here yet.</div>');
+}
+
+function vProfile(h){
+  var u = PROFILES[h]; if(!u) return '<div class="empty">No such profile</div>';
+  var mine = POSTS.filter(function(p){return p.h===h});
+  var isMe = h==='elipoteet';
+  var wl = isMe ? WATCH.filter(function(o){return o.pub}).map(function(o){
+        var m=(u.list||[]).filter(function(x){return x.s===o.s})[0];
+        return {s:o.s, why:m?m.why:'No reason written yet'};
+      }) : (u.list||[]);
+
+  return '<div class="pro">'+
+    '<div class="pro__top">'+
+      '<div class="av'+(u.gold?' av--gold':'')+'">'+u.av+'</div>'+
+      '<div class="pro__id">'+
+        '<div class="pro__nm">'+u.nm+'</div>'+
+        '<div class="pro__meta">'+
+          '<span class="edu'+(u.alum?' edu--alum':'')+'"><span class="edu__tick">&#10003;</span>'+u.sc+(u.alum?' ALUM':'')+'</span>'+
+          (u.covers?'<span class="beat">covers '+u.covers+'</span>':'<span class="beat">no beat yet</span>')+
+        '</div>'+
+        '<div class="pro__handle">@'+h+'</div>'+
+        (u.now?'<div class="pro__now"><span>Now at</span>'+u.now+'</div>':'')+
+        (u.li?'<div><a class="pro__li" href="#" onclick="toast(\'Opens LinkedIn in a new tab\');return false">'+
+          '<svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M3 6h2.4v8H3V6zm1.2-4a1.4 1.4 0 110 2.8 1.4 1.4 0 010-2.8zM7 6h2.3v1.1h.03A2.5 2.5 0 0111.6 5.8c2.4 0 2.9 1.6 2.9 3.6V14h-2.4v-4.1c0-1 0-2.2-1.4-2.2s-1.6 1-1.6 2.1V14H7V6z"/></svg>'+
+          'linkedin.com/'+u.li+'</a><span class="pro__self">self-reported</span></div>':'')+
+        '<div class="pro__url">dispatchresearch.com/@'+h+'</div>'+
+      '</div>'+
+    '</div>'+
+  '</div>'+
+
+  '<div class="secthead"><h2>Public watchlist</h2><span class="c">'+wl.length+' names &middot; and why</span></div>'+
+  (wl.length? '<div class="wl2">'+wl.map(function(x){
+      return '<div class="wl2__row" onclick="go(\'ticker\',\''+x.s+'\')">'+
+        '<span class="wl2__s">'+x.s+'</span><span class="wl2__why">'+esc(x.why)+'</span></div>'}).join('')+'</div>'
+    : '<div class="empty">Nothing public yet.</div>')+
+
+  '<div class="secthead"><h2>Posts</h2><span class="c">'+mine.length+'</span></div>'+
+  (mine.length? mine.map(postHTML).join('') : '<div class="empty">Nothing posted yet.</div>');
+}
+
+function vResearch(){
+  var syms=Object.keys(T);
+  return '<div class="viewhead"><h1>Research</h1><p>Look up any ticker. Everything here is also one click away from any post.</p></div>'+
+    '<div class="rsearch">'+
+      '<div class="rsearch__in">'+
+        '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.6"/><path d="M11 11l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>'+
+        '<input id="rsearchin" placeholder="TICKER OR COMPANY" autocomplete="off" oninput="filterGrid(this.value)">'+
+      '</div>'+
+      '<div class="rgrid" id="rgrid">'+syms.map(cellHTML).join('')+'</div>'+
+    '</div>';
+}
+function cellHTML(s){
+  var d=T[s];
+  return '<div class="rcell" data-s="'+s+'" data-n="'+d.n.toUpperCase()+'" onclick="go(\'ticker\',\''+s+'\')">'+
+    '<div class="rcell__s">'+s+'</div><div class="rcell__n">'+d.n+'</div>'+
+    '<div class="rcell__p">'+fmt(d.p)+'</div><div class="rcell__d '+dcls(d.d)+'">'+dtxt(d.d)+'</div></div>';
+}
+function filterGrid(q){
+  q=(q||'').toUpperCase().trim();
+  [].forEach.call(document.querySelectorAll('#rgrid .rcell'),function(c){
+    var hit = !q || c.dataset.s.indexOf(q)>-1 || c.dataset.n.indexOf(q)>-1;
+    c.style.display = hit?'':'none';
+  });
+}
+
+function vWatchlists(){
+  var mine = WATCH.map(function(o){var s=o.s,d=T[s];
+    return '<div class="bigrow" onclick="go(\'ticker\',\''+s+'\')">'+
+      '<span class="bigrow__s">'+s+'</span><span class="bigrow__n">'+d.n+'</span>'+
+      '<span class="bigrow__adds" style="display:flex;align-items:center;gap:9px">'+switchHTML(s)+
+      '<span style="width:52px;text-align:left">'+(o.pub?'Public':'Private')+'</span></span>'+
+      '<span class="bigrow__p '+dcls(d.d)+'">'+fmt(d.p)+'</span></div>'}).join('');
+  var others = PEOPLE_LISTS.map(function(p){
+    return '<div class="card" style="margin-bottom:0;border:none;border-top:1px solid var(--border)">'+
+      '<div style="padding:16px 22px 4px"><div class="wl__hd" style="margin-bottom:10px">'+
+        '<div class="av">'+p.av+'</div>'+
+        '<div><div style="font-weight:500;font-size:14px">'+p.nm+'</div>'+
+        '<div style="margin-top:3px"><span class="edu"><span class="edu__tick">✓</span>'+p.sc+'</span></div></div>'+
+        '<button class="btn" style="margin-left:auto" onclick="toast(\'Following '+p.h+'\\\'s list\')">Follow list</button>'+
+      '</div>'+
+      p.list.map(function(s){var d=T[s];
+        return '<div class="bigrow" onclick="go(\'ticker\',\''+s+'\')"><span class="bigrow__s">'+s+'</span>'+
+        '<span class="bigrow__n">'+d.n+'</span><span class="bigrow__p '+dcls(d.d)+'">'+dtxt(d.d)+'</span></div>'}).join('')+
+      '</div></div>'}).join('');
+  var agg = TRENDING.map(function(x){var d=T[x.s];
+    return '<div class="bigrow" onclick="go(\'ticker\',\''+x.s+'\')"><span class="bigrow__s">'+x.s+'</span>'+
+    '<span class="bigrow__n">'+d.n+'</span><span class="bigrow__adds">'+x.adds+' adds this week</span>'+
+    '<span class="bigrow__p '+dcls(d.d)+'">'+fmt(d.p)+'</span></div>'}).join('');
+
+  return '<div class="viewhead"><h1>Watchlists</h1><p>Public by default, private when you want it. Private names stay out of the network numbers too.</p></div>'+
+    '<div class="wl"><div class="wl__hd"><div class="av av--gold">EP</div>'+
+      '<div><div style="font-weight:500">Your list</div><div class="mono" style="font-size:10.5px;color:var(--dim);letter-spacing:1px;text-transform:uppercase">'+pubList().length+' public · '+(WATCH.length-pubList().length)+' private</div></div></div>'+
+      mine+'</div>'+
+    '<div class="secthead"><h2>What the network is adding</h2><span class="c">this week</span></div>'+
+    '<div class="wl" style="padding-top:6px">'+agg+'</div>'+
+    '<div class="secthead"><h2>Lists worth following</h2></div>'+others;
+}
+
+function vThemes(){
+  return '<div class="viewhead"><h1>Themes</h1><p>Markets do not move one ticker at a time. Follow the thing, not just the symbol.</p></div>'+
+    '<div class="wl">'+THEMES.map(function(x){
+      return '<div class="bigrow" onclick="go(\'theme\',\''+x.t+'\')">'+
+        '<span class="bigrow__s" style="width:auto;min-width:110px;color:var(--accent)">#'+x.t+'</span>'+
+        '<span class="bigrow__n">'+x.d+'</span>'+
+        '<span class="bigrow__adds">'+x.c+' posts</span></div>'}).join('')+'</div>';
+}
+
+function vTheme(t){
+  var rel = POSTS.filter(function(p){return p.th.indexOf(t)>-1});
+  var meta = THEMES.filter(function(x){return x.t===t})[0]||{d:'',c:rel.length};
+  return '<div class="viewhead"><h1 style="color:var(--accent)">#'+t+'</h1><p>'+(meta.d||'')+' · '+meta.c+' posts</p></div>'+
+    '<div style="padding:14px 22px;border-bottom:1px solid var(--border)"><button class="btn" onclick="toast(\'Following #'+t+'\')">+ Follow theme</button></div>'+
+    (rel.length?rel.map(postHTML).join(''):'<div class="empty">No posts loaded for this theme in the prototype.</div>');
+}
+
+/* ============================ RENDER ============================ */
+function render(){
+  var m=document.getElementById('main'), r=document.getElementById('rrail');
+  if(view==='feed') m.innerHTML=vFeed();
+  else if(view==='ticker') m.innerHTML=vTicker(ctx);
+  else if(view==='research') m.innerHTML=vResearch();
+  else if(view==='watchlists') m.innerHTML=vWatchlists();
+  else if(view==='themes') m.innerHTML=vThemes();
+  else if(view==='theme') m.innerHTML=vTheme(ctx);
+  else if(view==='profile') m.innerHTML=vProfile(ctx);
+  else if(view==='signup') m.innerHTML=vSignup();
+  else if(view==='space') m.innerHTML=vSpace(ctx);
+
+  var wc=document.getElementById('wcount');
+  if(wc) wc.textContent = pubList().length+' public · '+(WATCH.length-pubList().length)+' private';
+  r.innerHTML = (view==='signup') ? '' : railHTML();
+  var sc=document.getElementById('scrim'); if(sc) sc.innerHTML=promoModal();
+  var navView = (view==='ticker')?'research':(view==='theme'?'themes':((view==='profile'||view==='space')?'':view));
+  [].forEach.call(document.querySelectorAll('.nav__sp'),function(b){
+    b.classList.toggle('active', view==='space' && b.dataset.sp===ctx);
+  });
+  [].forEach.call(document.querySelectorAll('#nav button, #mobnav button'),function(b){
+    b.classList.toggle('active', b.dataset.v===navView);
+  });
+}
+
+function doPost(){
+  if(!postReady()){toast('Needs a bit more before it posts');return;}
+  POSTS.unshift({id:Date.now(),nm:'Eli Poteet',h:'elipoteet',sc:"UNH '27",beat:'Energy',t:'now',
+    x:cText.trim(), tk:draftSym(), ty:cType, chg:cChange.trim()||null, r:0, pb:0,
+    th:(cText.match(/#([a-z]+)/g)||[]).map(function(s){return s.slice(1)})});
+  cText='';cChange='';cType='take';
+  toast('Posted to the wire');
+  render();
+}
+
+[].forEach.call(document.querySelectorAll('#nav button, #mobnav button'),function(b){
+  b.onclick=function(){go(b.dataset.v)};
+});
+
+var gs=document.getElementById('gsearch'), gd=document.getElementById('gdrop');
+gs.addEventListener('input',function(){
+  var q=gs.value.toUpperCase().trim();
+  if(!q){gd.style.display='none';return;}
+  var hits=Object.keys(T).filter(function(s){return s.indexOf(q)>-1||T[s].n.toUpperCase().indexOf(q)>-1}).slice(0,7);
+  gd.innerHTML = hits.length? hits.map(function(s){return '<div onclick="gs.value=\'\';gd.style.display=\'none\';go(\'ticker\',\''+s+'\')"><b>'+s+'</b><em>'+T[s].n+'</em></div>'}).join('') : '<div><em>No match</em></div>';
+  gd.style.display='block';
+});
+gs.addEventListener('blur',function(){setTimeout(function(){gd.style.display='none'},180)});
+
+render();
+</script>
+</body>
+</html>
