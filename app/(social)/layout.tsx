@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { SocialHeader } from "@/components/social/SocialHeader";
 import type { HeaderProfile } from "@/components/social/SocialHeader";
 import { Footer } from "@/components/social/Footer";
+import { TickerTape } from "@/components/home/TickerTape";
 
 // Chrome for the new campus-social surface — /, /signup, /login,
 // /onboarding, /p/[id], /u/[handle] (public URL /@handle, see
@@ -48,6 +49,14 @@ export default async function SocialLayout({
       <SocialHeader profile={profile} />
       <main className="social-main">{children}</main>
       <Footer />
+      {/* Ambient status, not the point of the page — fixed to the viewport
+          bottom on desktop, hidden on mobile (.social-tape, app/globals.css)
+          rather than competing with the composer and browser chrome there.
+          Same 5-symbol/20-min-cached app/api/tape/route.ts recovered from
+          git history; see that file for the rate-limit history. */}
+      <div className="social-tape">
+        <TickerTape />
+      </div>
     </div>
   );
 }

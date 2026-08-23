@@ -3866,3 +3866,40 @@
 .tgl-input:checked + .tgl-track .tgl-knob {
   transform: translateX(14px);
 }
+
+/* ---------- social ticker tape ---------- */
+/* Recovered from git history (components/home/TickerTape.tsx,
+   app/api/tape/route.ts) — same component and same 5-symbol/cached-fetch
+   rate-limit fix as the old research homepage, just restyled quieter here:
+   fixed to the viewport bottom, thin, low contrast, ambient status rather
+   than the point of the page. Hidden below 640px per the brief — a fixed
+   bottom bar competes with the composer and browser chrome on a phone. */
+.social-tape {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+}
+.social-tape .ticker-tape {
+  background: var(--tape-bg);
+  color: var(--tape-text);
+  opacity: 0.78;
+  border-bottom: none;
+  border-top: 1px solid var(--rule);
+}
+.social-tape .ticker-tape-inner {
+  padding: 6px 0 6px 24px;
+  gap: 32px;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  animation-duration: 75s;
+}
+.social-tape .tt-sym {
+  color: var(--gold);
+}
+@media (max-width: 640px) {
+  .social-tape {
+    display: none;
+  }
+}
