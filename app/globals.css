@@ -3072,17 +3072,6 @@
 }
 
 /* ---------- badge (school + grad year) ---------- */
-.school-badge-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-.school-color-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
 .school-badge {
   display: inline-flex;
   align-items: center;

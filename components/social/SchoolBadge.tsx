@@ -1,11 +1,13 @@
-import { formatBadge, isAlumni } from "@/lib/social/badge";
+import { isAlumni } from "@/lib/social/badge";
 
-// The dot is deliberately a separate element from the badge pill, not a
-// recolor of it — some schools' colors will be nearly invisible against
-// either the cream or dark background, so the badge's own contrast-checked
-// styling stays untouched regardless of what color a school has. Falls
-// back to the existing gold accent when colorPrimary is null, so adding a
-// school without colors set never breaks anything.
+// The school's color tints the abbreviation and grad year themselves,
+// not a separate dot next to the badge — tried the dot first, but with
+// only one school's color live it read as decorative rather than
+// informative. Falls back to the existing gold accent when colorPrimary
+// is null, so a school with no colors set never renders unstyled text.
+// The checkmark stays the badge's own default/alum color regardless, so
+// it still reads as a distinct "verified" mark rather than part of the
+// school's own color.
 export function SchoolBadge({
   shortName,
   gradYear,
@@ -16,15 +18,14 @@ export function SchoolBadge({
   colorPrimary?: string | null;
 }) {
   const alum = isAlumni(gradYear);
+  const yearSuffix = String(gradYear).slice(-2);
+  const yearLabel = `'${yearSuffix}${alum ? " ALUM" : ""}`;
+
   return (
-    <span className="school-badge-group">
-      <span
-        className="school-color-dot"
-        style={{ backgroundColor: colorPrimary || "var(--gold)" }}
-        aria-hidden="true"
-      />
-      <span className={`school-badge${alum ? " school-badge--alum" : ""}`}>
-        {formatBadge(shortName, gradYear)}
+    <span className={`school-badge${alum ? " school-badge--alum" : ""}`}>
+      <span>✓</span>{" "}
+      <span className="school-badge-school" style={{ color: colorPrimary || "var(--gold)" }}>
+        {shortName} {yearLabel}
       </span>
     </span>
   );
