@@ -45,9 +45,11 @@
   .topbar__me{margin-left:auto;display:flex;align-items:center;gap:10px}
 
   /* ---------- LAYOUT ---------- */
-  .shell{max-width:1180px;margin:0 auto;padding:0 20px;display:grid;grid-template-columns:196px minmax(0,1fr) 258px;gap:28px;align-items:start}
-  .rail{position:sticky;top:76px;padding:22px 0}
-  .rail--r{padding-top:22px}
+  .shell{max-width:1220px;margin:0 auto;padding:0 20px;display:grid;grid-template-columns:236px minmax(0,1fr) 258px;gap:28px;align-items:start}
+  .rail{position:sticky;top:0;padding:20px 0 26px;max-height:100dvh;overflow-y:auto;display:flex;flex-direction:column}
+  .rail::-webkit-scrollbar{width:0}
+  .rail--r{padding-top:22px;display:block}
+
 
   /* ---------- NAV ---------- */
   .nav{display:flex;flex-direction:column;gap:1px}
@@ -63,10 +65,10 @@
 
   /* ---------- MAIN ---------- */
   .main{border-left:1px solid var(--border);border-right:1px solid var(--border);min-height:100vh;background:var(--surface)}
-  .viewhead{padding:16px 22px;border-bottom:1px solid var(--border);position:sticky;top:56px;background:var(--surface);z-index:20}
+  .viewhead{padding:16px 22px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:20}
   .viewhead h1{font-size:19px;font-weight:500;letter-spacing:-.4px}
   .viewhead p{font-size:12.5px;color:var(--dim);margin-top:3px}
-  .tabs{display:flex;gap:0;border-bottom:1px solid var(--border);position:sticky;top:56px;background:var(--surface);z-index:19}
+  .tabs{display:flex;gap:0;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:19}
   .tabs button{padding:12px 20px;font-size:13px;color:var(--dim);border-bottom:2px solid transparent;font-family:var(--mono);letter-spacing:1.2px;text-transform:uppercase;font-size:11px}
   .tabs button.active{color:var(--text);border-bottom-color:var(--accent)}
   .tabs button:hover{background:var(--surface2)}
@@ -258,6 +260,15 @@
   .deskrow__t{font-size:12.5px;line-height:1.4}
   .deskrow__w{font-family:var(--mono);font-size:10px;color:var(--dim);display:block;margin-top:3px}
 
+  /* ============ RAIL CHROME ============ */
+  .brand--rail{display:flex;align-items:center;gap:10px;padding:0 14px 18px;color:var(--text)}
+  .brand--rail span{font-family:var(--mono);font-size:13px;letter-spacing:3px;text-transform:uppercase}
+  .searchbox--rail{max-width:none;margin:0 0 20px}
+  .searchbox--rail input{width:100%;padding:9px 12px 9px 32px;font-size:11px}
+  .searchbox--rail svg{top:10px;left:11px}
+  .rail .me{margin-top:auto}
+  .rail__spacer{flex:1;min-height:18px}
+
   /* ============ PROOF OF LIFE RAIL ============ */
   .alive{padding:16px}
   .alive__n{font-size:26px;font-weight:300;letter-spacing:-1px;line-height:1.15}
@@ -435,8 +446,8 @@
   .nav button.active{background:rgba(176,132,48,.13);color:var(--accent)}
   @media (prefers-color-scheme:dark){.nav button.active{background:rgba(210,164,78,.14)}}
   .me{border-radius:var(--r);padding:16px}
-  .main{border-radius:var(--r);border:1px solid var(--border);overflow:visible;margin-top:22px}
-  .viewhead{border-radius:var(--r) var(--r) 0 0;top:56px}
+  .main{border-radius:var(--r);border:1px solid var(--border);overflow:visible;margin-top:20px}
+  .viewhead{border-radius:var(--r) var(--r) 0 0;top:0}
   .tabs{border-radius:var(--r) var(--r) 0 0;overflow:hidden}
   .post{padding:20px 24px;transition:background .14s}
   .post:hover{background:var(--surface2)}
@@ -456,12 +467,12 @@
   .secthead{padding:16px 24px}
   .tk,.wl,.rsearch{padding:24px}
 
-  @media (max-width:1080px){.shell{grid-template-columns:196px minmax(0,1fr)}.rail--r{display:none}}
+  @media (max-width:1080px){.shell{grid-template-columns:236px minmax(0,1fr)}.rail--r{display:none}}
   @media (max-width:760px){
     .shell{grid-template-columns:1fr;padding:0}
     .rail{display:none}
     .main{border:none}
-    .viewhead,.tabs{top:56px}
+    .viewhead,.tabs{top:0}
     .mobnav{display:flex !important}
     body{padding-bottom:56px}
   }
@@ -472,31 +483,24 @@
 </head>
 <body>
 
-<div class="topbar">
-  <div class="topbar__in">
-    <div class="brand">
-      <svg width="24" height="24" viewBox="0 0 30 30" fill="none" aria-hidden="true">
+<div class="shell">
+  <!-- LEFT RAIL -->
+  <aside class="rail">
+    <a class="brand brand--rail" href="#" onclick="go('feed');return false">
+      <svg width="26" height="26" viewBox="0 0 30 30" fill="none" aria-hidden="true">
         <path d="M4 3h9a12 12 0 0 1 0 24H4V3z" stroke="currentColor" stroke-width="2.6" fill="none"/>
         <path d="M7 22L25 6" stroke="var(--gold)" stroke-width="2.6" stroke-linecap="round"/>
         <path d="M18 6h7v7" stroke="var(--gold)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
       <span>Dispatch</span>
-    </div>
-    <div class="searchbox">
+    </a>
+
+    <div class="searchbox searchbox--rail">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.6"/><path d="M11 11l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
       <input id="gsearch" placeholder="SEARCH TICKERS" autocomplete="off">
       <div class="searchdrop" id="gdrop" style="display:none"></div>
     </div>
-    <div class="topbar__me">
-      <span class="edu"><span class="edu__tick">✓</span>UNH '27</span>
-      <div class="av av--gold">EP</div>
-    </div>
-  </div>
-</div>
 
-<div class="shell">
-  <!-- LEFT RAIL -->
-  <aside class="rail">
     <nav class="nav" id="nav">
       <button data-v="feed" class="active">
         <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M2 3h12M2 8h12M2 13h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Feed</button>
@@ -511,7 +515,8 @@
         <span class="nav__dot" style="background:#B08430"></span>Pitch Team, Fall<span class="nav__new-ct">1</span></button>
       <button class="nav__new" onclick="toast('Creates a space and gives you an invite link to share')">+ New space</button>
     </nav>
-    <nav class="nav" style="margin-top:18px">
+    <div class="rail__spacer"></div>
+    <nav class="nav">
       <button data-v="signup">
         <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5.5" r="2.8" stroke="currentColor" stroke-width="1.5"/><path d="M2.5 14a5.5 5.5 0 0111 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Sign-up<span class="badge">DEMO</span></button>
     </nav>
@@ -523,8 +528,9 @@
           <div class="mono" style="font-size:10.5px;color:var(--dim);letter-spacing:.8px">@elipoteet</div>
         </div>
       </div>
-      <div class="me__stat">UNH '27 · covers Energy</div>
-      <div class="me__stat" style="margin-top:4px" id="wcount">4 public · 2 private</div>
+      <div style="margin-top:12px"><span class="edu"><span class="edu__tick">✓</span>UNH '27</span></div>
+      <div class="me__stat" style="margin-top:9px">Covers Energy</div>
+      
     </div>
     <div class="rail__note" style="margin-top:20px">Prototype.<br>Data is illustrative.</div>
   </aside>
