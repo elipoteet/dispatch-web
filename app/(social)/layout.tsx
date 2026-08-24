@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { SocialHeader } from "@/components/social/SocialHeader";
 import type { HeaderProfile } from "@/components/social/SocialHeader";
 import { SocialNav } from "@/components/social/SocialNav";
+import { MobileNav } from "@/components/social/MobileNav";
 import { Footer } from "@/components/social/Footer";
 import { TickerTape } from "@/components/home/TickerTape";
 import { getUserSpaces } from "@/lib/social/spaces";
@@ -61,6 +62,7 @@ export default async function SocialLayout({
         <main className="social-main">{children}</main>
       </div>
       <Footer />
+      {profile && <MobileNav handle={profile.handle} />}
       {/* Ambient status, not the point of the page — fixed to the viewport
           bottom on desktop, hidden on mobile (.social-tape, app/globals.css)
           rather than competing with the composer and browser chrome there.

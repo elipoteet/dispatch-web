@@ -2976,6 +2976,21 @@
   display: flex;
   align-items: center;
   gap: 16px;
+  flex-wrap: wrap;
+}
+/* At true phone width, brand + search(already hidden ≤700px) + school
+   badge + avatar/handle + sign-out button doesn't fit in one row without
+   either overflowing (horizontal scroll — never acceptable) or wrapping
+   awkwardly mid-badge. Dropping the school badge from the header
+   specifically at this width: it's genuinely redundant here once the
+   mobile bottom nav's Profile tab exists (docs/phase-four.md Part 3) —
+   the same badge is one tap away, on the profile page itself, rather
+   than lost information. Avatar + handle + sign-out stay, since those are
+   the actual controls, not just a status display. */
+@media (max-width: 480px) {
+  .social-header-auth .school-badge {
+    display: none;
+  }
 }
 .social-header .brand-link {
   display: flex;
@@ -3348,6 +3363,7 @@
   display: flex;
   gap: 12px;
   padding: 18px 0;
+  margin-bottom: 8px;
   border-bottom: 1px solid var(--rule);
 }
 .composer-body {
@@ -3564,9 +3580,12 @@
 .reply {
   display: flex;
   gap: 10px;
-  padding: 14px 0 0 16px;
+  padding: 14px 0 16px 16px;
   border-left: 1px solid var(--rule);
   margin-left: 20px;
+}
+.reply + .reply {
+  border-top: 1px solid var(--rule);
 }
 .reply .post-body {
   font-size: 14.5px;
@@ -4591,4 +4610,112 @@
   gap: 10px;
   align-items: center;
   justify-content: flex-end;
+}
+
+/* ---------- mobile bottom nav ---------- */
+/* Replaces the left rail below 900px, the same breakpoint .social-nav
+   already hides at — mutually exclusive with it, never both, never
+   neither. Thumb-reachable per docs/phase-four.md Part 3: fixed to the
+   bottom, tall tap targets (real 44px+ height, not just visually sized
+   text), safe-area-aware for phones with a home-indicator inset. */
+.mobile-nav {
+  display: none;
+}
+@media (max-width: 900px) {
+  .mobile-nav {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 45;
+    background: var(--paper);
+    border-top: 1px solid var(--rule);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  /* Room for the fixed bottom nav so the last bit of real content is
+     never hidden behind it. */
+  .social-shell {
+    padding-bottom: 76px;
+  }
+  /* Stacked above the mobile nav rather than overlapping it — the tape's
+     own hide threshold (640px) stays exactly where it was, per the brief
+     ("stays hidden below 640px, as it is now"), so between 641-900px both
+     are visible at once and would otherwise sit on top of each other. */
+  .social-tape {
+    bottom: 52px;
+  }
+}
+.mobile-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 52px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none;
+}
+.mobile-nav-item.active {
+  color: var(--gold);
+}
+
+/* ---------- /spaces index (mobile bottom nav destination) ---------- */
+.spaces-index-list {
+  display: flex;
+  flex-direction: column;
+}
+.spaces-index-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 4px;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 14.5px;
+}
+.spaces-index-row:hover {
+  color: var(--gold);
+}
+.spaces-index-name {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---------- mobile tap targets ---------- */
+/* docs/phase-four.md Part 3: "tap targets at least 44px." Desktop keeps
+   its current, visually-tighter sizing (mouse pointers don't need this);
+   these are additive, mobile-only bumps via min-height (not a padding
+   rewrite, so nothing has to be sized twice) on the small controls that
+   get tapped most — type pills, reply/pushback/promote links, and every
+   small pill button. */
+@media (max-width: 640px) {
+  .type-pill {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .post-actions button,
+  .post-actions a {
+    min-height: 44px;
+  }
+  .social-btn,
+  .social-btn-small {
+    min-height: 44px;
+  }
+  .promote-btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .social-header-auth .theme-toggle {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
