@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getFeedPosts } from "@/lib/social/queries";
-import { PostCard } from "@/components/social/PostCard";
-import { Composer } from "@/components/social/Composer";
-import { EmptyState } from "@/components/social/EmptyState";
+import { getFeedPosts, mapAuthor } from "@/lib/social/queries";
+import type { PostAuthor } from "@/lib/social/queries";
+import { FeedClient } from "@/components/social/FeedClient";
 
 const TITLE = "The Dispatch";
 const DESCRIPTION =
@@ -31,20 +30,23 @@ export const metadata: Metadata = {
   },
 };
 
+const AUTHOR_SELECT = "id, handle, display_name, grad_year, avatar_url, school:schools ( short_name, color_primary )";
+
 export default async function FeedPage() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  let profile: { id: string; display_name: string; avatar_url: string | null } | null = null;
+  // Full PostAuthor shape, not just id/display_name/avatar_url — the
+  // optimistic post FeedClient renders needs the same author data a real
+  // fetched post would carry (handle, school badge, grad year), or the
+  // instant card would visibly downgrade and then upgrade once
+  // router.refresh() catches up, which is its own kind of layout jump.
+  let profile: PostAuthor | null = null;
   if (user) {
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, display_name, avatar_url")
-      .eq("id", user.id)
-      .maybeSingle();
-    profile = data;
+    const { data } = await supabase.from("profiles").select(AUTHOR_SELECT).eq("id", user.id).maybeSingle();
+    if (data) profile = mapAuthor(data);
   }
 
   const posts = await getFeedPosts(supabase);
@@ -60,25 +62,22 @@ export default async function FeedPage() {
       </div>
 
       {user && profile ? (
-        <Composer authorId={profile.id} authorAvatarUrl={profile.avatar_url} authorDisplayName={profile.display_name} />
+        <FeedClient initialPosts={posts} author={profile} />
       ) : user ? (
-        <div className="sign-in-prompt">
-          Almost there — <Link href="/onboarding">finish setting up your profile</Link> to post.
-        </div>
+        <>
+          <div className="sign-in-prompt">
+            Almost there — <Link href="/onboarding">finish setting up your profile</Link> to post.
+          </div>
+          <FeedClient initialPosts={posts} author={null} />
+        </>
       ) : (
-        <div className="sign-in-prompt">
-          Posting and replying require a verified school email address.{" "}
-          <Link href="/signup">Sign up</Link> or <Link href="/login">sign in</Link> to join in.
-        </div>
-      )}
-
-      {posts.length === 0 ? (
-        <EmptyState
-          headline="Nothing here yet."
-          sub="Post an argument, not just a headline — say what you think and what would change your mind."
-        />
-      ) : (
-        posts.map((post) => <PostCard key={post.id} post={post} />)
+        <>
+          <div className="sign-in-prompt">
+            Posting and replying require a verified school email address.{" "}
+            <Link href="/signup">Sign up</Link> or <Link href="/login">sign in</Link> to join in.
+          </div>
+          <FeedClient initialPosts={posts} author={null} />
+        </>
       )}
     </div>
   );

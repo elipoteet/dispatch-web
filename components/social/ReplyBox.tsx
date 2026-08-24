@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Avatar } from "./Avatar";
 import { useAutoGrowTextarea } from "@/lib/social/useAutoGrowTextarea";
+import type { PostAuthor, Reply } from "@/lib/social/queries";
 
 const PUSHBACK_MIN_LENGTH = 80;
 
@@ -11,16 +12,21 @@ const PUSHBACK_MIN_LENGTH = 80;
 // insert (unlike the main Composer) — sending the pushback/reply
 // notification email needs a secret API key that can't reach the browser,
 // so this needs a real server hop. See docs/phase-two.md.
+//
+// onOptimisticReply — see Composer.tsx's comment on the equivalent prop.
+// "A reply appears under its post immediately" (docs/phase-four.md Part
+// 2) is the literal scenario this satisfies.
 export function ReplyBox({
   postId,
-  authorAvatarUrl,
-  authorDisplayName,
+  author,
+  onOptimisticReply,
 }: {
   postId: string;
-  authorAvatarUrl: string | null;
-  authorDisplayName: string;
+  author: PostAuthor;
+  onOptimisticReply?: (reply: Reply) => void;
 }) {
   const router = useRouter();
+  const [, startTransition] = useTransition();
   const [isPushback, setIsPushback] = useState(false);
   const [body, setBody] = useState("");
   const [loading, setLoading] = useState(false);
@@ -36,28 +42,42 @@ export function ReplyBox({
     if (!canSubmit) return;
     setError(null);
     setLoading(true);
-    try {
-      const res = await fetch("/api/replies", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ postId, body: trimmed, isPushback }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data.error || "Something went wrong. Try again.");
-        return;
+
+    const optimisticReply: Reply = {
+      id: `optimistic-${crypto.randomUUID()}`,
+      body: trimmed,
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+      author,
+      isPushback,
+    };
+
+    setBody("");
+    setIsPushback(false);
+
+    startTransition(async () => {
+      try {
+        onOptimisticReply?.(optimisticReply);
+        const res = await fetch("/api/replies", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ postId, body: trimmed, isPushback }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setError(data.error || "Something went wrong. Try again.");
+          return;
+        }
+        router.refresh();
+      } finally {
+        setLoading(false);
       }
-      setBody("");
-      setIsPushback(false);
-      router.refresh();
-    } finally {
-      setLoading(false);
-    }
+    });
   }
 
   return (
     <form className="reply-box" onSubmit={handleSubmit}>
-      <Avatar avatarUrl={authorAvatarUrl} displayName={authorDisplayName} className="avatar--sm" />
+      <Avatar avatarUrl={author.avatarUrl} displayName={author.displayName} className="avatar--sm" />
       <div className="composer-body">
         <div className="type-pills">
           <button

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useModalA11y } from "@/lib/social/useModalA11y";
 import type { FeedPost } from "@/lib/social/queries";
 
 // Author-only, author-checked here too (defense in depth, same spirit as
@@ -30,6 +31,12 @@ export function PromoteAction({ post, viewerId }: { post: FeedPost; viewerId: st
   const [position, setPosition] = useState<"owns" | "none" | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Hooks called unconditionally, before the early return below — moving
+  // this after it would call a different number of hooks depending on
+  // whether the viewer is the post's author, which breaks React's Rules
+  // of Hooks the moment that prop ever actually changes.
+  const handleClose = useCallback(() => setOpen(false), []);
+  const modalRef = useModalA11y(open, handleClose);
 
   if (viewerId !== post.author.id || post.deletedAt) return null;
 
@@ -82,10 +89,10 @@ export function PromoteAction({ post, viewerId }: { post: FeedPost; viewerId: st
             if (e.target === e.currentTarget) setOpen(false);
           }}
         >
-          <div className="promote-modal">
+          <div className="promote-modal" ref={modalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="promoteModalHeading">
             <div className="promote-modal-head">
               <div className="promote-modal-kicker">Publish to the feed</div>
-              <h2>This becomes public, under your name and school.</h2>
+              <h2 id="promoteModalHeading">This becomes public, under your name and school.</h2>
               <p>
                 It stays in the space too. The replies and pushback here do not travel with it, so the working
                 discussion stays private.

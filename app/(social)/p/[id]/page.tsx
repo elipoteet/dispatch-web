@@ -2,15 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getPostById, getReplies } from "@/lib/social/queries";
+import { getPostById, getReplies, mapAuthor } from "@/lib/social/queries";
+import type { PostAuthor } from "@/lib/social/queries";
 import { PostCard } from "@/components/social/PostCard";
 import { PostActions } from "@/components/social/PostActions";
 import { PromoteAction } from "@/components/social/PromoteAction";
 import { PromotedMarker } from "@/components/social/PromotionMarker";
-import { ReplyItem } from "@/components/social/ReplyItem";
-import { ReplyActions } from "@/components/social/ReplyActions";
-import { ReplyBox } from "@/components/social/ReplyBox";
-import { EmptyState } from "@/components/social/EmptyState";
+import { ReplyListClient } from "@/components/social/ReplyListClient";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -34,6 +32,8 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   };
 }
 
+const AUTHOR_SELECT = "id, handle, display_name, grad_year, avatar_url, school:schools ( short_name, color_primary )";
+
 export default async function PostDetailPage(props: Props) {
   const { id } = await props.params;
   const supabase = await createClient();
@@ -48,14 +48,13 @@ export default async function PostDetailPage(props: Props) {
     replies,
   ] = await Promise.all([supabase.auth.getUser(), getReplies(supabase, id)]);
 
-  let profile: { id: string; display_name: string; avatar_url: string | null } | null = null;
+  // Full PostAuthor shape — see app/(social)/page.tsx's identical comment;
+  // ReplyListClient's optimistic reply needs the same complete author data
+  // a real fetched reply carries.
+  let profile: PostAuthor | null = null;
   if (user) {
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, display_name, avatar_url")
-      .eq("id", user.id)
-      .maybeSingle();
-    profile = data;
+    const { data } = await supabase.from("profiles").select(AUTHOR_SELECT).eq("id", user.id).maybeSingle();
+    if (data) profile = mapAuthor(data);
   }
 
   return (
@@ -78,39 +77,19 @@ export default async function PostDetailPage(props: Props) {
         }
       />
 
-      {user && profile ? (
-        <ReplyBox postId={post.id} authorAvatarUrl={profile.avatar_url} authorDisplayName={profile.display_name} />
-      ) : user ? (
+      {user && !profile && (
         <div className="sign-in-prompt">
           Almost there — <Link href="/onboarding">finish setting up your profile</Link> to reply.
         </div>
-      ) : (
+      )}
+      {!user && (
         <div className="sign-in-prompt">
           Replying and pushing back require a verified school email address.{" "}
           <Link href="/signup">Sign up</Link> or <Link href="/login">sign in</Link> to join in.
         </div>
       )}
 
-      <div className="reply-list">
-        {replies.length === 0 ? (
-          <EmptyState headline="No replies yet." sub="Be the first to push back." />
-        ) : (
-          replies.map((reply) => (
-            <ReplyItem
-              key={reply.id}
-              reply={reply}
-              actions={
-                <ReplyActions
-                  replyId={reply.id}
-                  authorId={reply.author.id}
-                  viewerId={user?.id}
-                  deletedAt={reply.deletedAt}
-                />
-              }
-            />
-          ))
-        )}
-      </div>
+      <ReplyListClient postId={post.id} initialReplies={replies} author={profile} viewerId={user?.id} />
     </div>
   );
 }

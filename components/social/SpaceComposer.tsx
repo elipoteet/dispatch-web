@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "./Avatar";
@@ -8,6 +8,7 @@ import { useAutoGrowTextarea } from "@/lib/social/useAutoGrowTextarea";
 import { uppercaseCashtags } from "@/lib/social/cashtags";
 import { useTickerAttach } from "@/lib/social/useTickerAttach";
 import { TickerCard } from "./TickerCard";
+import type { FeedPost, PostAuthor } from "@/lib/social/queries";
 
 // The Space composer, deliberately not the public Composer with a mode
 // flag — docs/phase-three.md is emphatic on this point: "No post types.
@@ -19,18 +20,21 @@ import { TickerCard } from "./TickerCard";
 // the brief's explicit text.) Ticker attach itself still works exactly as
 // it does publicly — same debounce, same one-fetch-per-draft, same frozen
 // snapshot — via the shared useTickerAttach hook.
+//
+// onOptimisticPost — see Composer.tsx's comment on the same prop; same
+// pattern, just always type "take" with no position, matching this
+// composer's own insert payload.
 export function SpaceComposer({
   spaceId,
-  authorId,
-  authorAvatarUrl,
-  authorDisplayName,
+  author,
+  onOptimisticPost,
 }: {
   spaceId: string;
-  authorId: string;
-  authorAvatarUrl: string | null;
-  authorDisplayName: string;
+  author: PostAuthor;
+  onOptimisticPost?: (post: FeedPost) => void;
 }) {
   const router = useRouter();
+  const [, startTransition] = useTransition();
   const [body, setBody] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +52,7 @@ export function SpaceComposer({
     const supabase = createClient();
 
     const payload: Record<string, unknown> = {
-      author_id: authorId,
+      author_id: author.id,
       space_id: spaceId,
       body: trimmedBody,
       type: "take",
@@ -64,20 +68,44 @@ export function SpaceComposer({
       // becomes required for real at promotion time.
     }
 
-    const { error } = await supabase.from("posts").insert(payload);
-    setLoading(false);
-    if (error) {
-      setError(error.message);
-      return;
-    }
+    const optimisticPost: FeedPost = {
+      id: `optimistic-${crypto.randomUUID()}`,
+      body: trimmedBody,
+      createdAt: new Date().toISOString(),
+      editedAt: null,
+      deletedAt: null,
+      author,
+      replyCount: 0,
+      pushbackCount: 0,
+      type: "take",
+      ticker: snapshot?.symbol ?? null,
+      tickerSnapshot: snapshot,
+      position: null,
+      changeMyMind: null,
+      linkUrl: null,
+      spaceId,
+      promotedFrom: null,
+      promotedToId: null,
+    };
+
     setBody("");
     resetTicker();
-    router.refresh();
+
+    startTransition(async () => {
+      onOptimisticPost?.(optimisticPost);
+      const { error } = await supabase.from("posts").insert(payload);
+      setLoading(false);
+      if (error) {
+        setError(error.message);
+        return;
+      }
+      router.refresh();
+    });
   }
 
   return (
     <form className="composer" onSubmit={handleSubmit}>
-      <Avatar avatarUrl={authorAvatarUrl} displayName={authorDisplayName} />
+      <Avatar avatarUrl={author.avatarUrl} displayName={author.displayName} />
       <div className="composer-body">
         <textarea
           ref={textareaRef}

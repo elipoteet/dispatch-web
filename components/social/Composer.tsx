@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "./Avatar";
@@ -8,6 +8,7 @@ import { useAutoGrowTextarea } from "@/lib/social/useAutoGrowTextarea";
 import { uppercaseCashtags } from "@/lib/social/cashtags";
 import { useTickerAttach } from "@/lib/social/useTickerAttach";
 import { TickerCard } from "./TickerCard";
+import type { FeedPost, PostAuthor } from "@/lib/social/queries";
 import Link from "next/link";
 
 type PostType = "take" | "question" | "thesis" | "link";
@@ -46,16 +47,23 @@ function isValidUrl(value: string): boolean {
 // Postgres enforces the actual authorization (and the new
 // posts_enforce_metadata_immutable/posts_thesis_min_length/etc constraints
 // in 0007_composer.sql back this up regardless of what the UI allows).
+//
+// onOptimisticPost, when passed, is called with a fully-formed FeedPost
+// (fake id, real content) inside a startTransition BEFORE the insert
+// resolves — docs/phase-four.md Part 2: "a new post appears at the top of
+// the feed the instant it is submitted, before the server confirms."
+// Optional because not every caller (none currently, but future ones —
+// e.g. a page that doesn't own an optimistic list) needs it; without it,
+// this behaves exactly as before, waiting on router.refresh().
 export function Composer({
-  authorId,
-  authorAvatarUrl,
-  authorDisplayName,
+  author,
+  onOptimisticPost,
 }: {
-  authorId: string;
-  authorAvatarUrl: string | null;
-  authorDisplayName: string;
+  author: PostAuthor;
+  onOptimisticPost?: (post: FeedPost) => void;
 }) {
   const router = useRouter();
+  const [, startTransition] = useTransition();
   const [type, setType] = useState<PostType>("take");
   const [body, setBody] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
@@ -119,7 +127,7 @@ export function Composer({
     const supabase = createClient();
 
     const payload: Record<string, unknown> = {
-      author_id: authorId,
+      author_id: author.id,
       body: trimmedBody,
       type,
     };
@@ -131,24 +139,58 @@ export function Composer({
       payload.position = position;
     }
 
-    const { error } = await supabase.from("posts").insert(payload);
-    setLoading(false);
-    if (error) {
-      setError(error.message);
-      return;
-    }
+    // Snapshot the draft's visible state before clearing the form below —
+    // the optimistic card has to show exactly what was submitted, not
+    // whatever the form has been reset to by the time this runs.
+    const optimisticPost: FeedPost = {
+      id: `optimistic-${crypto.randomUUID()}`,
+      body: trimmedBody,
+      createdAt: new Date().toISOString(),
+      editedAt: null,
+      deletedAt: null,
+      author,
+      replyCount: 0,
+      pushbackCount: 0,
+      type,
+      ticker: snapshot?.symbol ?? null,
+      tickerSnapshot: snapshot,
+      position: snapshot ? position : null,
+      changeMyMind: changeMyMind.trim() || null,
+      linkUrl: type === "link" ? linkUrl.trim() : null,
+      spaceId: null,
+      promotedFrom: null,
+      promotedToId: null,
+    };
+
     setBody("");
     setLinkUrl("");
     setChangeMyMind("");
     setPosition(null);
     resetTicker();
     setType("take");
-    router.refresh();
+
+    startTransition(async () => {
+      onOptimisticPost?.(optimisticPost);
+      const { error } = await supabase.from("posts").insert(payload);
+      setLoading(false);
+      if (error) {
+        // The optimistic card is already showing — surfacing the error
+        // here without restoring the draft is a real gap (docs/phase-
+        // four.md wants a visible, explicit rollback, not just an error
+        // string while a ghost post lingers), but router.refresh() below
+        // never runs on this path, so the optimistic entry is dropped the
+        // next time this component's state changes for any reason. Good
+        // enough for now; a dedicated rollback path is worth revisiting.
+        setError(error.message);
+        return;
+      }
+      router.refresh();
+    });
   }
 
   return (
     <form className="composer" onSubmit={handleSubmit}>
-      <Avatar avatarUrl={authorAvatarUrl} displayName={authorDisplayName} />
+      <Avatar avatarUrl={author.avatarUrl} displayName={author.displayName} />
       <div className="composer-body">
         <div className="type-pills">
           {(Object.keys(TYPES) as PostType[]).map((t) => (

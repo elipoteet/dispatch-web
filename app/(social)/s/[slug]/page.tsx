@@ -3,14 +3,10 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSpaceBySlug, getSpaceMembers, getOwnerInviteToken, getSpacePosts } from "@/lib/social/spaces";
-import { PostCard } from "@/components/social/PostCard";
-import { SpaceComposer } from "@/components/social/SpaceComposer";
+import { SpaceFeedClient } from "@/components/social/SpaceFeedClient";
 import { SpaceInvitePanel } from "@/components/social/SpaceInvitePanel";
 import { SpaceManage } from "@/components/social/SpaceManage";
-import { PromoteAction } from "@/components/social/PromoteAction";
-import { PromotedMarker } from "@/components/social/PromotionMarker";
 import { Avatar } from "@/components/social/Avatar";
-import { EmptyState } from "@/components/social/EmptyState";
 
 // Deliberately NOT the same NEXT_PUBLIC_SITE_URL pattern
 // app/api/replies/route.ts uses for notification-email links — those are
@@ -64,17 +60,21 @@ export default async function SpacePage(props: Props) {
 
   const isOwner = user.id === space.ownerId;
 
-  const [members, posts, profileResult] = await Promise.all([
+  const [members, posts] = await Promise.all([
     getSpaceMembers(supabase, space.id),
     getSpacePosts(supabase, space.id),
-    supabase.from("profiles").select("id, display_name, avatar_url").eq("id", user.id).maybeSingle(),
     // Fire-and-forget-ish: marks this visit as "seen" for the nav's quiet
     // unread count. Awaited alongside the rest so the request settles
     // before the response streams, but its result isn't used.
     supabase.rpc("touch_space_last_seen", { p_space_id: space.id }),
   ]);
 
-  const profile = profileResult.data as { id: string; display_name: string; avatar_url: string | null } | null;
+  // The viewer's own full PostAuthor-shaped row is already in `members`
+  // (they have to be a member to see this page at all) — reusing it
+  // instead of a second, narrower profiles query, and it gives
+  // SpaceFeedClient's optimistic post the same complete author data a
+  // real fetched post would carry.
+  const author = members.find((m) => m.id === user.id) ?? null;
   const inviteToken = isOwner ? await getOwnerInviteToken(supabase, space.id) : null;
   const inviteUrl = inviteToken ? `${await getSiteOrigin()}/j/${inviteToken}` : null;
 
@@ -113,32 +113,7 @@ export default async function SpacePage(props: Props) {
         </div>
       </div>
 
-      {profile && (
-        <SpaceComposer
-          spaceId={space.id}
-          authorId={profile.id}
-          authorAvatarUrl={profile.avatar_url}
-          authorDisplayName={profile.display_name}
-        />
-      )}
-
-      {posts.length === 0 ? (
-        <EmptyState headline="Nothing here yet." sub="Post a working note — no types, no scaffold, just the argument." />
-      ) : (
-        posts.map((post) => (
-          <PostCard
-            key={post.id}
-            post={post}
-            actions={
-              post.promotedToId ? (
-                <PromotedMarker publicPostId={post.promotedToId} />
-              ) : (
-                <PromoteAction post={post} viewerId={user.id} />
-              )
-            }
-          />
-        ))
-      )}
+      <SpaceFeedClient spaceId={space.id} initialPosts={posts} author={author} viewerId={user.id} />
     </div>
   );
 }
