@@ -79,7 +79,7 @@ export default async function SpacePage(props: Props) {
   const inviteUrl = inviteToken ? `${await getSiteOrigin()}/j/${inviteToken}` : null;
 
   return (
-    <>
+    <div className="social-content-card">
       <div className="space-head">
         <div className="space-head-top">
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -139,6 +139,6 @@ export default async function SpacePage(props: Props) {
           />
         ))
       )}
-    </>
+    </div>
   );
 }

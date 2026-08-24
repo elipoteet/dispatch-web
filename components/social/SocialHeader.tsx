@@ -8,6 +8,7 @@ import { Logo } from "@/components/layout/Logo";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { SchoolBadge } from "./SchoolBadge";
 import { Avatar } from "./Avatar";
+import { TickerSearchBar } from "./TickerSearchBar";
 
 export type HeaderProfile = {
   handle: string;
@@ -35,6 +36,7 @@ export function SocialHeader({ profile }: { profile: HeaderProfile | null }) {
           <Logo size={26} />
           <span className="brand-word">Dispatch</span>
         </Link>
+        <TickerSearchBar />
         <div className="social-header-auth">
           <ThemeToggle />
           {user && profile ? (

@@ -57,7 +57,7 @@ export default async function SocialLayout({
     <div className="social">
       <SocialHeader profile={profile} />
       <div className="social-shell">
-        <SocialNav spaces={spaces} canCreateSpace={Boolean(profile)} />
+        <SocialNav spaces={spaces} canCreateSpace={Boolean(profile)} profile={profile} />
         <main className="social-main">{children}</main>
       </div>
       <Footer />

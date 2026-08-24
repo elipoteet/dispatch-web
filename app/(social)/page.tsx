@@ -50,7 +50,7 @@ export default async function FeedPage() {
   const posts = await getFeedPosts(supabase);
 
   return (
-    <>
+    <div className="social-content-card">
       <div className="social-orientation">
         <p>Make an argument. Say what would change your mind. Let people push back.</p>
         <p>
@@ -80,6 +80,6 @@ export default async function FeedPage() {
       ) : (
         posts.map((post) => <PostCard key={post.id} post={post} />)
       )}
-    </>
+    </div>
   );
 }

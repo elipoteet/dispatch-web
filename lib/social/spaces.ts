@@ -132,6 +132,9 @@ export async function getUserSpaces(supabase: SupabaseClient, profileId: string)
   });
 }
 
+// Same flat-limit-not-a-cursor caveat as getFeedPosts/getPostsByAuthor in
+// lib/social/queries.ts — a Space with more than `limit` posts silently
+// loses whatever's past the cutoff, not paginates to it.
 export async function getSpacePosts(supabase: SupabaseClient, spaceId: string, limit = 50): Promise<FeedPost[]> {
   const { data, error } = await supabase
     .from("posts")

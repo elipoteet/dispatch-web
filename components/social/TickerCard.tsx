@@ -8,13 +8,20 @@ function formatPrice(n: number): string {
 // PostCard (the frozen ticker_snapshot JSON read back off a published
 // post) — same shape, same component, per docs/phase-two.md's plan: the
 // card is "labelled as pulled in automatically and frozen to this post"
-// (docs/product-spec.md) either way.
+// (docs/product-spec.md) either way. The prototype splits this into two
+// different labels for two different moments — a header kicker on the
+// composer's live draft card, a footer stamp with different wording
+// ("attached at post time") on a published post's card — kept as one
+// component with one label here (arguably more honest, since it's
+// equally true in both places), just moved to the top to match the
+// prototype's placement, which has no real-reason argument against it.
 export function TickerCard({ snapshot }: { snapshot: TickerSnapshot }) {
   const isUp = snapshot.dayChangePct >= 0;
   const hasRange = snapshot.weekLow52 != null && snapshot.weekHigh52 != null;
 
   return (
     <div className="ticker-card">
+      <div className="ticker-card-stamp">Pulled in automatically, frozen to this post</div>
       <div className="ticker-card-main">
         <div className="ticker-card-id">
           <span className="ticker-card-symbol">{snapshot.symbol}</span>
@@ -56,7 +63,6 @@ export function TickerCard({ snapshot }: { snapshot: TickerSnapshot }) {
           </div>
         )}
       </div>
-      <div className="ticker-card-stamp">Pulled in automatically, frozen to this post</div>
     </div>
   );
 }

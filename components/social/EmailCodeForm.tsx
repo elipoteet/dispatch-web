@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { AuthSteps } from "./AuthSteps";
 
 type Step = "email" | "code";
 
@@ -95,6 +96,7 @@ export function EmailCodeForm({ mode, inviteToken }: { mode: "signup" | "login";
   return (
     <div className="social-auth-wrap">
       <div className="social-auth-card">
+        {mode === "signup" && <AuthSteps current={1} />}
         <h1>{copy.heading}</h1>
         <p className="sub">{copy.sub}</p>
 

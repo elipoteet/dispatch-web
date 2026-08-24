@@ -3,6 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { SpaceNavItem } from "@/lib/social/spaces";
+import { Avatar } from "./Avatar";
+
+export type NavProfile = {
+  handle: string;
+  displayName: string;
+  schoolShortName: string;
+  gradYear: number;
+  avatarUrl: string | null;
+};
 
 // Deterministic per-space color, hashed from the space's id — there's no
 // stored color column for Spaces (unlike schools' color_primary), so this
@@ -19,9 +28,11 @@ function spaceColor(id: string): string {
 export function SocialNav({
   spaces,
   canCreateSpace,
+  profile,
 }: {
   spaces: SpaceNavItem[];
   canCreateSpace: boolean;
+  profile: NavProfile | null;
 }) {
   const pathname = usePathname();
 
@@ -51,6 +62,24 @@ export function SocialNav({
             + New space
           </Link>
         </>
+      )}
+
+      {/* Matches the prototype's .me box — under Spaces, not above it,
+          per your placement. "Covers X" (a beat) is left out: beats are
+          part of the deferred Themes work (product-spec.md's Deferred
+          list), so there's no real data to show there yet — school and
+          class year are what's actually real. */}
+      {profile && (
+        <Link href={`/@${profile.handle}`} className="nav-me">
+          <Avatar avatarUrl={profile.avatarUrl} displayName={profile.displayName} className="avatar--sm" />
+          <div className="nav-me-id">
+            <div className="nav-me-name">{profile.displayName}</div>
+            <div className="nav-me-handle">@{profile.handle}</div>
+            <div className="nav-me-stat">
+              {profile.schoolShortName} &rsquo;{String(profile.gradYear).slice(-2)}
+            </div>
+          </div>
+        </Link>
       )}
     </nav>
   );

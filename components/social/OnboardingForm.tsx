@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { validateHandle } from "@/lib/social/handle";
+import { AuthSteps } from "./AuthSteps";
 
 const CURRENT_YEAR = new Date().getFullYear();
 // Past years (alumni) through a few years out — "a list including past
@@ -86,6 +87,7 @@ export function OnboardingForm({
   return (
     <div className="social-auth-wrap">
       <div className="social-auth-card">
+        <AuthSteps current={2} />
         <h1>Set up your profile.</h1>
         <p className="sub">Handle, display name, and graduation year — then you&rsquo;re in.</p>
 

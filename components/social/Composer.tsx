@@ -182,6 +182,12 @@ export function Composer({
           rows={type === "thesis" ? 6 : 3}
         />
 
+        {!trimmedBody && !snapshot && (
+          <div className="composer-ticker-hint">
+            Type a $TICKER, like $AAPL, and its data attaches to the post automatically.
+          </div>
+        )}
+
         {snapshotLoading && !snapshot && <div className="ticker-card-loading">Looking up ticker…</div>}
 
         {snapshot && (

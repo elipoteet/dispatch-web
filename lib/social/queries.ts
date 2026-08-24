@@ -204,15 +204,16 @@ export async function getPromotedToIds(
 // one — a flat cap is enough for the first slice.
 export const EMPTY_COUNTS: Counts = { replyCount: 0, pushbackCount: 0 };
 
-// The public feed — space_id is filtered here, explicitly, rather than
-// left to RLS. RLS decides who is *authorized* to read a row; a Space
-// member is authorized to read their own Space's posts, so if this just
-// selected everything RLS lets through, that member's own private Space
-// posts would leak straight into the public feed for that member (and
-// only that member — the signed-out/non-member case would look fine,
-// which is exactly what makes this the easiest version of the bug to
-// miss). This filter is what actually makes space_id null mean "the
-// public feed."
+// KNOWN LIMITATION, not just an unbuilt feature: this is a flat LIMIT, not
+// a cursor. Once a feed/profile/Space genuinely has more than `limit`
+// rows, whatever's past the cutoff isn't paginated to — it's just gone
+// from what any reader can reach, silently, with no "load more" and no
+// error. Fine while every surface in this app has far fewer posts than
+// the cap; worth fixing for real (a created_at/id cursor, per
+// docs/phase-four.md Part 2's "pagination that does not jump") before any
+// single feed/Space/profile plausibly crosses it — flagging here so it's
+// a known, chosen limit rather than something a club discovers the day
+// their 51st post quietly stops existing for readers.
 export async function getFeedPosts(supabase: SupabaseClient, limit = 50): Promise<FeedPost[]> {
   const { data, error } = await supabase
     .from("posts")
@@ -233,6 +234,7 @@ export async function getFeedPosts(supabase: SupabaseClient, limit = 50): Promis
 // A profile's public post list — same space_id filter as getFeedPosts and
 // for the same reason: docs/product-spec.md describes the profile as
 // showing "every public post they have written," not their Space posts.
+// Same flat-limit-not-a-cursor caveat as getFeedPosts above.
 export async function getPostsByAuthor(
   supabase: SupabaseClient,
   authorId: string,

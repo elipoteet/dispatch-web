@@ -59,7 +59,7 @@ export default async function PostDetailPage(props: Props) {
   }
 
   return (
-    <>
+    <div className="social-content-card">
       <PostCard
         post={post}
         actions={
@@ -111,6 +111,6 @@ export default async function PostDetailPage(props: Props) {
           ))
         )}
       </div>
-    </>
+    </div>
   );
 }

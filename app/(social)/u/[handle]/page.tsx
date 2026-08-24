@@ -60,7 +60,7 @@ export default async function ProfilePage(props: Props) {
   }
 
   return (
-    <>
+    <div className="social-content-card">
       <div className="profile-head">
         {isOwnProfile ? (
           <AvatarUpload profileId={profile.id} displayName={profile.displayName} avatarUrl={profile.avatarUrl} />
@@ -77,6 +77,12 @@ export default async function ProfilePage(props: Props) {
               colorPrimary={profile.schoolColorPrimary}
             />
           </div>
+          {/* The profile's shareable URL, spelled out — product-spec.md
+              calls this out explicitly ("a shareable URL at
+              dispatchresearch.com/@handle") as part of what makes a
+              profile valuable outside the app, not just inside it. Plain
+              text, not a link to itself. */}
+          <div className="profile-url-chip">dispatchresearch.com/@{profile.handle}</div>
         </div>
       </div>
 
@@ -87,6 +93,6 @@ export default async function ProfilePage(props: Props) {
       ) : (
         posts.map((post) => <PostCard key={post.id} post={post} />)
       )}
-    </>
+    </div>
   );
 }
