@@ -19,18 +19,25 @@ import type { FeedPost, Reply } from "./queries";
 // fails, the caller never lets that refresh happen, so the optimistic
 // entry needs to be explicitly reverted — see each composer's own
 // try/catch.
+// Only "add" — editing/deleting an existing post (PostActions) only ever
+// happens on /p/[id], one post at a time, not inside a list, so that path
+// goes through PostDetailClient's own inline useOptimistic instead of
+// this hook.
 export function useOptimisticFeed(initialPosts: FeedPost[]) {
-  return useOptimistic(initialPosts, (state: FeedPost[], action: { type: "add" | "remove"; post?: FeedPost; id?: string }) => {
-    if (action.type === "add" && action.post) return [action.post, ...state];
-    if (action.type === "remove" && action.id) return state.filter((p) => p.id !== action.id);
+  return useOptimistic(initialPosts, (state: FeedPost[], action: { type: "add"; post: FeedPost }) => {
+    if (action.type === "add") return [action.post, ...state];
     return state;
   });
 }
 
+export type ReplyAction =
+  | { type: "add"; reply: Reply }
+  | { type: "update"; id: string; patch: Partial<Reply> };
+
 export function useOptimisticReplies(initialReplies: Reply[]) {
-  return useOptimistic(initialReplies, (state: Reply[], action: { type: "add" | "remove"; reply?: Reply; id?: string }) => {
-    if (action.type === "add" && action.reply) return [...state, action.reply];
-    if (action.type === "remove" && action.id) return state.filter((r) => r.id !== action.id);
+  return useOptimistic(initialReplies, (state: Reply[], action: ReplyAction) => {
+    if (action.type === "add") return [...state, action.reply];
+    if (action.type === "update") return state.map((r) => (r.id === action.id ? { ...r, ...action.patch } : r));
     return state;
   });
 }

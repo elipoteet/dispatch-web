@@ -32,8 +32,20 @@ export function AvatarUpload({
 
     setError(null);
     setLoading(true);
+    const previousUrl = currentUrl;
+    // Resize/upload/update-row is a real multi-second round trip (client
+    // resize, then a network upload, then a DB write) — without a local
+    // preview, "Uploading…" was the only feedback for the whole span. A
+    // blob URL of the already-resized image shows the real, final-shaped
+    // result immediately; only the CDN URL underneath it is still
+    // catching up. Reverted to the previous avatar (or cleared) on any
+    // failure, same as every other optimistic update in this app.
+    let previewUrl: string | null = null;
     try {
       const blob = await resizeImageToSquareWebp(file);
+      previewUrl = URL.createObjectURL(blob);
+      setCurrentUrl(previewUrl);
+
       const supabase = createClient();
       // Same path every time — overwritten in place, per the brief, so old
       // versions never accumulate in the bucket.
@@ -43,6 +55,7 @@ export function AvatarUpload({
         .upload(path, blob, { upsert: true, contentType: "image/webp", cacheControl: "3600" });
       if (uploadError) {
         setError(uploadError.message);
+        setCurrentUrl(previousUrl);
         return;
       }
 
@@ -58,17 +71,20 @@ export function AvatarUpload({
         .eq("id", profileId);
       if (updateError) {
         setError(updateError.message);
+        setCurrentUrl(previousUrl);
         return;
       }
       setCurrentUrl(bustedUrl);
       router.refresh();
     } catch (err) {
+      setCurrentUrl(previousUrl);
       setError(
         err instanceof ImageTooLargeError
           ? err.message
           : "Something went wrong processing that image. Try a different one.",
       );
     } finally {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
       setLoading(false);
     }
   }
@@ -76,6 +92,8 @@ export function AvatarUpload({
   async function handleRemove() {
     setError(null);
     setLoading(true);
+    const previousUrl = currentUrl;
+    setCurrentUrl(null);
     const supabase = createClient();
     await supabase.storage.from("avatars").remove([`${profileId}/avatar.webp`]);
     const { error: updateError } = await supabase
@@ -85,9 +103,9 @@ export function AvatarUpload({
     setLoading(false);
     if (updateError) {
       setError(updateError.message);
+      setCurrentUrl(previousUrl);
       return;
     }
-    setCurrentUrl(null);
     router.refresh();
   }
 

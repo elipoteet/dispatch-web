@@ -45,6 +45,7 @@ export function ReplyListClient({
                     authorId={reply.author.id}
                     viewerId={viewerId}
                     deletedAt={reply.deletedAt}
+                    onOptimisticDelete={(id, deletedAt) => dispatch({ type: "update", id, patch: { deletedAt } })}
                   />
                 )
               }

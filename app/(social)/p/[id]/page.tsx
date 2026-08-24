@@ -4,10 +4,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getPostById, getReplies, mapAuthor } from "@/lib/social/queries";
 import type { PostAuthor } from "@/lib/social/queries";
-import { PostCard } from "@/components/social/PostCard";
-import { PostActions } from "@/components/social/PostActions";
-import { PromoteAction } from "@/components/social/PromoteAction";
-import { PromotedMarker } from "@/components/social/PromotionMarker";
+import { PostDetailClient } from "@/components/social/PostDetailClient";
 import { ReplyListClient } from "@/components/social/ReplyListClient";
 
 type Props = { params: Promise<{ id: string }> };
@@ -59,23 +56,7 @@ export default async function PostDetailPage(props: Props) {
 
   return (
     <div className="social-content-card">
-      <PostCard
-        post={post}
-        actions={
-          <>
-            {post.spaceId && post.promotedToId && <PromotedMarker publicPostId={post.promotedToId} />}
-            {post.spaceId && !post.promotedToId && <PromoteAction post={post} viewerId={user?.id} />}
-            <PostActions
-              postId={post.id}
-              authorId={post.author.id}
-              viewerId={user?.id}
-              body={post.body}
-              createdAt={post.createdAt}
-              deletedAt={post.deletedAt}
-            />
-          </>
-        }
-      />
+      <PostDetailClient initialPost={post} viewerId={user?.id} />
 
       {user && !profile && (
         <div className="sign-in-prompt">
