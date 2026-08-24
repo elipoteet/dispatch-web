@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSpaceBySlug, getSpaceMembers, getOwnerInviteToken, getSpacePosts } from "@/lib/social/spaces";
@@ -11,7 +12,24 @@ import { PromotedMarker } from "@/components/social/PromotionMarker";
 import { Avatar } from "@/components/social/Avatar";
 import { EmptyState } from "@/components/social/EmptyState";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.dispatchresearch.com";
+// Deliberately NOT the same NEXT_PUBLIC_SITE_URL pattern
+// app/api/replies/route.ts uses for notification-email links — those are
+// opened from a phone or another machine entirely, so they need to point
+// at the real domain regardless of where the code is running. An invite
+// link is the opposite: it's meant to be copied and pasted right back
+// into the same browser you're testing in, so it needs to reflect
+// whatever origin actually served this request (localhost while
+// developing, the real domain in production) rather than a static env
+// var that's deliberately pinned to production even in .env.local.
+async function getSiteOrigin(): Promise<string> {
+  const h = await headers();
+  const host = h.get("host");
+  if (host) {
+    const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+    return `${proto}://${host}`;
+  }
+  return process.env.NEXT_PUBLIC_SITE_URL || "https://www.dispatchresearch.com";
+}
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -58,6 +76,7 @@ export default async function SpacePage(props: Props) {
 
   const profile = profileResult.data as { id: string; display_name: string; avatar_url: string | null } | null;
   const inviteToken = isOwner ? await getOwnerInviteToken(supabase, space.id) : null;
+  const inviteUrl = inviteToken ? `${await getSiteOrigin()}/j/${inviteToken}` : null;
 
   return (
     <>
@@ -79,9 +98,7 @@ export default async function SpacePage(props: Props) {
               {isOwner && <span className="space-owner-chip">You own this</span>}
             </div>
 
-            {isOwner && inviteToken && (
-              <SpaceInvitePanel spaceId={space.id} inviteUrl={`${SITE_URL}/j/${inviteToken}`} />
-            )}
+            {isOwner && inviteUrl && <SpaceInvitePanel spaceId={space.id} inviteUrl={inviteUrl} />}
 
             {isOwner && (
               <SpaceManage
