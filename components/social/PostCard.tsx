@@ -7,6 +7,24 @@ import { formatRelativeTime } from "@/lib/social/time";
 import { renderCashtags } from "@/lib/social/cashtags";
 import type { FeedPost } from "@/lib/social/queries";
 
+// Small repost-style icon for the "from a space" kicker — two curved
+// arrows, the same shorthand Twitter/LinkedIn use for "this showed up
+// here from somewhere else," so it reads instantly rather than needing
+// the label alone to carry it.
+function RepostIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M4 5h6a2 2 0 0 1 2 2v1M12 11H6a2 2 0 0 1-2-2V8"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+      <path d="M6.5 3 4 5l2.5 2M9.5 13 12 11l-2.5-2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 const TYPE_LABELS: Record<string, string> = {
   question: "Question",
   thesis: "Thesis",
@@ -22,11 +40,26 @@ export function PostCard({ post, actions }: { post: FeedPost; actions?: ReactNod
   // "take" is the default/plain type and doesn't get a badge — only the
   // other three are worth calling out, same as the prototype reference.
   const typeLabel = TYPE_LABELS[post.type];
+  // A public post that started life in a Space — rendered as a kicker
+  // above the header (matching how Twitter/LinkedIn mark a repost: a
+  // small line above the post, not mixed into the action row below,
+  // where it read as just another link next to Reply). Handled here,
+  // inside PostCard itself, rather than threaded through every call
+  // site's actions prop — the first version of this missed the feed and
+  // profile pages entirely because it depended on each page remembering
+  // to pass it.
+  const fromSpace = Boolean(post.promotedFrom) && !post.spaceId;
 
   return (
     <article className={`post-card${isDeleted ? " tombstone" : ""}`}>
       <Avatar avatarUrl={post.author.avatarUrl} displayName={post.author.displayName} />
       <div className="post-card-body">
+        {fromSpace && (
+          <div className="from-space-kicker">
+            <RepostIcon />
+            From a space
+          </div>
+        )}
         <div className="post-head">
           <span className="post-name">
             <Link href={`/@${post.author.handle}`}>{post.author.displayName}</Link>

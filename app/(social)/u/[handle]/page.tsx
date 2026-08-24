@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfileByHandle, getPostsByAuthor } from "@/lib/social/queries";
 import { PostCard } from "@/components/social/PostCard";
 import { SchoolBadge } from "@/components/social/SchoolBadge";
-import { FromSpaceMarker } from "@/components/social/PromotionMarker";
 import { EmptyState } from "@/components/social/EmptyState";
 import { NotificationSettings } from "@/components/social/NotificationSettings";
 import { AvatarUpload } from "@/components/social/AvatarUpload";
@@ -86,9 +85,7 @@ export default async function ProfilePage(props: Props) {
       {posts.length === 0 ? (
         <EmptyState headline="No posts yet." sub={`@${profile.handle} hasn't posted anything so far.`} />
       ) : (
-        posts.map((post) => (
-          <PostCard key={post.id} post={post} actions={post.promotedFrom ? <FromSpaceMarker /> : undefined} />
-        ))
+        posts.map((post) => <PostCard key={post.id} post={post} />)
       )}
     </>
   );

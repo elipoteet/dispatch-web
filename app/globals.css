@@ -4211,8 +4211,29 @@
 .promotion-marker-published:hover {
   text-decoration: underline;
 }
-.promotion-marker-from-space {
-  color: var(--muted);
+
+/* Repost-style kicker above the post header — deliberately NOT grouped
+   with .post-actions' Reply/pushback links (that's what it looked like
+   the first time, and it read as just another action rather than
+   provenance). A trailing rule extends the label across the row, the
+   same "small label, then a line" shorthand Twitter/LinkedIn use for
+   "this showed up here from somewhere else." */
+.from-space-kicker {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 9px;
+}
+.from-space-kicker::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--rule);
 }
 .promote-btn {
   margin-top: 8px;

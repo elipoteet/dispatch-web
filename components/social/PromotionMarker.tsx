@@ -11,10 +11,9 @@ export function PromotedMarker({ publicPostId }: { publicPostId: string }) {
   );
 }
 
-// The public-side marker — deliberately not a link and deliberately not
-// naming the space: docs/phase-three.md is explicit that a promoted post
-// must not name the space it came from, since a club's existence is
-// information its owner hasn't agreed to publish.
-export function FromSpaceMarker() {
-  return <div className="promotion-marker promotion-marker-from-space">From a space</div>;
-}
+// The public-side "came from a space" marker moved into PostCard itself
+// (the .from-space-kicker treatment above the header, not down here in
+// the actions row) — see PostCard.tsx's RepostIcon/fromSpace logic. Kept
+// out of this file since it's no longer a standalone action-slot
+// component; still deliberately not a link and deliberately not naming
+// the space, per docs/phase-three.md.

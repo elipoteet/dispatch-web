@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getFeedPosts } from "@/lib/social/queries";
 import { PostCard } from "@/components/social/PostCard";
 import { Composer } from "@/components/social/Composer";
-import { FromSpaceMarker } from "@/components/social/PromotionMarker";
 import { EmptyState } from "@/components/social/EmptyState";
 
 const TITLE = "The Dispatch";
@@ -79,9 +78,7 @@ export default async function FeedPage() {
           sub="Post an argument, not just a headline — say what you think and what would change your mind."
         />
       ) : (
-        posts.map((post) => (
-          <PostCard key={post.id} post={post} actions={post.promotedFrom ? <FromSpaceMarker /> : undefined} />
-        ))
+        posts.map((post) => <PostCard key={post.id} post={post} />)
       )}
     </>
   );
