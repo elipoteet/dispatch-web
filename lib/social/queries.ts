@@ -285,6 +285,80 @@ export async function getReplies(supabase: SupabaseClient, postId: string): Prom
   return (data as unknown[]).map(mapReplyRow);
 }
 
+// Backs the ticker page's "What the network is saying" (docs/phase-five.md
+// section A) — every public post whose attached ticker is this symbol OR
+// whose body mentions it as a cashtag, newest first. Deliberately an OR:
+// the attached-ticker column only ever holds the *first* recognized
+// cashtag in a post (see cashtags.tsx's firstCashtag), so a post that
+// mentions a second symbol in passing would otherwise never surface on
+// that symbol's page. Same space_id filter as getFeedPosts — a club's
+// internal Space chatter about a ticker isn't "what the network is
+// saying" in the public sense this section means.
+//
+// `count: "exact"` alongside `.limit()` so "Posts" (the numbers section's
+// sixth stat) reflects the true total even once a popular ticker's post
+// list is capped, not just how many happen to be displayed.
+export async function getPostsByTicker(
+  supabase: SupabaseClient,
+  symbol: string,
+  limit = 50,
+): Promise<{ posts: FeedPost[]; total: number }> {
+  const { data, error, count } = await supabase
+    .from("posts")
+    .select(POST_SELECT, { count: "exact" })
+    .is("space_id", null)
+    .or(`ticker.eq.${symbol},body.ilike.%$${symbol}%`)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error || !data) return { posts: [], total: 0 };
+
+  const ids = (data as { id: string }[]).map((p) => p.id);
+  const [counts, promotedToIds] = await Promise.all([getReplyCounts(supabase, ids), getPromotedToIds(supabase, ids)]);
+  const posts = (data as unknown[]).map((row) => {
+    const id = (row as { id: string }).id;
+    return mapPostRow(row, counts[id] ?? EMPTY_COUNTS, promotedToIds[id] ?? null);
+  });
+  return { posts, total: count ?? posts.length };
+}
+
+export type TrendingTicker = { symbol: string; name: string | null; postCount: number };
+
+// Backs /research's grid (docs/phase-five.md section B) — "the tickers
+// people on the site are actually posting about," read entirely from the
+// frozen ticker_snapshot JSON already stored on each post at publish
+// time. Zero provider calls: unlike the old research desk's static grid
+// (which fired a live price request per cell on every load), this counts
+// rows already in Postgres. Scoped to the most recent 300 public,
+// ticker-attached posts rather than the whole table, so an old ticker
+// that spiked once a year ago doesn't keep occupying a grid slot forever
+// — "trending" should mean recent, and this window is what makes the sort
+// naturally skew toward what's current without needing a real time decay
+// function.
+export async function getTrendingTickers(supabase: SupabaseClient, limit = 24): Promise<TrendingTicker[]> {
+  const { data, error } = await supabase
+    .from("posts")
+    .select("ticker, ticker_snapshot")
+    .is("space_id", null)
+    .not("ticker", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(300);
+  if (error || !data) return [];
+
+  const counts = new Map<string, { name: string | null; count: number }>();
+  for (const row of data as { ticker: string; ticker_snapshot: TickerSnapshot | null }[]) {
+    const existing = counts.get(row.ticker);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      counts.set(row.ticker, { name: row.ticker_snapshot?.name ?? null, count: 1 });
+    }
+  }
+  return Array.from(counts.entries())
+    .map(([symbol, v]) => ({ symbol, name: v.name, postCount: v.count }))
+    .sort((a, b) => b.postCount - a.postCount)
+    .slice(0, limit);
+}
+
 export async function getProfileByHandle(
   supabase: SupabaseClient,
   handle: string,

@@ -18,6 +18,15 @@ export type TickerSnapshot = {
   grossMarginPct: number | null;
   weekHigh52: number | null;
   weekLow52: number | null;
+  // Added for the phase-five ticker page (docs/phase-five.md section A) —
+  // optional because posts published before this field existed have a
+  // frozen ticker_snapshot JSON without it, and TickerCard never renders
+  // these anyway. All three are already sitting unused in the same
+  // fetchFundamentals response this function already awaits, at zero
+  // additional provider-request cost.
+  marketCap: number | null; // profile.marketCapitalization, in millions USD
+  industry: string | null; // profile.finnhubIndustry
+  avgVolume: number | null; // metrics["10DayAverageTradingVolume"], in millions of shares
 };
 
 // Quiet-fail on anything unresolvable — an unknown symbol or a provider
@@ -49,5 +58,11 @@ export async function getTickerSnapshot(symbolRaw: string): Promise<TickerSnapsh
     grossMarginPct: metrics?.grossMarginTTM ?? null,
     weekHigh52: metrics?.["52WeekHigh"] ?? null,
     weekLow52: metrics?.["52WeekLow"] ?? null,
+    marketCap: fundamentals?.profile?.marketCapitalization ?? null,
+    industry: fundamentals?.profile?.finnhubIndustry ?? null,
+    // Confirmed against a live Finnhub response (same convention as
+    // grossMarginTTM's comment above) — only reachable via the index
+    // signature, not a named field on FundamentalsMetrics.
+    avgVolume: metrics?.["10DayAverageTradingVolume"] ?? null,
   };
 }
