@@ -200,6 +200,15 @@ export default async function TickerPage(props: Props) {
         </div>
       </div>
 
+      {/* Numbers above the conversation — Eli's explicit call, overriding
+          docs/phase-five.md's original "conversation above the numbers"
+          ordering. */}
+      <div className="section-head">
+        <h2>The numbers</h2>
+        <span className="count">supporting the argument</span>
+      </div>
+      <TheNumbers snapshot={snapshot} chart={chart} postCount={total} />
+
       <div className="section-head">
         <h2>What the network is saying</h2>
         <span className="count">
@@ -211,12 +220,6 @@ export default async function TickerPage(props: Props) {
       ) : (
         posts.map((post) => <PostCard key={post.id} post={post} />)
       )}
-
-      <div className="section-head">
-        <h2>The numbers</h2>
-        <span className="count">supporting the argument</span>
-      </div>
-      <TheNumbers snapshot={snapshot} chart={chart} postCount={total} />
     </div>
   );
 }
