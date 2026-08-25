@@ -3777,6 +3777,90 @@
   padding: 4px 11px;
 }
 
+/* ---------- profile LinkedIn field ---------- */
+.profile-linkedin-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.profile-linkedin-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  color: var(--ink);
+  text-decoration: none;
+  border: 1px solid var(--rule-dark);
+  border-radius: var(--social-pill);
+  padding: 4px 11px;
+}
+.profile-linkedin-chip:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.profile-linkedin-edit {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+.profile-linkedin-edit:hover {
+  color: var(--gold);
+}
+.profile-linkedin-add {
+  display: inline-block;
+  margin-top: 8px;
+  background: none;
+  border: 1px dashed var(--rule-dark);
+  border-radius: var(--social-pill);
+  color: var(--muted);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.03em;
+  padding: 4px 11px;
+  cursor: pointer;
+}
+.profile-linkedin-add:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.profile-linkedin-form {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  max-width: 360px;
+}
+.profile-linkedin-form input {
+  flex: 1;
+  min-width: 180px;
+  background: var(--cream-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--social-rs);
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--ink);
+}
+.profile-linkedin-form input:focus {
+  outline: none;
+  border-color: var(--gold);
+  background: var(--paper);
+}
+.profile-linkedin-form-actions {
+  display: flex;
+  gap: 6px;
+}
+.profile-linkedin-form .social-error {
+  flex-basis: 100%;
+}
+
 /* ============================================================
    Phase two — the composer (type pills, ticker card, change-my-mind,
    position disclosure, cashtags). See docs/phase-two.md.

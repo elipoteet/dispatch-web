@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/social/EmptyState";
 import { NotificationSettings } from "@/components/social/NotificationSettings";
 import { AvatarUpload } from "@/components/social/AvatarUpload";
 import { Avatar } from "@/components/social/Avatar";
+import { LinkedInField } from "@/components/social/LinkedInField";
 
 // Public URL is /@handle — see next.config.ts's rewrite. A literal
 // app/@[handle]/ folder isn't possible in the App Router (@folder is the
@@ -83,6 +84,7 @@ export default async function ProfilePage(props: Props) {
               profile valuable outside the app, not just inside it. Plain
               text, not a link to itself. */}
           <div className="profile-url-chip">dispatchresearch.com/@{profile.handle}</div>
+          <LinkedInField profileId={profile.id} linkedinUrl={profile.linkedinUrl} isOwnProfile={isOwnProfile} />
         </div>
       </div>
 

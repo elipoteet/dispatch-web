@@ -57,7 +57,11 @@ export type Reply = {
   isPushback: boolean;
 };
 
-export type ProfileDetail = PostAuthor;
+// Wider than PostAuthor deliberately — linkedinUrl only matters on the
+// profile page itself, not on every post/reply author blob (feed cards,
+// replies, etc.), so it isn't threaded through PostAuthor/mapAuthor at
+// all. See supabase/migrations/0013_profile_linkedin.sql.
+export type ProfileDetail = PostAuthor & { linkedinUrl: string | null };
 
 export const POST_SELECT = `
   id, body, created_at, edited_at, deleted_at,
@@ -365,9 +369,11 @@ export async function getProfileByHandle(
 ): Promise<ProfileDetail | null> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, handle, display_name, grad_year, avatar_url, school:schools ( short_name, color_primary )")
+    .select(
+      "id, handle, display_name, grad_year, avatar_url, linkedin_url, school:schools ( short_name, color_primary )",
+    )
     .eq("handle", handle)
     .maybeSingle();
   if (error || !data) return null;
-  return mapAuthor(data);
+  return { ...mapAuthor(data), linkedinUrl: (data as { linkedin_url: string | null }).linkedin_url };
 }
