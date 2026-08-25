@@ -13,10 +13,20 @@ function LinkedInIcon() {
   );
 }
 
+// People paste "www.linkedin.com/in/you" or "linkedin.com/in/you" far
+// more often than a full "https://…" — new URL() throws on those (no
+// scheme), and the browser's own type="url" validation used to reject
+// them outright before this even ran, with a confusing "Please enter a
+// URL" for a string that plainly is one. Prepending https:// when a
+// scheme is missing instead of rejecting is the actual fix.
+function normalizeLinkedInUrl(value: string): string {
+  return /^https?:\/\//i.test(value) ? value : `https://${value}`;
+}
+
 function isLikelyLinkedInUrl(value: string): boolean {
   try {
     const u = new URL(value);
-    return u.protocol === "https:" && /(^|\.)linkedin\.com$/.test(u.hostname);
+    return /(^|\.)linkedin\.com$/.test(u.hostname);
   } catch {
     return false;
   }
@@ -57,7 +67,8 @@ export function LinkedInField({
     async function handleSave(e: React.FormEvent) {
       e.preventDefault();
       const trimmed = draft.trim();
-      if (trimmed && !isLikelyLinkedInUrl(trimmed)) {
+      const normalized = trimmed ? normalizeLinkedInUrl(trimmed) : "";
+      if (normalized && !isLikelyLinkedInUrl(normalized)) {
         setError("That doesn't look like a linkedin.com link.");
         return;
       }
@@ -66,22 +77,26 @@ export function LinkedInField({
       const supabase = createClient();
       const { error: updateError } = await supabase
         .from("profiles")
-        .update({ linkedin_url: trimmed || null })
+        .update({ linkedin_url: normalized || null })
         .eq("id", profileId);
       setSaving(false);
       if (updateError) {
         setError(updateError.message);
         return;
       }
-      setUrl(trimmed || null);
+      setUrl(normalized || null);
       setEditing(false);
     }
 
     return (
       <form className="profile-linkedin-form" onSubmit={handleSave}>
+        {/* type="text", not "url" — the browser's native url validation
+            rejects a scheme-less paste like "www.linkedin.com/in/you"
+            outright, before handleSave (which now fixes that itself) ever
+            runs. */}
         <input
-          type="url"
-          placeholder="https://linkedin.com/in/you"
+          type="text"
+          placeholder="linkedin.com/in/you"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           autoFocus
