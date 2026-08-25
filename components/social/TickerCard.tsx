@@ -1,6 +1,7 @@
+import Link from "next/link";
 import type { TickerSnapshot } from "@/lib/analysis/tickerSnapshot";
 
-function formatPrice(n: number): string {
+export function formatPrice(n: number): string {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
 
@@ -24,7 +25,9 @@ export function TickerCard({ snapshot }: { snapshot: TickerSnapshot }) {
       <div className="ticker-card-stamp">Pulled in automatically, frozen to this post</div>
       <div className="ticker-card-main">
         <div className="ticker-card-id">
-          <span className="ticker-card-symbol">{snapshot.symbol}</span>
+          <Link href={`/research/${snapshot.symbol.toLowerCase()}`} className="ticker-card-symbol">
+            {snapshot.symbol}
+          </Link>
           {snapshot.name && <span className="ticker-card-name">{snapshot.name}</span>}
         </div>
         <div className="ticker-card-price">

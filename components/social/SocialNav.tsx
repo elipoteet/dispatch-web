@@ -41,7 +41,7 @@ export function SocialNav({
       <Link href="/" className={`nav-link${pathname === "/" ? " active" : ""}`}>
         Feed
       </Link>
-      <Link href="/research" className="nav-link">
+      <Link href="/research" className={`nav-link${pathname.startsWith("/research") ? " active" : ""}`}>
         Research
       </Link>
 

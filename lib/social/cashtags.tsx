@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { TICKER_PATTERN } from "@/lib/analysis/loadReport";
 
 // Built from TICKER_PATTERN's own character class (stripping its ^/$
@@ -57,10 +58,14 @@ export function firstCashtag(body: string): string | null {
   return match ? match[1] : null;
 }
 
-// Styles every `$TICKER` occurrence in a published body gold-monospace —
-// every recognized token, not just the one that got a live snapshot (see
-// docs/phase-two.md: "later ones render as styled text and attach
-// nothing"). Not linked anywhere yet — ticker pages arrive in phase three.
+// Links every `$TICKER` occurrence in a published body to its research
+// page — every recognized token, not just the one that got a live
+// snapshot (see docs/phase-two.md: "later ones render as styled text and
+// attach nothing," now "styled and linked"). This is the single shared
+// render path docs/phase-five.md section C calls for, so a cashtag can't
+// go un-linked on one surface the way the "from a space" kicker once did
+// — call sites are PostCard (post bodies, every surface it's used on:
+// feed, space, profile, /p/[id]) and ReplyItem (reply bodies).
 export function renderCashtags(body: string): ReactNode[] {
   const nodes: ReactNode[] = [];
   let lastIndex = 0;
@@ -71,10 +76,11 @@ export function renderCashtags(body: string): ReactNode[] {
     if (start > lastIndex) {
       nodes.push(body.slice(lastIndex, start));
     }
+    const symbol = m[1];
     nodes.push(
-      <span key={`cashtag-${key++}`} className="cashtag">
-        ${m[1]}
-      </span>,
+      <Link key={`cashtag-${key++}`} href={`/research/${symbol.toLowerCase()}`} className="cashtag">
+        ${symbol}
+      </Link>,
     );
     lastIndex = start + m[0].length;
   }

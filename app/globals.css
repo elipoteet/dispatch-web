@@ -3853,11 +3853,19 @@
 }
 
 /* ---------- cashtags ---------- */
+/* Now a link to /research/[ticker] (docs/phase-five.md section C) — the
+   underline-on-hover only, no color change, keeps it from reading as a
+   generic hyperlink dropped into an otherwise plain-text post body. */
 .cashtag {
   color: var(--gold);
   font-family: 'IBM Plex Mono', monospace;
   font-size: 0.95em;
   font-weight: 500;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+.cashtag:hover {
+  border-bottom-color: var(--gold);
 }
 
 /* ---------- ticker card ---------- */
@@ -3886,6 +3894,13 @@
   font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.02em;
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  width: fit-content;
+}
+.ticker-card-symbol:hover {
+  border-bottom-color: currentColor;
 }
 .ticker-card-name {
   font-size: 12px;
@@ -4718,4 +4733,236 @@
     min-width: 44px;
     min-height: 44px;
   }
+}
+
+/* ============================================================
+   Phase five — research inside the site (docs/phase-five.md). Reuses the
+   social surface's existing tokens (--social-r/--social-pill, --gold/
+   --green/--accent, --rule/--muted) rather than inventing a parallel set.
+   ============================================================ */
+
+/* ---------- section headers, shared by both new pages ---------- */
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 0 10px;
+  margin-top: 4px;
+  border-top: 1px solid var(--rule);
+}
+.section-head h2 {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+}
+.section-head .count {
+  margin-left: auto;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+/* ---------- /research/[ticker] header ---------- */
+.tk-head {
+  padding: 20px 0 8px;
+}
+.tk-head-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.tk-symbol {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+.tk-name {
+  font-size: 13.5px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.tk-price-block {
+  margin-left: auto;
+  text-align: right;
+}
+.tk-price {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 26px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.tk-change {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12.5px;
+  margin-top: 6px;
+}
+.tk-change.up {
+  color: var(--green);
+}
+.tk-change.down {
+  color: var(--accent);
+}
+.tk-actions {
+  margin-top: 16px;
+}
+
+/* ---------- /research/[ticker] "the numbers" ---------- */
+.tk-numbers {
+  padding: 4px 0 24px;
+}
+.tk-chart-box {
+  border: 1px solid var(--rule);
+  border-radius: var(--social-rs);
+  background: var(--cream-2);
+  padding: 14px 16px;
+}
+.tk-chart-svg {
+  display: block;
+  width: 100%;
+  height: 130px;
+}
+.tk-chart-svg .up {
+  stroke: var(--green);
+}
+.tk-chart-svg .down {
+  stroke: var(--accent);
+}
+.tk-chart-range {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tk-chart-unavailable {
+  border: 1px solid var(--rule);
+  border-radius: var(--social-rs);
+  padding: 30px 16px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+/* Fixed 3-column grid, not auto-fit — auto-fit leaves a visible gap on
+   the last row of exactly six cells (already hit once, per
+   docs/phase-five.md). 2 columns at phone width, same threshold and
+   reasoning as the rest of this branch's mobile work. */
+.tk-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: var(--social-rs);
+  overflow: hidden;
+  margin-top: 16px;
+}
+@media (max-width: 620px) {
+  .tk-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.tk-stat {
+  background: var(--paper);
+  padding: 13px 14px;
+  min-width: 0;
+}
+.tk-stat-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tk-stat-value {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 16px;
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- /research desk ---------- */
+.research-search {
+  padding: 8px 0 24px;
+}
+.research-search-in {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.research-search-in svg {
+  position: absolute;
+  left: 14px;
+  opacity: 0.5;
+  pointer-events: none;
+}
+.research-search-in input {
+  width: 100%;
+  background: var(--cream-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--social-rs);
+  padding: 14px 14px 14px 40px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.research-search-in input::placeholder {
+  color: var(--muted);
+}
+.research-search-in input:focus {
+  outline: none;
+  border-color: var(--gold);
+  background: var(--paper);
+}
+.research-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: var(--social-rs);
+  overflow: hidden;
+  margin-top: 20px;
+}
+.research-cell {
+  background: var(--paper);
+  padding: 14px;
+  min-width: 0;
+  color: var(--ink);
+  text-decoration: none;
+  display: block;
+}
+.research-cell:hover {
+  background: var(--cream-2);
+}
+.research-cell-symbol {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+.research-cell-name {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.research-cell-count {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10.5px;
+  color: var(--muted);
+  margin-top: 10px;
 }

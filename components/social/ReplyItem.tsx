@@ -3,6 +3,7 @@ import Link from "next/link";
 import { SchoolBadge } from "./SchoolBadge";
 import { Avatar } from "./Avatar";
 import { formatRelativeTime } from "@/lib/social/time";
+import { renderCashtags } from "@/lib/social/cashtags";
 import type { Reply } from "@/lib/social/queries";
 
 // Flat, one level, no edit path — see docs/phase-one.md and
@@ -28,7 +29,7 @@ export function ReplyItem({ reply, actions }: { reply: Reply; actions?: ReactNod
           {reply.isPushback && !isDeleted && <span className="pushback-label">Pushback</span>}
           <span className="post-time">{formatRelativeTime(reply.createdAt)}</span>
         </div>
-        <div className="post-body">{isDeleted ? "This reply was deleted." : reply.body}</div>
+        <div className="post-body">{isDeleted ? "This reply was deleted." : renderCashtags(reply.body)}</div>
         {actions}
       </div>
     </div>

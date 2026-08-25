@@ -14,7 +14,16 @@ import { useRouter } from "next/navigation";
 // a visual/behavioral parity fix — out of scope for "no new features."
 // Submitting a symbol here goes straight to /research/[ticker], the same
 // destination a search would eventually land on anyway.
-export function TickerSearchBar() {
+// className/placeholder overridable so the same component backs both the
+// header rail's small search box and the /research desk's large one
+// (docs/phase-five.md section B) — same mechanism, no reason to fork it.
+export function TickerSearchBar({
+  className = "header-search",
+  placeholder = "Search tickers",
+}: {
+  className?: string;
+  placeholder?: string;
+}) {
   const router = useRouter();
   const [value, setValue] = useState("");
 
@@ -27,14 +36,14 @@ export function TickerSearchBar() {
   }
 
   return (
-    <form className="header-search" onSubmit={handleSubmit} role="search">
+    <form className={className} onSubmit={handleSubmit} role="search">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.6" />
         <path d="M11 11l4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
       </svg>
       <input
         type="text"
-        placeholder="Search tickers"
+        placeholder={placeholder}
         aria-label="Search tickers"
         autoComplete="off"
         spellCheck={false}

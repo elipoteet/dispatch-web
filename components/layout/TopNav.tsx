@@ -11,10 +11,13 @@ import { ThemeToggle } from "./ThemeToggle";
 import { AlertBell } from "./AlertBell";
 import { Logo } from "./Logo";
 
+// Leaderboard hidden on this branch — docs/phase-five.md section D: it
+// belongs to the retired product and the new spec forbids anything like
+// it. Route files are untouched (still reachable by direct URL); only the
+// nav entry and its sitemap.ts listing are removed.
 const LINKS = [
   { href: "/research", label: "Research" },
   { href: "/portfolio", label: "Portfolio" },
-  { href: "/leaderboard", label: "Leaderboard" },
   { href: "/about", label: "About" },
   { href: "/give", label: "Give Back" },
 ];

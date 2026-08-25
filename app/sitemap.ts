@@ -16,8 +16,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // social surface, add '/' back here (it's the feed's home, not this
     // old ticker-search content, so don't just paste the old line back
     // unchanged).
+    // Leaderboard removed — docs/phase-five.md section D: it belongs to
+    // the retired product and the new spec forbids anything like it.
     { url: `${SITE_URL}/research`, changeFrequency: "weekly", priority: 0.9 },
-    { url: `${SITE_URL}/leaderboard`, changeFrequency: "daily", priority: 0.7 },
     { url: `${SITE_URL}/give`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${SITE_URL}/about`, changeFrequency: "monthly", priority: 0.5 },
     ...FEATURED_TICKERS.map((t) => ({

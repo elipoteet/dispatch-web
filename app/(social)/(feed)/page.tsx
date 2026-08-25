@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getFeedPosts, mapAuthor } from "@/lib/social/queries";
 import type { PostAuthor } from "@/lib/social/queries";
 import { FeedClient } from "@/components/social/FeedClient";
+import { TICKER_PATTERN } from "@/lib/analysis/loadReport";
 
 const TITLE = "The Dispatch";
 const DESCRIPTION =
@@ -32,7 +33,18 @@ export const metadata: Metadata = {
 
 const AUTHOR_SELECT = "id, handle, display_name, grad_year, avatar_url, school:schools ( short_name, color_primary )";
 
-export default async function FeedPage() {
+export default async function FeedPage({
+  searchParams,
+}: {
+  // The ticker page's "Post about $SYM" button (docs/phase-five.md
+  // section A) links here as /?ticker=SYM rather than duplicating the
+  // composer on a second page.
+  searchParams: Promise<{ ticker?: string }>;
+}) {
+  const { ticker } = await searchParams;
+  const initialTicker = ticker && TICKER_PATTERN.test(ticker.toUpperCase()) ? ticker.toUpperCase() : null;
+  const initialComposerBody = initialTicker ? `$${initialTicker} ` : undefined;
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -62,7 +74,7 @@ export default async function FeedPage() {
       </div>
 
       {user && profile ? (
-        <FeedClient initialPosts={posts} author={profile} />
+        <FeedClient initialPosts={posts} author={profile} initialComposerBody={initialComposerBody} />
       ) : user ? (
         <>
           <div className="sign-in-prompt">

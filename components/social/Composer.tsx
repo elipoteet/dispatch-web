@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "./Avatar";
@@ -58,14 +58,21 @@ function isValidUrl(value: string): boolean {
 export function Composer({
   author,
   onOptimisticPost,
+  initialBody,
 }: {
   author: PostAuthor;
   onOptimisticPost?: (post: FeedPost) => void;
+  // Set by the feed page reading a ?ticker= param — the ticker page's
+  // "Post about $SYM" button (docs/phase-five.md section A) links here
+  // rather than duplicating the composer. useTickerAttach's effect runs
+  // on mount same as any other body change, so a seeded "$NVDA " attaches
+  // its card automatically, exactly as if it had just been typed.
+  initialBody?: string;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [type, setType] = useState<PostType>("take");
-  const [body, setBody] = useState("");
+  const [body, setBody] = useState(initialBody ?? "");
   const [linkUrl, setLinkUrl] = useState("");
   const [changeMyMind, setChangeMyMind] = useState("");
   const [position, setPosition] = useState<"owns" | "none" | null>(null);
@@ -73,6 +80,18 @@ export function Composer({
   const [error, setError] = useState<string | null>(null);
   const textareaRef = useAutoGrowTextarea(body);
   const { snapshot, snapshotLoading, reset: resetTicker } = useTickerAttach(body);
+
+  // Arriving pre-filled from "Post about $SYM" should land ready to keep
+  // typing, not require an extra click into the box first. Mount-only —
+  // never re-fires as the author edits afterward.
+  useEffect(() => {
+    if (initialBody && textareaRef.current) {
+      const el = textareaRef.current;
+      el.focus();
+      el.setSelectionRange(el.value.length, el.value.length);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Position is per-ticker, not per-draft — clear it whenever the resolved
   // symbol changes (including to/from no ticker at all), same as before

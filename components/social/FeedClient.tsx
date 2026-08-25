@@ -12,13 +12,25 @@ import type { FeedPost, PostAuthor } from "@/lib/social/queries";
 // is why this exists as its own client component rather than the two
 // living as separate children of the server-rendered feed page the way
 // they did before phase four.
-export function FeedClient({ initialPosts, author }: { initialPosts: FeedPost[]; author: PostAuthor | null }) {
+export function FeedClient({
+  initialPosts,
+  author,
+  initialComposerBody,
+}: {
+  initialPosts: FeedPost[];
+  author: PostAuthor | null;
+  initialComposerBody?: string;
+}) {
   const [posts, dispatch] = useOptimisticFeed(initialPosts);
 
   return (
     <>
       {author && (
-        <Composer author={author} onOptimisticPost={(post) => dispatch({ type: "add", post })} />
+        <Composer
+          author={author}
+          onOptimisticPost={(post) => dispatch({ type: "add", post })}
+          initialBody={initialComposerBody}
+        />
       )}
       {posts.length === 0 ? (
         <EmptyState
