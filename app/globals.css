@@ -3397,6 +3397,7 @@
 .composer-foot {
   display: flex;
   align-items: center;
+  gap: 14px;
   margin-top: 8px;
 }
 .sign-in-prompt {
