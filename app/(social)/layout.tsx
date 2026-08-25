@@ -4,7 +4,6 @@ import type { HeaderProfile } from "@/components/social/SocialHeader";
 import { SocialNav } from "@/components/social/SocialNav";
 import { MobileNav } from "@/components/social/MobileNav";
 import { Footer } from "@/components/social/Footer";
-import { TickerTape } from "@/components/home/TickerTape";
 import { getUserSpaces } from "@/lib/social/spaces";
 import type { SpaceNavItem } from "@/lib/social/spaces";
 
@@ -63,14 +62,9 @@ export default async function SocialLayout({
       </div>
       <Footer />
       {profile && <MobileNav handle={profile.handle} />}
-      {/* Ambient status, not the point of the page — fixed to the viewport
-          bottom on desktop, hidden on mobile (.social-tape, app/globals.css)
-          rather than competing with the composer and browser chrome there.
-          Same 5-symbol/20-min-cached app/api/tape/route.ts recovered from
-          git history; see that file for the rate-limit history. */}
-      <div className="social-tape">
-        <TickerTape />
-      </div>
+      {/* Ticker tape turned off — Eli's call, "useless for right now."
+          Not deleted: .social-tape's CSS and app/api/tape/route.ts are
+          untouched, so this is a one-line revert if it comes back. */}
     </div>
   );
 }
