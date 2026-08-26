@@ -1,0 +1,80 @@
+<title>The Dispatch</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  :root{
+    --bg:#0E1D33; --surface:rgba(246,242,233,.05);
+    --text:#F0EBE0; --dim:#8E9BAD; --gold:#B08430; --gold-hi:#C9973B;
+    --line:rgba(246,242,233,.15);
+    --font:'Inter',system-ui,-apple-system,sans-serif;
+    --mono:'IBM Plex Mono','SF Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font-family:var(--font);-webkit-font-smoothing:antialiased;
+    min-height:100dvh;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;padding:32px 24px;
+  }
+  .card{width:100%;max-width:352px;display:flex;flex-direction:column;align-items:center;text-align:center}
+  .mark{margin-bottom:26px}
+  h1{
+    margin:0;font-family:var(--mono);font-weight:600;font-size:15px;
+    letter-spacing:4.5px;text-transform:uppercase;
+  }
+  .desc{
+    margin:16px 0 0;font-size:15.5px;line-height:1.55;color:var(--dim);
+    max-width:30ch;text-wrap:balance;
+  }
+  form{width:100%;margin-top:34px;display:flex;flex-direction:column;gap:10px}
+  label{
+    font-family:var(--mono);font-size:10px;letter-spacing:1.5px;
+    text-transform:uppercase;color:var(--dim);text-align:left;
+  }
+  input{
+    width:100%;padding:14px 15px;background:var(--surface);
+    border:1px solid var(--line);color:var(--text);
+    font-family:var(--font);font-size:15px;border-radius:0;
+  }
+  input::placeholder{color:#6C7A8D}
+  input:focus{outline:none;border-color:var(--gold)}
+  button{
+    width:100%;padding:14px;background:var(--gold);color:#0E1D33;
+    border:0;border-radius:0;cursor:pointer;
+    font-family:var(--mono);font-size:11.5px;font-weight:600;
+    letter-spacing:1.6px;text-transform:uppercase;transition:background .15s;
+  }
+  button:hover{background:var(--gold-hi)}
+  button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  .note{
+    margin-top:20px;font-size:12.5px;line-height:1.55;color:var(--dim);max-width:32ch;
+  }
+  .note a{color:var(--dim)}
+  .foot{
+    margin-top:40px;padding-top:20px;border-top:1px solid var(--line);width:100%;
+    font-family:var(--mono);font-size:9.5px;letter-spacing:1.3px;
+    text-transform:uppercase;color:#6C7A8D;
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="card">
+  <svg class="mark" width="46" height="46" viewBox="0 0 32 32" aria-label="The Dispatch">
+    <path d="M8 7h7.5c5 0 8.5 3.6 8.5 9s-3.5 9-8.5 9H8V7z" fill="none" stroke="#F0EBE0" stroke-width="2.4"></path>
+    <path d="M5 25L27 7" stroke="#B08430" stroke-width="2.4" stroke-linecap="round"></path>
+    <path d="M21 7h6v6" fill="none" stroke="#B08430" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path>
+  </svg>
+
+  <h1>The Dispatch</h1>
+
+  <p class="desc">Where college students argue about markets, under their real name and school.</p>
+
+  <form onsubmit="return false">
+    <label for="em">School email</label>
+    <input id="em" type="email" placeholder="you@unh.edu" autocomplete="email">
+    <button type="submit">Continue</button>
+  </form>
+
+  <p class="note">We'll send you a code. No password, and your email is never shown to anyone.</p>
+
+  <div class="foot">Not investment advice</div>
+</div>

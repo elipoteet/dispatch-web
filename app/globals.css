@@ -5051,3 +5051,148 @@
   color: var(--muted);
   margin-top: 10px;
 }
+
+/* ============================================================
+   Phase six, section A — the landing screen (docs/phase-six.md,
+   docs/landing-design.html). A fixed, full-viewport overlay rendered by
+   app/(social)/(feed)/page.tsx itself when signed out, covering the
+   header/nav/shell/footer that still render underneath it. Deliberately
+   NOT theme-reactive — a single fixed dark design regardless of the
+   site's light/dark toggle, same as the published reference. --navy/
+   --cream/--gold are pinned to fixed literals here (not the flipping
+   [data-theme] tokens the rest of the app uses — --navy in particular
+   flips to a LIGHT color in dark mode, since it's used as a text/ink
+   color elsewhere, which would make the real Logo component invisible
+   against this always-dark background without this override) so the
+   real brand Logo renders correctly no matter what theme is active
+   elsewhere on the page.
+   ============================================================ */
+.landing-screen {
+  --navy: #0d1b2a;
+  --cream: #f5f1e8;
+  --gold: #d4a843;
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: var(--navy);
+  color: var(--cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+.landing-card {
+  width: 100%;
+  max-width: 352px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.landing-card svg {
+  margin-bottom: 26px;
+}
+.landing-h1 {
+  margin: 0;
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 4.5px;
+  text-transform: uppercase;
+}
+.landing-desc {
+  margin: 16px 0 0;
+  font-size: 15.5px;
+  line-height: 1.55;
+  color: rgba(245, 241, 232, 0.68);
+  max-width: 30ch;
+}
+.landing-form {
+  width: 100%;
+  margin-top: 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.landing-form label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: rgba(245, 241, 232, 0.68);
+  text-align: left;
+}
+.landing-form input {
+  width: 100%;
+  padding: 14px 15px;
+  background: rgba(245, 241, 232, 0.05);
+  border: 1px solid rgba(245, 241, 232, 0.15);
+  color: var(--cream);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  border-radius: 0;
+}
+.landing-form input::placeholder {
+  color: rgba(245, 241, 232, 0.42);
+}
+.landing-form input:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+.landing-form button[type="submit"] {
+  width: 100%;
+  padding: 14px;
+  background: var(--gold);
+  color: var(--navy);
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+}
+.landing-form button[type="submit"]:hover {
+  background: #c9973b;
+}
+.landing-form button[type="submit"]:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.landing-switch {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  text-decoration: underline;
+  font-family: inherit;
+  font-size: inherit;
+  letter-spacing: inherit;
+  text-transform: none;
+  cursor: pointer;
+}
+.landing-error {
+  font-size: 13px;
+  color: #d66d6d;
+  text-align: left;
+}
+.landing-note {
+  margin-top: 20px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: rgba(245, 241, 232, 0.68);
+  max-width: 32ch;
+}
+.landing-foot {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(245, 241, 232, 0.15);
+  width: 100%;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  color: rgba(245, 241, 232, 0.42);
+}

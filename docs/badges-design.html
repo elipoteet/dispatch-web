@@ -1,0 +1,230 @@
+<title>Dispatch Verification Badges</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --navy:#0E1D33; --cream:#F6F2E9; --gold:#B08430;
+    --bg:var(--cream); --surface:#FFFDF7; --surface2:#EDE7DA;
+    --border:rgba(14,29,51,.13); --border-strong:rgba(14,29,51,.28);
+    --text:var(--navy); --dim:#5B6472;
+    --font:'Inter',system-ui,-apple-system,sans-serif;
+    --mono:'IBM Plex Mono','SF Mono',ui-monospace,monospace;
+
+    /* the four badge hues */
+    --v-student:#3E76B8;
+    --v-alum:#9A9384;
+    --v-faculty:#0E1D33;
+    --v-mentor:#B08430;
+    --v-check:#FFFDF7;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#0B1727; --surface:#101F35; --surface2:#16283F;
+      --border:rgba(246,242,233,.12); --border-strong:rgba(246,242,233,.26);
+      --text:#F0EBE0; --dim:#93A0B2;
+      --v-student:#5A93D4; --v-alum:#8F8A7C; --v-faculty:#B8C6DA; --v-mentor:#D2A44E;
+      --v-check:#0B1727;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0B1727; --surface:#101F35; --surface2:#16283F;
+    --border:rgba(246,242,233,.12); --border-strong:rgba(246,242,233,.26);
+    --text:#F0EBE0; --dim:#93A0B2;
+    --v-student:#5A93D4; --v-alum:#8F8A7C; --v-faculty:#B8C6DA; --v-mentor:#D2A44E;
+    --v-check:#0B1727;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:840px;margin:0 auto;padding:56px 24px 80px}
+  .lab{font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:1.6px;text-transform:uppercase;color:var(--dim)}
+  h1{margin:14px 0 0;font-size:31px;font-weight:600;letter-spacing:-.02em;text-wrap:balance}
+  h2{margin:0;font-size:18px;font-weight:600;letter-spacing:-.01em}
+  .intro{margin-top:14px;color:var(--dim);max-width:62ch}
+  section{margin-top:52px}
+  .sec__hd{margin-bottom:22px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+
+  /* ---- the badge ---- */
+  .vb{display:inline-flex;vertical-align:-2px;flex:none}
+  .vb--student .ros{fill:var(--v-student)}
+  .vb--alum    .ros{fill:var(--v-alum)}
+  .vb--faculty .ros{fill:var(--v-faculty)}
+  .vb--mentor  .ros{fill:var(--v-mentor)}
+  .vb .chk{fill:none;stroke:var(--v-check);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+
+  /* ---- swatch grid ---- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:1px;background:var(--border);border:1px solid var(--border)}
+  .cell{background:var(--bg);padding:22px 20px}
+  .cell__b{display:flex;align-items:baseline;gap:8px}
+  .cell h3{margin:14px 0 5px;font-size:15px;font-weight:600}
+  .cell p{margin:0;font-size:13.5px;color:var(--dim);line-height:1.55}
+  .cell .hex{margin-top:12px;font-family:var(--mono);font-size:10.5px;letter-spacing:.6px;color:var(--dim)}
+
+  /* ---- in context ---- */
+  .rows{border:1px solid var(--border-strong);background:var(--surface)}
+  .row{display:flex;align-items:center;gap:12px;padding:15px 18px;border-bottom:1px solid var(--border)}
+  .row:last-child{border-bottom:0}
+  .av{width:38px;height:38px;border-radius:50%;flex:none;background:var(--navy);color:var(--cream);
+      display:grid;place-items:center;font-family:var(--mono);font-size:11.5px;font-weight:600}
+  :root[data-theme="dark"] .av{background:var(--surface2);color:var(--text)}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .av{background:var(--surface2);color:var(--text)}}
+  .row__nm{font-weight:600;font-size:15px;display:flex;align-items:center;gap:6px}
+  .row__meta{font-family:var(--mono);font-size:10.5px;letter-spacing:1.1px;text-transform:uppercase;color:var(--dim);margin-top:2px}
+
+  /* ---- sizes ---- */
+  .sizes{display:flex;align-items:flex-end;gap:30px;flex-wrap:wrap;padding:24px 22px;border:1px solid var(--border);background:var(--surface)}
+  .size{display:flex;flex-direction:column;align-items:center;gap:9px}
+  .size span{font-family:var(--mono);font-size:10px;letter-spacing:1.1px;color:var(--dim)}
+
+  pre{margin:0;padding:18px;background:var(--surface2);border:1px solid var(--border);
+      overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.7}
+  .note{margin-top:16px;font-size:14px;color:var(--dim);max-width:64ch}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <path id="ros" d="M8 0.85A1.85 1.85 0 0 1 11.57 1.81A1.85 1.85 0 0 1 14.19 4.42A1.85 1.85 0 0 1 15.15 8A1.85 1.85 0 0 1 14.19 11.57A1.85 1.85 0 0 1 11.57 14.19A1.85 1.85 0 0 1 8 15.15A1.85 1.85 0 0 1 4.43 14.19A1.85 1.85 0 0 1 1.81 11.58A1.85 1.85 0 0 1 0.85 8A1.85 1.85 0 0 1 1.81 4.42A1.85 1.85 0 0 1 4.42 1.81A1.85 1.85 0 0 1 8 0.85Z"></path>
+    <path id="chk" d="M4.6 8.2l2.3 2.3 4.5-4.6"></path>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <span class="lab">The Dispatch</span>
+  <h1>Verification badges</h1>
+  <p class="intro">
+    One rosette, four colours. The shape is identical across every tier so the badge always
+    reads as "verified" at a glance; the colour is what tells you which kind of person you're
+    reading. Twelve lobes, drawn as a single path, scaling cleanly from 13px in a feed row to
+    a profile header.
+  </p>
+
+  <section>
+    <div class="sec__hd"><h2>The four tiers</h2></div>
+    <div class="grid">
+      <div class="cell">
+        <div class="cell__b">
+          <svg class="vb vb--student" width="30" height="30" viewBox="0 0 16 16" role="img" aria-label="Verified student">
+            <use href="#ros" class="ros"></use><use href="#chk" class="chk"></use>
+          </svg>
+        </div>
+        <h3>Student</h3>
+        <p>Verified by school email. The default, and the great majority of the site.</p>
+        <div class="hex">#3E76B8</div>
+      </div>
+      <div class="cell">
+        <div class="cell__b">
+          <svg class="vb vb--alum" width="30" height="30" viewBox="0 0 16 16" role="img" aria-label="Verified alum">
+            <use href="#ros" class="ros"></use><use href="#chk" class="chk"></use>
+          </svg>
+        </div>
+        <h3>Alum</h3>
+        <p>Graduated. Same ladder, further along — the badge fades rather than changes shape.</p>
+        <div class="hex">#9A9384</div>
+      </div>
+      <div class="cell">
+        <div class="cell__b">
+          <svg class="vb vb--faculty" width="30" height="30" viewBox="0 0 16 16" role="img" aria-label="Verified faculty">
+            <use href="#ros" class="ros"></use><use href="#chk" class="chk"></use>
+          </svg>
+        </div>
+        <h3>Faculty</h3>
+        <p>Professors and lecturers. Approved individually, never self-selected.</p>
+        <div class="hex">#0E1D33</div>
+      </div>
+      <div class="cell">
+        <div class="cell__b">
+          <svg class="vb vb--mentor" width="30" height="30" viewBox="0 0 16 16" role="img" aria-label="Verified mentor">
+            <use href="#ros" class="ros"></use><use href="#chk" class="chk"></use>
+          </svg>
+        </div>
+        <h3>Mentor</h3>
+        <p>Working in the industry, invited by a school or club. The rarest badge on the site.</p>
+        <div class="hex">#B08430</div>
+      </div>
+    </div>
+    <p class="note">
+      All four hues come out of the existing palette — the blue is a lighter relative of the
+      navy, the grey is warm so it sits with the cream, and gold is the brand accent held back
+      for the rarest tier. No green and no red: on a site covered in price data those two
+      already mean "up" and "down."
+    </p>
+  </section>
+
+  <section>
+    <div class="sec__hd"><h2>In a feed row</h2></div>
+    <div class="rows">
+      <div class="row">
+        <div class="av">EP</div>
+        <div>
+          <div class="row__nm">Eli Poteet
+            <svg class="vb vb--student" width="15" height="15" viewBox="0 0 16 16" role="img" aria-label="Verified student"><use href="#ros" class="ros"></use><use href="#chk" class="chk"></use></svg>
+          </div>
+          <div class="row__meta">UNH '28 &middot; Energy</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="av">JA</div>
+        <div>
+          <div class="row__nm">Jordan Alvarez
+            <svg class="vb vb--alum" width="15" height="15" viewBox="0 0 16 16" role="img" aria-label="Verified alum"><use href="#ros" class="ros"></use><use href="#chk" class="chk"></use></svg>
+          </div>
+          <div class="row__meta">BU '24 &middot; Alum &middot; Geopolitics</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="av">RH</div>
+        <div>
+          <div class="row__nm">Dr. Rachel Hoyt
+            <svg class="vb vb--faculty" width="15" height="15" viewBox="0 0 16 16" role="img" aria-label="Verified faculty"><use href="#ros" class="ros"></use><use href="#chk" class="chk"></use></svg>
+          </div>
+          <div class="row__meta">UNH &middot; Faculty, Finance</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="av">SM</div>
+        <div>
+          <div class="row__nm">Steve Marchetti
+            <svg class="vb vb--mentor" width="15" height="15" viewBox="0 0 16 16" role="img" aria-label="Verified mentor"><use href="#ros" class="ros"></use><use href="#chk" class="chk"></use></svg>
+          </div>
+          <div class="row__meta">Mentor &middot; Equity research</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec__hd"><h2>Holding up small</h2></div>
+    <div class="sizes">
+      <div class="size"><svg class="vb vb--student" width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><use href="#ros" class="ros"></use><use href="#chk" class="chk"></use></svg><span>13</span></div>
+      <div class="size"><svg class="vb vb--student" width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><use href="#ros" class="ros"></use><use href="#chk" class="chk"></use></svg><span>15</span></div>
+      <div class="size"><svg class="vb vb--student" width="18" height="18" viewBox="0 0 16 16" aria-hidden="true"><use href="#ros" class="ros"></use><use href="#chk" class="chk"></use></svg><span>18</span></div>
+      <div class="size"><svg class="vb vb--student" width="24" height="24" viewBox="0 0 16 16" aria-hidden="true"><use href="#ros" class="ros"></use><use href="#chk" class="chk"></use></svg><span>24</span></div>
+      <div class="size"><svg class="vb vb--student" width="40" height="40" viewBox="0 0 16 16" aria-hidden="true"><use href="#ros" class="ros"></use><use href="#chk" class="chk"></use></svg><span>40</span></div>
+      <div class="size"><svg class="vb vb--mentor" width="56" height="56" viewBox="0 0 16 16" aria-hidden="true"><use href="#ros" class="ros"></use><use href="#chk" class="chk"></use></svg><span>56</span></div>
+    </div>
+    <p class="note">
+      13px is the floor. Below that the twelve lobes turn to mush and the check loses its
+      corners — if something needs a smaller mark, use a plain filled circle in the same colour
+      rather than shrinking this one.
+    </p>
+  </section>
+
+  <section>
+    <div class="sec__hd"><h2>The markup</h2></div>
+<pre>&lt;svg class="vb vb--student" width="15" height="15" viewBox="0 0 16 16"
+     role="img" aria-label="Verified student"&gt;
+  &lt;path class="ros" d="M8 0.85A1.85 1.85 0 0 1 11.57 1.81A1.85 1.85 0 0 1 14.19 4.42
+    A1.85 1.85 0 0 1 15.15 8A1.85 1.85 0 0 1 14.19 11.57A1.85 1.85 0 0 1 11.57 14.19
+    A1.85 1.85 0 0 1 8 15.15A1.85 1.85 0 0 1 4.43 14.19A1.85 1.85 0 0 1 1.81 11.58
+    A1.85 1.85 0 0 1 0.85 8A1.85 1.85 0 0 1 1.81 4.42A1.85 1.85 0 0 1 4.42 1.81
+    A1.85 1.85 0 0 1 8 0.85Z"/&gt;
+  &lt;path class="chk" d="M4.6 8.2l2.3 2.3 4.5-4.6"/&gt;
+&lt;/svg&gt;</pre>
+    <p class="note">
+      One component, one path, four modifier classes. Colours live as CSS custom properties
+      (<code>--v-student</code>, <code>--v-alum</code>, <code>--v-faculty</code>,
+      <code>--v-mentor</code>) that lighten in dark mode — navy in particular disappears on a
+      dark ground, so faculty flips to a pale slate. Always give it a real
+      <code>aria-label</code>: the badge carries meaning, so it is not decorative.
+    </p>
+  </section>
+</div>
