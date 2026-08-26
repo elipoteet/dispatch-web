@@ -9,14 +9,24 @@ export type PostType = "take" | "question" | "thesis" | "link";
 // works with the request-scoped server client, the browser client, and the
 // service-role client interchangeably.
 
+export type VerifiedRole = "student" | "faculty" | "mentor";
+
 export type PostAuthor = {
   id: string;
   handle: string;
   displayName: string;
-  gradYear: number;
-  schoolShortName: string;
+  // Nullable now (supabase/migrations/0014_roles.sql) — a mentor has
+  // neither a school nor a class year. Named verifiedRole, not role: a
+  // Space member row already has its own unrelated `role` field
+  // ("owner" | "member" — see lib/social/spaces.ts's SpaceMember), and
+  // PostAuthor & { role: "owner" | "member" } would otherwise collapse
+  // that key to an unconstructible intersection.
+  gradYear: number | null;
+  schoolShortName: string | null;
   schoolColorPrimary: string | null;
   avatarUrl: string | null;
+  verifiedRole: VerifiedRole;
+  affiliation: string | null;
 };
 
 export type FeedPost = {
@@ -68,7 +78,7 @@ export const POST_SELECT = `
   type, ticker, ticker_snapshot, position, change_my_mind, link_url,
   space_id, promoted_from,
   author:profiles (
-    id, handle, display_name, grad_year, avatar_url,
+    id, handle, display_name, grad_year, avatar_url, role, affiliation,
     school:schools ( short_name, color_primary )
   )
 `;
@@ -76,7 +86,7 @@ export const POST_SELECT = `
 const REPLY_SELECT = `
   id, body, created_at, deleted_at, is_pushback,
   author:profiles (
-    id, handle, display_name, grad_year, avatar_url,
+    id, handle, display_name, grad_year, avatar_url, role, affiliation,
     school:schools ( short_name, color_primary )
   )
 `;
@@ -89,8 +99,10 @@ export function mapAuthor(row: unknown): PostAuthor {
     id: string;
     handle: string;
     display_name: string;
-    grad_year: number;
+    grad_year: number | null;
     avatar_url: string | null;
+    role: VerifiedRole;
+    affiliation: string | null;
     school: { short_name: string; color_primary: string | null } | null;
   };
   return {
@@ -98,8 +110,10 @@ export function mapAuthor(row: unknown): PostAuthor {
     handle: r.handle,
     displayName: r.display_name,
     gradYear: r.grad_year,
-    schoolShortName: r.school?.short_name ?? "",
+    schoolShortName: r.school?.short_name ?? null,
     schoolColorPrimary: r.school?.color_primary ?? null,
+    verifiedRole: r.role ?? "student",
+    affiliation: r.affiliation ?? null,
     avatarUrl: r.avatar_url,
   };
 }
@@ -370,7 +384,7 @@ export async function getProfileByHandle(
   const { data, error } = await supabase
     .from("profiles")
     .select(
-      "id, handle, display_name, grad_year, avatar_url, linkedin_url, school:schools ( short_name, color_primary )",
+      "id, handle, display_name, grad_year, avatar_url, linkedin_url, role, affiliation, school:schools ( short_name, color_primary )",
     )
     .eq("handle", handle)
     .maybeSingle();

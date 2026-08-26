@@ -42,7 +42,8 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-const AUTHOR_SELECT = "id, handle, display_name, grad_year, avatar_url, school:schools ( short_name, color_primary )";
+const AUTHOR_SELECT =
+  "id, handle, display_name, grad_year, avatar_url, role, affiliation, school:schools ( short_name, color_primary )";
 
 export default async function FeedPage({
   searchParams,

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "./Avatar";
+import { IdentityBadge } from "./IdentityBadge";
 import type { SpaceMember } from "@/lib/social/spaces";
 
 // Owner-only controls: rename, edit description, remove a member, transfer
@@ -169,6 +170,7 @@ export function SpaceManage({
             <div key={m.id} className="space-manage-member-row">
               <Avatar avatarUrl={m.avatarUrl} displayName={m.displayName} className="avatar--sm" />
               <span>{m.displayName}</span>
+              <IdentityBadge subject={m} size={13} />
               <button
                 type="button"
                 className="social-btn social-btn-small"

@@ -6,17 +6,20 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Logo } from "@/components/layout/Logo";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
-import { SchoolBadge } from "./SchoolBadge";
+import { IdentityBadge } from "./IdentityBadge";
 import { Avatar } from "./Avatar";
 import { TickerSearchBar } from "./TickerSearchBar";
+import type { VerifiedRole } from "@/lib/social/queries";
 
 export type HeaderProfile = {
   handle: string;
   displayName: string;
-  gradYear: number;
-  schoolShortName: string;
+  gradYear: number | null;
+  schoolShortName: string | null;
   schoolColorPrimary: string | null;
   avatarUrl: string | null;
+  verifiedRole: VerifiedRole;
+  affiliation: string | null;
 };
 
 export function SocialHeader({ profile }: { profile: HeaderProfile | null }) {
@@ -41,11 +44,7 @@ export function SocialHeader({ profile }: { profile: HeaderProfile | null }) {
           <ThemeToggle />
           {user && profile ? (
             <>
-              <SchoolBadge
-                shortName={profile.schoolShortName}
-                gradYear={profile.gradYear}
-                colorPrimary={profile.schoolColorPrimary}
-              />
+              <IdentityBadge subject={profile} />
               <Link href={`/@${profile.handle}`} className="header-handle">
                 <Avatar avatarUrl={profile.avatarUrl} displayName={profile.displayName} className="avatar--sm" />
                 @{profile.handle}

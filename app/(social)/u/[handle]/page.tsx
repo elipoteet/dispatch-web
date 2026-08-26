@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getProfileByHandle, getPostsByAuthor } from "@/lib/social/queries";
 import { PostCard } from "@/components/social/PostCard";
-import { SchoolBadge } from "@/components/social/SchoolBadge";
+import { IdentityBadge } from "@/components/social/IdentityBadge";
 import { EmptyState } from "@/components/social/EmptyState";
 import { NotificationSettings } from "@/components/social/NotificationSettings";
 import { AvatarUpload } from "@/components/social/AvatarUpload";
@@ -72,11 +72,7 @@ export default async function ProfilePage(props: Props) {
           <div className="profile-name">{profile.displayName}</div>
           <div className="profile-handle">@{profile.handle}</div>
           <div className="profile-badge-row">
-            <SchoolBadge
-              shortName={profile.schoolShortName}
-              gradYear={profile.gradYear}
-              colorPrimary={profile.schoolColorPrimary}
-            />
+            <IdentityBadge subject={profile} size={16} />
           </div>
           {/* The profile's shareable URL, spelled out — product-spec.md
               calls this out explicitly ("a shareable URL at

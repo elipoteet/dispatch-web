@@ -3,14 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { SpaceNavItem } from "@/lib/social/spaces";
+import type { VerifiedRole } from "@/lib/social/queries";
 import { Avatar } from "./Avatar";
+import { IdentityBadge } from "./IdentityBadge";
 
 export type NavProfile = {
   handle: string;
   displayName: string;
-  schoolShortName: string;
-  gradYear: number;
+  schoolShortName: string | null;
+  gradYear: number | null;
   avatarUrl: string | null;
+  verifiedRole: VerifiedRole;
+  affiliation: string | null;
+  schoolColorPrimary: string | null;
 };
 
 // Deterministic per-space color, hashed from the space's id — there's no
@@ -76,7 +81,7 @@ export function SocialNav({
             <div className="nav-me-name">{profile.displayName}</div>
             <div className="nav-me-handle">@{profile.handle}</div>
             <div className="nav-me-stat">
-              {profile.schoolShortName} &rsquo;{String(profile.gradYear).slice(-2)}
+              <IdentityBadge subject={profile} size={13} />
             </div>
           </div>
         </Link>

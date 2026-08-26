@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { SchoolBadge } from "./SchoolBadge";
+import { IdentityBadge } from "./IdentityBadge";
 import { TickerCard } from "./TickerCard";
 import { Avatar } from "./Avatar";
 import { formatRelativeTime } from "@/lib/social/time";
@@ -64,11 +64,7 @@ export function PostCard({ post, actions }: { post: FeedPost; actions?: ReactNod
           <span className="post-name">
             <Link href={`/@${post.author.handle}`}>{post.author.displayName}</Link>
           </span>
-          <SchoolBadge
-            shortName={post.author.schoolShortName}
-            gradYear={post.author.gradYear}
-            colorPrimary={post.author.schoolColorPrimary}
-          />
+          <IdentityBadge subject={post.author} />
           {typeLabel && !isDeleted && <span className={`post-type post-type--${post.type}`}>{typeLabel}</span>}
           {post.editedAt && !isDeleted && <span className="post-edited">edited</span>}
           <span className="post-time">{formatRelativeTime(post.createdAt)}</span>

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service";
 import { OnboardingForm } from "@/components/social/OnboardingForm";
+import { MentorOnboardingForm } from "@/components/social/MentorOnboardingForm";
 
 export const metadata: Metadata = {
   title: "Set Up Your Profile",
@@ -55,13 +57,32 @@ export default async function OnboardingPage(props: Props) {
     .eq("domain", domain)
     .maybeSingle();
 
+  const defaultDisplayName = user.email?.split("@")[0] ?? "";
+
   if (!school) {
-    // Reachable if a signed-in user with a non-school email lands here —
-    // e.g. an existing equity-research account signed in with Google
-    // using a non-.edu address. The OTP flow itself never gets a session
-    // for an unrecognized domain in the first place (see
-    // app/api/auth/request-code/route.ts), so this is a clear message
-    // rather than a broken form for that edge case.
+    // docs/phase-six.md section B: the other reason a signed-in user's
+    // domain might not match a school — an outside mentor, allowlisted by
+    // Eli (supabase/migrations/0014_roles.sql's mentor_allowlist). That
+    // table has zero client-readable RLS policies, same as
+    // auth_code_requests, so this has to use the service-role client —
+    // the request-scoped `supabase` client above genuinely cannot read it.
+    const service = createServiceRoleClient();
+    const { data: mentorEntry } = await service
+      .from("mentor_allowlist")
+      .select("email")
+      .eq("email", user.email?.toLowerCase() ?? "")
+      .maybeSingle();
+
+    if (mentorEntry) {
+      return <MentorOnboardingForm userId={user.id} defaultDisplayName={defaultDisplayName} />;
+    }
+
+    // Reachable if a signed-in user with a non-school, non-allowlisted
+    // email lands here — e.g. an existing equity-research account signed
+    // in with Google using a non-.edu address. The OTP flow itself never
+    // gets a session for an unrecognized, non-allowlisted domain in the
+    // first place (see app/api/auth/request-code/route.ts), so this is a
+    // clear message rather than a broken form for that edge case.
     return (
       <div className="social-auth-wrap">
         <div className="social-auth-card">
@@ -74,8 +95,6 @@ export default async function OnboardingPage(props: Props) {
       </div>
     );
   }
-
-  const defaultDisplayName = user.email?.split("@")[0] ?? "";
 
   return (
     <OnboardingForm

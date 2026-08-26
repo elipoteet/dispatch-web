@@ -34,7 +34,9 @@ export default async function SocialLayout({
   if (user) {
     const { data } = await supabase
       .from("profiles")
-      .select("handle, display_name, grad_year, avatar_url, school:schools ( short_name, color_primary )")
+      .select(
+        "handle, display_name, grad_year, avatar_url, role, affiliation, school:schools ( short_name, color_primary )",
+      )
       .eq("id", user.id)
       .maybeSingle();
     if (data) {
@@ -43,9 +45,11 @@ export default async function SocialLayout({
         handle: data.handle,
         displayName: data.display_name,
         gradYear: data.grad_year,
-        schoolShortName: school?.short_name ?? "",
+        schoolShortName: school?.short_name ?? null,
         schoolColorPrimary: school?.color_primary ?? null,
         avatarUrl: data.avatar_url,
+        verifiedRole: data.role ?? "student",
+        affiliation: data.affiliation ?? null,
       };
       // Only fetched once onboarding is actually done (profile exists) —
       // the Spaces nav section means nothing to a mid-onboarding user.

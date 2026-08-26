@@ -44,6 +44,45 @@
     --tape-text: #e8ecf2;
   }
 
+  /* Verified-role badge colours (docs/phase-six.md section B,
+     docs/badges-design.html) — no green/red, since those already mean
+     up/down everywhere else on this site. Faculty is the one that needs
+     the flip: navy reads as institutional on cream but disappears
+     entirely on a dark ground, so it becomes a pale slate there instead.
+     --v-check is the checkmark stroke, not a tier colour — it flips
+     opposite the tier fills (near-white on the saturated light-mode
+     fills, near-navy on the paler dark-mode ones) so it stays legible
+     against whichever fill is under it. */
+  :root, [data-theme="light"] {
+    --v-student: #3E76B8;
+    --v-alum: #9A9384;
+    --v-faculty: #0E1D33;
+    --v-mentor: #B08430;
+    --v-check: #FFFDF7;
+  }
+  [data-theme="dark"] {
+    --v-student: #5A93D4;
+    --v-alum: #8F8A7C;
+    --v-faculty: #B8C6DA;
+    --v-mentor: #D2A44E;
+    --v-check: #0B1727;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) {
+      --v-student: #5A93D4;
+      --v-alum: #8F8A7C;
+      --v-faculty: #B8C6DA;
+      --v-mentor: #D2A44E;
+      --v-check: #0B1727;
+    }
+  }
+  .vb { display: inline-flex; }
+  .vb--student .ros { fill: var(--v-student); }
+  .vb--alumni .ros { fill: var(--v-alum); }
+  .vb--faculty .ros { fill: var(--v-faculty); }
+  .vb--mentor .ros { fill: var(--v-mentor); }
+  .vb .chk { fill: none; stroke: var(--v-check); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme]) {
       --navy: #e8ecf2;

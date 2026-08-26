@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { SchoolBadge } from "./SchoolBadge";
+import { IdentityBadge } from "./IdentityBadge";
 import { Avatar } from "./Avatar";
 import { formatRelativeTime } from "@/lib/social/time";
 import { renderCashtags } from "@/lib/social/cashtags";
@@ -21,11 +21,7 @@ export function ReplyItem({ reply, actions }: { reply: Reply; actions?: ReactNod
           <span className="post-name">
             <Link href={`/@${reply.author.handle}`}>{reply.author.displayName}</Link>
           </span>
-          <SchoolBadge
-            shortName={reply.author.schoolShortName}
-            gradYear={reply.author.gradYear}
-            colorPrimary={reply.author.schoolColorPrimary}
-          />
+          <IdentityBadge subject={reply.author} />
           {reply.isPushback && !isDeleted && <span className="pushback-label">Pushback</span>}
           <span className="post-time">{formatRelativeTime(reply.createdAt)}</span>
         </div>

@@ -42,7 +42,7 @@ export async function POST(request: Request) {
 
   const { data: replierProfile } = await supabase
     .from("profiles")
-    .select("id, display_name, grad_year, school:schools ( short_name )")
+    .select("id, display_name, grad_year, role, affiliation, school:schools ( short_name )")
     .eq("id", user.id)
     .maybeSingle();
   if (!replierProfile) {
@@ -79,7 +79,9 @@ async function notifyPostAuthor({
   replierProfile: {
     id: string;
     display_name: string;
-    grad_year: number;
+    grad_year: number | null;
+    role: "student" | "faculty" | "mentor";
+    affiliation: string | null;
     school: unknown;
   };
   replyBody: string;
@@ -104,7 +106,12 @@ async function notifyPostAuthor({
   if (!email) return;
 
   const school = replierProfile.school as unknown as { short_name: string } | null;
-  const badge = formatBadge(school?.short_name ?? "", replierProfile.grad_year);
+  const badge = formatBadge(
+    replierProfile.role ?? "student",
+    school?.short_name ?? null,
+    replierProfile.grad_year,
+    replierProfile.affiliation,
+  );
   const postUrl = `${SITE_URL}/p/${postId}`;
 
   const { subject, html } = isPushback

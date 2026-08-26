@@ -82,9 +82,29 @@ export async function POST(request: Request) {
     console.error("request-code: schools lookup failed", schoolError);
     return NextResponse.json({ error: "Something went wrong. Try again." }, { status: 500 });
   }
+
+  // docs/phase-six.md section B: an outside mentor has no school email at
+  // all, so the domain lookup above will always miss for them. Eli's own
+  // maintained allowlist (supabase/migrations/0014_roles.sql's
+  // mentor_allowlist, zero client-readable policies — service role only,
+  // same as auth_code_requests) is the fallback. This only unlocks getting
+  // a code at all; it does NOT grant the mentor role by itself — they
+  // still onboard as a plain student-role account, same shape as everyone
+  // else, and the role is applied afterward (see onboarding/page.tsx).
   if (!school) {
-    // Refused politely, and signInWithOtp is never reached for this request.
-    return NextResponse.json({ error: NO_SCHOOL_MESSAGE }, { status: 400 });
+    const { data: mentorEntry, error: mentorError } = await service
+      .from("mentor_allowlist")
+      .select("email")
+      .eq("email", email)
+      .maybeSingle();
+    if (mentorError) {
+      console.error("request-code: mentor_allowlist lookup failed", mentorError);
+      return NextResponse.json({ error: "Something went wrong. Try again." }, { status: 500 });
+    }
+    if (!mentorEntry) {
+      // Refused politely, and signInWithOtp is never reached for this request.
+      return NextResponse.json({ error: NO_SCHOOL_MESSAGE }, { status: 400 });
+    }
   }
 
   // Log the attempt before sending, so a request that fails downstream

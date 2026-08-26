@@ -79,7 +79,7 @@ export async function getSpaceMembers(supabase: SupabaseClient, spaceId: string)
   const { data, error } = await supabase
     .from("space_members")
     .select(
-      `role, profile:profiles ( id, handle, display_name, grad_year, avatar_url, school:schools ( short_name, color_primary ) )`,
+      `role, profile:profiles ( id, handle, display_name, grad_year, avatar_url, role, affiliation, school:schools ( short_name, color_primary ) )`,
     )
     .eq("space_id", spaceId)
     .order("role", { ascending: true }); // 'owner' sorts before 'member'
