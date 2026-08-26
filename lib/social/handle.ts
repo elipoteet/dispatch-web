@@ -15,9 +15,13 @@ export const RESERVED_HANDLES = new Set([
   "support",
   "official",
   "help",
-  // The Dispatch AI account (docs/phase-seven.md) — reserved, not
-  // self-registerable, same as everything else in this list.
-  "dispatchai",
+  // NOT "dispatchai" — that account is real and already claims that
+  // exact handle (created via a service-role script, docs/phase-seven.md);
+  // reserving it here would block the real account too, since this list
+  // can't distinguish "a stranger squatting the name" from "the actual
+  // account." profiles.handle's own unique constraint (0006_social.sql)
+  // is what actually protects it once it exists — see
+  // supabase/migrations/0017_fix_dispatchai_handle_reserved.sql.
 ]);
 
 export function validateHandle(raw: string): string | null {
