@@ -67,11 +67,12 @@ export type Reply = {
   isPushback: boolean;
 };
 
-// Wider than PostAuthor deliberately — linkedinUrl only matters on the
-// profile page itself, not on every post/reply author blob (feed cards,
-// replies, etc.), so it isn't threaded through PostAuthor/mapAuthor at
-// all. See supabase/migrations/0013_profile_linkedin.sql.
-export type ProfileDetail = PostAuthor & { linkedinUrl: string | null };
+// Wider than PostAuthor deliberately — linkedinUrl/displayNameChangedAt
+// only matter on the profile page itself, not on every post/reply author
+// blob (feed cards, replies, etc.), so neither is threaded through
+// PostAuthor/mapAuthor at all. See supabase/migrations/0013_profile_linkedin.sql
+// and 0015_display_name_cooldown.sql.
+export type ProfileDetail = PostAuthor & { linkedinUrl: string | null; displayNameChangedAt: string | null };
 
 export const POST_SELECT = `
   id, body, created_at, edited_at, deleted_at,
@@ -384,10 +385,11 @@ export async function getProfileByHandle(
   const { data, error } = await supabase
     .from("profiles")
     .select(
-      "id, handle, display_name, grad_year, avatar_url, linkedin_url, role, affiliation, school:schools ( short_name, color_primary )",
+      "id, handle, display_name, grad_year, avatar_url, linkedin_url, role, affiliation, display_name_changed_at, school:schools ( short_name, color_primary )",
     )
     .eq("handle", handle)
     .maybeSingle();
   if (error || !data) return null;
-  return { ...mapAuthor(data), linkedinUrl: (data as { linkedin_url: string | null }).linkedin_url };
+  const r = data as { linkedin_url: string | null; display_name_changed_at: string | null };
+  return { ...mapAuthor(data), linkedinUrl: r.linkedin_url, displayNameChangedAt: r.display_name_changed_at };
 }

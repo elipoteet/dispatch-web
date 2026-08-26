@@ -9,6 +9,7 @@ import { NotificationSettings } from "@/components/social/NotificationSettings";
 import { AvatarUpload } from "@/components/social/AvatarUpload";
 import { Avatar } from "@/components/social/Avatar";
 import { LinkedInField } from "@/components/social/LinkedInField";
+import { DisplayNameField } from "@/components/social/DisplayNameField";
 
 // Public URL is /@handle — see next.config.ts's rewrite. A literal
 // app/@[handle]/ folder isn't possible in the App Router (@folder is the
@@ -69,7 +70,12 @@ export default async function ProfilePage(props: Props) {
           <Avatar avatarUrl={profile.avatarUrl} displayName={profile.displayName} className="profile-avatar" />
         )}
         <div>
-          <div className="profile-name">{profile.displayName}</div>
+          <DisplayNameField
+            profileId={profile.id}
+            displayName={profile.displayName}
+            displayNameChangedAt={profile.displayNameChangedAt}
+            isOwnProfile={isOwnProfile}
+          />
           <div className="profile-handle">@{profile.handle}</div>
           <div className="profile-badge-row">
             <IdentityBadge subject={profile} size={16} />
