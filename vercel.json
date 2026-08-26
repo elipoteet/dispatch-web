@@ -2,6 +2,7 @@
   "crons": [
     { "path": "/api/cron/alerts", "schedule": "30 21 * * *" },
     { "path": "/api/competition/snapshot", "schedule": "0 22 * * *" },
-    { "path": "/api/cron/digest", "schedule": "0 23 * * 0" }
+    { "path": "/api/cron/digest", "schedule": "0 23 * * 0" },
+    { "path": "/api/cron/dispatch-ai", "schedule": "30 22 * * *" }
   ]
 }

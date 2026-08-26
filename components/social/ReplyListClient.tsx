@@ -16,18 +16,28 @@ export function ReplyListClient({
   initialReplies,
   author,
   viewerId,
+  disablePushback = false,
 }: {
   postId: string;
   initialReplies: Reply[];
   author: PostAuthor | null;
   viewerId: string | null | undefined;
+  // docs/phase-seven.md — pushback disputes a claim, and a generated
+  // Dispatch AI post makes none. Replies still work; only the pushback
+  // toggle disappears (see ReplyBox.tsx).
+  disablePushback?: boolean;
 }) {
   const [replies, dispatch] = useOptimisticReplies(initialReplies);
 
   return (
     <>
       {author && (
-        <ReplyBox postId={postId} author={author} onOptimisticReply={(reply) => dispatch({ type: "add", reply })} />
+        <ReplyBox
+          postId={postId}
+          author={author}
+          onOptimisticReply={(reply) => dispatch({ type: "add", reply })}
+          disablePushback={disablePushback}
+        />
       )}
 
       <div className="reply-list">

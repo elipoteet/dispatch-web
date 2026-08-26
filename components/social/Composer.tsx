@@ -179,6 +179,12 @@ export function Composer({
       spaceId: null,
       promotedFrom: null,
       promotedToId: null,
+      // A human composing a post is never Dispatch AI — see
+      // docs/phase-seven.md.
+      generated: false,
+      generatedTemplate: null,
+      generatedRefPostId: null,
+      generatedStats: null,
     };
 
     setBody("");

@@ -28,6 +28,9 @@ function computeTier(subject: IdentitySubject): VerifiedTier {
 }
 
 function metaText(subject: IdentitySubject, tier: VerifiedTier): ReactNode {
+  if (subject.verifiedRole === "system") {
+    return "Automated";
+  }
   if (subject.verifiedRole === "mentor") {
     // No school prefix — a mentor doesn't have one. Matches
     // docs/badges-design.html's mentor row: "Mentor · Equity research".

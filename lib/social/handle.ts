@@ -15,6 +15,9 @@ export const RESERVED_HANDLES = new Set([
   "support",
   "official",
   "help",
+  // The Dispatch AI account (docs/phase-seven.md) — reserved, not
+  // self-registerable, same as everything else in this list.
+  "dispatchai",
 ]);
 
 export function validateHandle(raw: string): string | null {

@@ -8,13 +8,21 @@ import type { CSSProperties } from "react";
 // space member lists, the digest email) — same lesson as the "from a
 // space" kicker: if each surface has to remember to render it, some of
 // them will forget.
-export type VerifiedTier = "student" | "alumni" | "faculty" | "mentor";
+// "system" is the one Dispatch AI account (docs/phase-seven.md) — a
+// DIFFERENT SHAPE, not a fifth rosette colour. The rosette means a
+// verified person; giving the bot a rosette in a fifth colour would
+// silently change what "verified" means for the other four tiers too.
+// Shape carries human-vs-machine, colour carries which kind of human —
+// enforced right here in the render branch below so nobody adds a sixth
+// rosette colour later without noticing this rule exists.
+export type VerifiedTier = "student" | "alumni" | "faculty" | "mentor" | "system";
 
 const LABELS: Record<VerifiedTier, string> = {
   student: "Verified student",
   alumni: "Verified alum",
   faculty: "Verified faculty",
   mentor: "Verified mentor",
+  system: "Automated account",
 };
 
 // Exact path data from docs/badges-design.html — twelve lobes, one path,
@@ -39,7 +47,11 @@ export function VerifiedBadge({ tier, size = 15 }: { tier: VerifiedTier; size?: 
       aria-label={LABELS[tier]}
       style={{ verticalAlign: "-2px", flex: "none" } as CSSProperties}
     >
-      <path className="ros" d={ROSETTE_PATH} />
+      {tier === "system" ? (
+        <rect className="sq" x="1.1" y="1.1" width="13.8" height="13.8" rx="3.2" />
+      ) : (
+        <path className="ros" d={ROSETTE_PATH} />
+      )}
       <path className="chk" d={CHECK_PATH} />
     </svg>
   );

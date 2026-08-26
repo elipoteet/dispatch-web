@@ -67,7 +67,12 @@ export default async function ProfilePage(props: Props) {
         {isOwnProfile ? (
           <AvatarUpload profileId={profile.id} displayName={profile.displayName} avatarUrl={profile.avatarUrl} />
         ) : (
-          <Avatar avatarUrl={profile.avatarUrl} displayName={profile.displayName} className="profile-avatar" />
+          <Avatar
+            avatarUrl={profile.avatarUrl}
+            displayName={profile.displayName}
+            verifiedRole={profile.verifiedRole}
+            className="profile-avatar"
+          />
         )}
         <div>
           <DisplayNameField
@@ -89,6 +94,13 @@ export default async function ProfilePage(props: Props) {
           <LinkedInField profileId={profile.id} linkedinUrl={profile.linkedinUrl} isOwnProfile={isOwnProfile} />
         </div>
       </div>
+
+      {/* docs/phase-seven.md section A, verbatim. */}
+      {profile.verifiedRole === "system" && (
+        <p className="profile-bot-note">
+          An automated account. It posts counts and moves, never opinions, and never replies.
+        </p>
+      )}
 
       {isOwnProfile && notifyPrefs && <NotificationSettings profileId={profile.id} initial={notifyPrefs} />}
 

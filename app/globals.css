@@ -58,14 +58,20 @@
     --v-alum: #9A9384;
     --v-faculty: #0E1D33;
     --v-mentor: #B08430;
+    --v-system: #4E5A6B;
     --v-check: #FFFDF7;
+    --bot-bg: rgba(78, 90, 107, 0.055);
+    --bot-line: rgba(78, 90, 107, 0.34);
   }
   [data-theme="dark"] {
     --v-student: #5A93D4;
     --v-alum: #8F8A7C;
     --v-faculty: #B8C6DA;
     --v-mentor: #D2A44E;
+    --v-system: #8B98AB;
     --v-check: #0B1727;
+    --bot-bg: rgba(139, 152, 171, 0.07);
+    --bot-line: rgba(139, 152, 171, 0.36);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme]) {
@@ -73,7 +79,10 @@
       --v-alum: #8F8A7C;
       --v-faculty: #B8C6DA;
       --v-mentor: #D2A44E;
+      --v-system: #8B98AB;
       --v-check: #0B1727;
+      --bot-bg: rgba(139, 152, 171, 0.07);
+      --bot-line: rgba(139, 152, 171, 0.36);
     }
   }
   .vb { display: inline-flex; }
@@ -81,6 +90,7 @@
   .vb--alumni .ros { fill: var(--v-alum); }
   .vb--faculty .ros { fill: var(--v-faculty); }
   .vb--mentor .ros { fill: var(--v-mentor); }
+  .vb--system .sq { fill: var(--v-system); }
   .vb .chk { fill: none; stroke: var(--v-check); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 
   @media (prefers-color-scheme: dark) {
@@ -3339,6 +3349,15 @@
   height: 30px;
   font-size: 11px;
 }
+/* The one Dispatch AI account (docs/phase-seven.md) — shape carries
+   human-vs-machine the same way the badge does (VerifiedBadge.tsx), so
+   this isn't just a border-radius swap: fill/text follow --v-system/
+   --v-check too, not the generic navy/cream every human avatar uses. */
+.avatar--square {
+  border-radius: 4px;
+  background: var(--v-system);
+  color: var(--v-check);
+}
 .avatar-photo {
   object-fit: cover;
   background: var(--navy);
@@ -3448,6 +3467,15 @@
   font-size: 14px;
   color: var(--muted);
 }
+.profile-bot-note {
+  padding: 14px 18px;
+  border: 1px dashed var(--v-system);
+  border-radius: var(--social-r);
+  background: var(--bot-bg);
+  margin: 18px 0;
+  font-size: 13.5px;
+  color: var(--muted);
+}
 .sign-in-prompt a,
 .sign-in-prompt button.link {
   color: var(--gold);
@@ -3507,6 +3535,16 @@
   gap: 12px;
   padding: 18px 0;
   border-bottom: 1px solid var(--rule);
+}
+/* docs/phase-seven.md — Dispatch AI. Tinted + left-bordered rather than a
+   full card, so a generated post reads as "part of the feed, from a
+   different kind of account" rather than a walled-off block. */
+.post-card.post--bot {
+  background: var(--bot-bg);
+  border-left: 2px solid var(--bot-line);
+  padding: 18px 14px 18px 12px;
+  margin: 0 -14px;
+  border-radius: var(--social-rs);
 }
 .post-card-body {
   flex: 1;
@@ -4002,6 +4040,10 @@
   color: var(--muted);
   font-weight: 600;
 }
+.post-type--generated {
+  background: var(--bot-bg);
+  color: var(--v-system);
+}
 .post-type--question {
   background: rgba(166, 124, 0, 0.14);
   color: var(--gold);
@@ -4211,6 +4253,45 @@
   font-size: 14px;
   line-height: 1.5;
   color: var(--ink);
+}
+
+/* ---------- Dispatch AI (docs/phase-seven.md) ---------- */
+.gen-stats {
+  display: flex;
+  gap: 18px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--bot-line);
+}
+.gen-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.gen-stat b {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.gen-stat b.up {
+  color: var(--green);
+}
+.gen-stat b.down {
+  color: var(--accent);
+}
+.gen-stat span {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.genlab {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-left: auto;
 }
 
 /* ---------- link post ---------- */

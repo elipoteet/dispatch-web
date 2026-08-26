@@ -9,7 +9,10 @@ export type PostType = "take" | "question" | "thesis" | "link";
 // works with the request-scoped server client, the browser client, and the
 // service-role client interchangeably.
 
-export type VerifiedRole = "student" | "faculty" | "mentor";
+// "system" is the one Dispatch AI account (docs/phase-seven.md) — never
+// self-granted, same as faculty/mentor; created once via a service-role
+// script, not through signup.
+export type VerifiedRole = "student" | "faculty" | "mentor" | "system";
 
 export type PostAuthor = {
   id: string;
@@ -56,7 +59,18 @@ export type FeedPost = {
   // phase-three.md's explicit "do not denormalise this onto the space
   // post" instruction.
   promotedToId: string | null;
+  // docs/phase-seven.md — Dispatch AI. generated is what excludes a post
+  // from every count the bot itself makes (the self-reference-loop
+  // warning) and drives .post--bot styling; the other three are only
+  // ever set when generated is true. generatedStats is only used by the
+  // "ticker moved" template's stat-tile block.
+  generated: boolean;
+  generatedTemplate: GeneratedTemplate | null;
+  generatedRefPostId: string | null;
+  generatedStats: { label: string; value: string }[] | null;
 };
+
+export type GeneratedTemplate = "ticker_moved" | "unanswered" | "first_mention" | "promotion_flow" | "busiest_beat";
 
 export type Reply = {
   id: string;
@@ -78,6 +92,7 @@ export const POST_SELECT = `
   id, body, created_at, edited_at, deleted_at,
   type, ticker, ticker_snapshot, position, change_my_mind, link_url,
   space_id, promoted_from,
+  generated, generated_template, generated_ref_post_id, generated_stats,
   author:profiles (
     id, handle, display_name, grad_year, avatar_url, role, affiliation,
     school:schools ( short_name, color_primary )
@@ -137,6 +152,10 @@ export function mapPostRow(row: unknown, counts: Counts, promotedToId: string | 
     link_url: string | null;
     space_id: string | null;
     promoted_from: string | null;
+    generated: boolean;
+    generated_template: GeneratedTemplate | null;
+    generated_ref_post_id: string | null;
+    generated_stats: { label: string; value: string }[] | null;
   };
   return {
     id: r.id,
@@ -156,6 +175,10 @@ export function mapPostRow(row: unknown, counts: Counts, promotedToId: string | 
     spaceId: r.space_id,
     promotedFrom: r.promoted_from,
     promotedToId,
+    generated: r.generated,
+    generatedTemplate: r.generated_template,
+    generatedRefPostId: r.generated_ref_post_id,
+    generatedStats: r.generated_stats,
   };
 }
 
@@ -326,6 +349,10 @@ export async function getPostsByTicker(
     .from("posts")
     .select(POST_SELECT, { count: "exact" })
     .is("space_id", null)
+    // docs/phase-seven.md's "self-reference loop" warning — a generated
+    // post must never count as a post about a ticker, or Dispatch AI
+    // starts reporting on itself.
+    .eq("generated", false)
     .or(`ticker.eq.${symbol},body.ilike.%$${symbol}%`)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -358,6 +385,8 @@ export async function getTrendingTickers(supabase: SupabaseClient, limit = 24): 
     .from("posts")
     .select("ticker, ticker_snapshot")
     .is("space_id", null)
+    // Same self-reference-loop exclusion as getPostsByTicker above.
+    .eq("generated", false)
     .not("ticker", "is", null)
     .order("created_at", { ascending: false })
     .limit(300);

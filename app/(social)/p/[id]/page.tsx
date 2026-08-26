@@ -71,7 +71,13 @@ export default async function PostDetailPage(props: Props) {
         </div>
       )}
 
-      <ReplyListClient postId={post.id} initialReplies={replies} author={profile} viewerId={user?.id} />
+      <ReplyListClient
+        postId={post.id}
+        initialReplies={replies}
+        author={profile}
+        viewerId={user?.id}
+        disablePushback={post.generated}
+      />
     </div>
   );
 }

@@ -40,6 +40,17 @@ export async function POST(request: Request) {
     );
   }
 
+  // docs/phase-seven.md — pushback disputes a claim, and a generated
+  // Dispatch AI post makes none. ReplyBox.tsx already hides the toggle
+  // for a generated post; this is the real enforcement, since a hidden
+  // button doesn't stop someone POSTing here directly.
+  if (isPushback) {
+    const { data: targetPost } = await supabase.from("posts").select("generated").eq("id", postId).maybeSingle();
+    if (targetPost?.generated) {
+      return NextResponse.json({ error: "This post is generated and can't be pushed back on." }, { status: 400 });
+    }
+  }
+
   const { data: replierProfile } = await supabase
     .from("profiles")
     .select("id, display_name, grad_year, role, affiliation, school:schools ( short_name )")

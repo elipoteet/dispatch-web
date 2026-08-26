@@ -86,6 +86,12 @@ export function SpaceComposer({
       spaceId,
       promotedFrom: null,
       promotedToId: null,
+      // A human composing a post is never Dispatch AI, and it never posts
+      // inside a Space anyway — see docs/phase-seven.md.
+      generated: false,
+      generatedTemplate: null,
+      generatedRefPostId: null,
+      generatedStats: null,
     };
 
     setBody("");

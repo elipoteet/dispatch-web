@@ -20,10 +20,15 @@ export function ReplyBox({
   postId,
   author,
   onOptimisticReply,
+  disablePushback = false,
 }: {
   postId: string;
   author: PostAuthor;
   onOptimisticReply?: (reply: Reply) => void;
+  // docs/phase-seven.md — true for a generated Dispatch AI post. Hiding
+  // the toggle is UI only; app/api/replies/route.ts enforces the same
+  // rule server-side, since a hidden button doesn't stop a direct fetch.
+  disablePushback?: boolean;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -79,22 +84,24 @@ export function ReplyBox({
     <form className="reply-box" onSubmit={handleSubmit}>
       <Avatar avatarUrl={author.avatarUrl} displayName={author.displayName} className="avatar--sm" />
       <div className="composer-body">
-        <div className="type-pills">
-          <button
-            type="button"
-            className={`type-pill${!isPushback ? " on" : ""}`}
-            onClick={() => setIsPushback(false)}
-          >
-            Reply
-          </button>
-          <button
-            type="button"
-            className={`type-pill${isPushback ? " on" : ""}`}
-            onClick={() => setIsPushback(true)}
-          >
-            Push back
-          </button>
-        </div>
+        {!disablePushback && (
+          <div className="type-pills">
+            <button
+              type="button"
+              className={`type-pill${!isPushback ? " on" : ""}`}
+              onClick={() => setIsPushback(false)}
+            >
+              Reply
+            </button>
+            <button
+              type="button"
+              className={`type-pill${isPushback ? " on" : ""}`}
+              onClick={() => setIsPushback(true)}
+            >
+              Push back
+            </button>
+          </div>
+        )}
         <textarea
           ref={textareaRef}
           placeholder={isPushback ? "Push back — say why." : "Reply."}
