@@ -1,0 +1,247 @@
+<title>Dispatch AI</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --navy:#0E1D33; --cream:#F6F2E9; --gold:#B08430;
+    --bg:var(--cream); --surface:#FFFDF7; --surface2:#EDE7DA;
+    --border:rgba(14,29,51,.13); --border-strong:rgba(14,29,51,.28);
+    --text:var(--navy); --dim:#5B6472;
+    --green:#2F7D4F; --red:#A33A32;
+    --v-student:#3E76B8; --v-alum:#9A9384; --v-faculty:#0E1D33;
+    --v-mentor:#B08430; --v-system:#4E5A6B; --v-check:#FFFDF7;
+    --bot-bg:rgba(78,90,107,.055); --bot-line:rgba(78,90,107,.34);
+    --font:'Inter',system-ui,-apple-system,sans-serif;
+    --mono:'IBM Plex Mono','SF Mono',ui-monospace,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --bg:#0B1727; --surface:#101F35; --surface2:#16283F;
+    --border:rgba(246,242,233,.12); --border-strong:rgba(246,242,233,.26);
+    --text:#F0EBE0; --dim:#93A0B2; --gold:#D2A44E;
+    --green:#63B583; --red:#D97A70;
+    --v-student:#5A93D4; --v-alum:#8F8A7C; --v-faculty:#B8C6DA;
+    --v-mentor:#D2A44E; --v-system:#8B98AB; --v-check:#0B1727;
+    --bot-bg:rgba(139,152,171,.07); --bot-line:rgba(139,152,171,.36);
+  }}
+  :root[data-theme="dark"]{
+    --bg:#0B1727; --surface:#101F35; --surface2:#16283F;
+    --border:rgba(246,242,233,.12); --border-strong:rgba(246,242,233,.26);
+    --text:#F0EBE0; --dim:#93A0B2; --gold:#D2A44E;
+    --green:#63B583; --red:#D97A70;
+    --v-student:#5A93D4; --v-alum:#8F8A7C; --v-faculty:#B8C6DA;
+    --v-mentor:#D2A44E; --v-system:#8B98AB; --v-check:#0B1727;
+    --bot-bg:rgba(139,152,171,.07); --bot-line:rgba(139,152,171,.36);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:660px;margin:0 auto;padding:52px 22px 80px}
+  .lab{font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:1.6px;text-transform:uppercase;color:var(--dim)}
+  h1{margin:14px 0 0;font-size:30px;font-weight:600;letter-spacing:-.02em;text-wrap:balance}
+  h2{margin:0;font-size:17px;font-weight:600}
+  .intro{margin-top:14px;color:var(--dim)}
+  section{margin-top:46px}
+  .sec__hd{margin-bottom:20px;padding-bottom:11px;border-bottom:1px solid var(--border)}
+  .sec__hd p{margin:8px 0 0;font-size:14px;color:var(--dim)}
+  .note{margin-top:15px;font-size:13.5px;color:var(--dim)}
+  code{font-family:var(--mono);font-size:.9em}
+
+  /* badges */
+  .vb{display:inline-flex;vertical-align:-2px;flex:none}
+  .vb--student .ros{fill:var(--v-student)} .vb--mentor .ros{fill:var(--v-mentor)}
+  .vb--faculty .ros{fill:var(--v-faculty)} .vb--alum .ros{fill:var(--v-alum)}
+  .vb--system .sq{fill:var(--v-system)}
+  .vb .chk{fill:none;stroke:var(--v-check);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+
+  /* posts */
+  .feed{display:flex;flex-direction:column;gap:12px}
+  .post{background:var(--surface);border:1px solid var(--border-strong);padding:17px 18px}
+  .post__hd{display:flex;align-items:center;gap:11px;margin-bottom:12px}
+  .av{width:38px;height:38px;border-radius:50%;flex:none;background:var(--navy);color:var(--cream);
+      display:grid;place-items:center;font-family:var(--mono);font-size:11.5px;font-weight:600}
+  .nm{font-weight:600;font-size:14.5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .meta{font-family:var(--mono);font-size:10px;letter-spacing:1.1px;text-transform:uppercase;color:var(--dim);margin-top:2px}
+  .ty{margin-left:auto;font-family:var(--mono);font-size:9.5px;letter-spacing:1.4px;text-transform:uppercase;
+      padding:4px 9px;border:1px solid var(--border-strong);color:var(--dim);white-space:nowrap}
+  .bd{font-size:14.5px;line-height:1.65}
+  .cash{font-family:var(--mono);font-weight:600;color:var(--gold);text-decoration:none;border-bottom:1px solid rgba(176,132,48,.4)}
+  .ft{margin-top:13px;padding-top:11px;border-top:1px solid var(--border);display:flex;gap:17px;
+      font-family:var(--mono);font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--dim)}
+
+  /* the bot card */
+  .post--bot{background:var(--bot-bg);border-color:var(--bot-line);border-left-width:2px}
+  .post--bot .av{border-radius:4px;background:var(--v-system);color:var(--v-check)}
+  .genlab{font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim)}
+  .stat{display:flex;gap:22px;flex-wrap:wrap;margin-top:13px;padding-top:12px;border-top:1px dashed var(--bot-line)}
+  .stat div{display:flex;flex-direction:column;gap:2px}
+  .stat b{font-family:var(--mono);font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
+  .stat span{font-family:var(--mono);font-size:9px;letter-spacing:1.3px;text-transform:uppercase;color:var(--dim)}
+  .up{color:var(--green)} .down{color:var(--red)}
+
+  .cmp{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);margin-top:6px}
+  .cmp__c{background:var(--bg);padding:16px 16px 18px}
+  .cmp__c .lab{display:block;margin-bottom:9px}
+  .cmp__c p{margin:0;font-size:13.5px;line-height:1.6}
+  .cmp__c .good{color:var(--green);font-weight:600}
+  .cmp__c .bad{color:var(--red);font-weight:600}
+  @media(max-width:560px){.cmp{grid-template-columns:1fr}}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <path id="ros" d="M8 0.85A1.85 1.85 0 0 1 11.57 1.81A1.85 1.85 0 0 1 14.19 4.42A1.85 1.85 0 0 1 15.15 8A1.85 1.85 0 0 1 14.19 11.57A1.85 1.85 0 0 1 11.57 14.19A1.85 1.85 0 0 1 8 15.15A1.85 1.85 0 0 1 4.43 14.19A1.85 1.85 0 0 1 1.81 11.58A1.85 1.85 0 0 1 0.85 8A1.85 1.85 0 0 1 1.81 4.42A1.85 1.85 0 0 1 4.42 1.81A1.85 1.85 0 0 1 8 0.85Z"></path>
+  <rect id="sq" x="1.1" y="1.1" width="13.8" height="13.8" rx="3.2"></rect>
+  <path id="chk" d="M4.6 8.2l2.3 2.3 4.5-4.6"></path>
+</defs></svg>
+
+<div class="wrap">
+  <span class="lab">The Dispatch</span>
+  <h1>Dispatch AI</h1>
+  <p class="intro">
+    An account that posts what happened on the site — counts, moves, and gaps. It states
+    facts and never judges them, which is what keeps it from quietly becoming a leaderboard.
+  </p>
+
+  <section>
+    <div class="sec__hd">
+      <h2>Its badge is a square, not a rosette</h2>
+      <p>Shape says human or machine. Colour says which kind of human.</p>
+    </div>
+    <div class="feed" style="gap:0;border:1px solid var(--border-strong);background:var(--surface)">
+      <div style="display:flex;align-items:center;gap:11px;padding:14px 17px;border-bottom:1px solid var(--border)">
+        <div class="av">EP</div>
+        <div><div class="nm">Eli Poteet
+          <svg class="vb vb--student" width="15" height="15" viewBox="0 0 16 16" role="img" aria-label="Verified student"><use href="#ros" class="ros"></use><use href="#chk" class="chk"></use></svg>
+        </div><div class="meta">UNH '28 &middot; Student</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:11px;padding:14px 17px;border-bottom:1px solid var(--border)">
+        <div class="av">SM</div>
+        <div><div class="nm">Steve Marchetti
+          <svg class="vb vb--mentor" width="15" height="15" viewBox="0 0 16 16" role="img" aria-label="Verified mentor"><use href="#ros" class="ros"></use><use href="#chk" class="chk"></use></svg>
+        </div><div class="meta">Mentor &middot; Equity research</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:11px;padding:14px 17px">
+        <div class="av" style="border-radius:4px;background:var(--v-system);color:var(--v-check)">AI</div>
+        <div><div class="nm">Dispatch AI
+          <svg class="vb vb--system" width="15" height="15" viewBox="0 0 16 16" role="img" aria-label="Automated account"><use href="#sq" class="sq"></use><use href="#chk" class="chk"></use></svg>
+        </div><div class="meta">Automated &middot; The Dispatch</div></div>
+      </div>
+    </div>
+    <p class="note">
+      The rosette means a verified person. Giving the bot a fifth rosette colour would quietly
+      change that to "verified account," weakening the mark for all four human tiers. A rounded
+      square in slate <code>#4E5A6B</code> reads as machine at a glance and leaves the rosette's
+      meaning intact. Its avatar is squared off for the same reason.
+    </p>
+  </section>
+
+  <section>
+    <div class="sec__hd">
+      <h2>What it posts</h2>
+      <p>Five templates. Numbers filled in from the database. No opinions, ever.</p>
+    </div>
+    <div class="feed">
+
+      <article class="post post--bot">
+        <div class="post__hd">
+          <div class="av">AI</div>
+          <div><div class="nm">Dispatch AI
+            <svg class="vb vb--system" width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><use href="#sq" class="sq"></use><use href="#chk" class="chk"></use></svg>
+          </div><div class="meta">Automated &middot; 8:31 AM</div></div>
+          <span class="ty">Ticker moved</span>
+        </div>
+        <p class="bd"><a class="cash" href="#">$NVDA</a> closed up 8.24% today. Six people here have posted about it this week.</p>
+        <div class="stat">
+          <div><b class="up">+8.24%</b><span>Today</span></div>
+          <div><b>6</b><span>Posts this week</span></div>
+          <div><b>2</b><span>Theses open</span></div>
+        </div>
+        <div class="ft"><span>Read the posts</span><span class="genlab">Generated &middot; no analysis</span></div>
+      </article>
+
+      <article class="post post--bot">
+        <div class="post__hd">
+          <div class="av">AI</div>
+          <div><div class="nm">Dispatch AI
+            <svg class="vb vb--system" width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><use href="#sq" class="sq"></use><use href="#chk" class="chk"></use></svg>
+          </div><div class="meta">Automated &middot; Yesterday</div></div>
+          <span class="ty">Unanswered</span>
+        </div>
+        <p class="bd">Tom Brennan asked a question about <a class="cash" href="#">$CMG</a> 18 hours ago and nobody has replied.</p>
+        <div class="ft"><span>Answer it</span><span class="genlab">Generated &middot; no analysis</span></div>
+      </article>
+
+      <article class="post post--bot">
+        <div class="post__hd">
+          <div class="av">AI</div>
+          <div><div class="nm">Dispatch AI
+            <svg class="vb vb--system" width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><use href="#sq" class="sq"></use><use href="#chk" class="chk"></use></svg>
+          </div><div class="meta">Automated &middot; Yesterday</div></div>
+          <span class="ty">First mention</span>
+        </div>
+        <p class="bd">First post about <a class="cash" href="#">$ANET</a> on The Dispatch.</p>
+        <div class="ft"><span>Read it</span><span class="genlab">Generated &middot; no analysis</span></div>
+      </article>
+
+      <article class="post post--bot">
+        <div class="post__hd">
+          <div class="av">AI</div>
+          <div><div class="nm">Dispatch AI
+            <svg class="vb vb--system" width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><use href="#sq" class="sq"></use><use href="#chk" class="chk"></use></svg>
+          </div><div class="meta">Automated &middot; Monday</div></div>
+          <span class="ty">Where it went</span>
+        </div>
+        <p class="bd">Four posts came out of spaces and into the feed this week. Two were theses.</p>
+        <div class="ft"><span class="genlab">Generated &middot; no analysis</span></div>
+      </article>
+
+      <article class="post post--bot">
+        <div class="post__hd">
+          <div class="av">AI</div>
+          <div><div class="nm">Dispatch AI
+            <svg class="vb vb--system" width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><use href="#sq" class="sq"></use><use href="#chk" class="chk"></use></svg>
+          </div><div class="meta">Automated &middot; Monday</div></div>
+          <span class="ty">Busiest</span>
+        </div>
+        <p class="bd">Energy was the most-posted beat this week: 11 posts across <a class="cash" href="#">$VST</a>, <a class="cash" href="#">$CEG</a> and <a class="cash" href="#">$XOM</a>.</p>
+        <div class="ft"><span class="genlab">Generated &middot; no analysis</span></div>
+      </article>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="sec__hd">
+      <h2>The line it never crosses</h2>
+      <p>Counts are facts. Superlatives are verdicts.</p>
+    </div>
+    <div class="cmp">
+      <div class="cmp__c">
+        <span class="lab">It says</span>
+        <p class="good">"$VST — four posts today, three of them theses."</p>
+        <p style="margin-top:8px;color:var(--dim)">"Marcus Webb's post has 9 replies."</p>
+        <p style="margin-top:8px;color:var(--dim)">"$NVDA closed up 8.24%."</p>
+      </div>
+      <div class="cmp__c">
+        <span class="lab">It never says</span>
+        <p class="bad">"The best thesis on Dispatch this week."</p>
+        <p style="margin-top:8px;color:var(--dim)">"Marcus is one of the sharpest posters here."</p>
+        <p style="margin-top:8px;color:var(--dim)">"$NVDA surged on strong demand."</p>
+      </div>
+    </div>
+    <p class="note">
+      The left column is arithmetic anyone could check. The right is a ranking, a reputation
+      score and a market opinion — the three things the product deliberately does not have. A
+      bot that highlights the <em>best</em> posts is a leaderboard wearing a hat.
+    </p>
+  </section>
+
+  <section>
+    <div class="sec__hd">
+      <h2>Replies yes, pushback no</h2>
+    </div>
+    <p class="note" style="margin-top:0">
+      People can reply under its posts and talk to each other — that is the point of putting it
+      in the feed. Pushback is disabled, because pushback exists to dispute a claim and the bot
+      makes none. It never replies to anyone, and its profile says so in one line.
+    </p>
+  </section>
+</div>
