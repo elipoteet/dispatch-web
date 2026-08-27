@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Logo } from "@/components/layout/Logo";
@@ -25,6 +25,9 @@ export type HeaderProfile = {
 export function SocialHeader({ profile }: { profile: HeaderProfile | null }) {
   const { user } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  // Eli's call, /login only — not a site-wide rename.
+  const brandWord = pathname === "/login" ? "Dispatch Social" : "Dispatch";
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -37,7 +40,7 @@ export function SocialHeader({ profile }: { profile: HeaderProfile | null }) {
       <div className="social-header-inner">
         <Link href="/" className="brand-link">
           <Logo size={26} />
-          <span className="brand-word">Dispatch</span>
+          <span className="brand-word">{brandWord}</span>
         </Link>
         <TickerSearchBar />
         <div className="social-header-auth">
