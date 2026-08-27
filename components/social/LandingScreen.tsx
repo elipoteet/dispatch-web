@@ -29,6 +29,23 @@ import { Logo } from "@/components/layout/Logo";
 // with the reference's own dark, full-bleed visual language instead of
 // the light .social-auth-card — different enough that reusing that
 // component directly would mean fighting its styling on every element.
+//
+// Real, live bug found via a screenshot: app/globals.css has a bare,
+// global `main { position: relative; z-index: 2 }` rule (predates this
+// component — likely the retired research surface's own layering need).
+// That rule gives <main> its own stacking context, which traps anything
+// nested inside it — including this component's own z-index:500 — so it
+// only ever competed at z-index 2 against SocialHeader's z-index 40, and
+// lost; the header rendered visibly on top instead of being covered.
+// Fixed at the actual source (`.social-main { z-index: auto }` in
+// globals.css, more specific than the bare element selector, so only
+// this surface's <main> is affected) rather than here — a portal was the
+// first fix tried, but it stops this screen from being in the server-
+// rendered HTML at all until the client hydrates, which directly hurts
+// the one thing docs/phase-six.md requires of this exact page: that it
+// be indexable. The same stacking trap turned out to also apply to
+// .promote-scrim (the one existing modal in this app) — the CSS fix
+// covers that too, not just this screen.
 export function LandingScreen() {
   const router = useRouter();
   const [step, setStep] = useState<"email" | "code">("email");
@@ -36,7 +53,6 @@ export function LandingScreen() {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   // "One viewport, no scrolling" — locks the real page (header/nav/shell/
   // footer, still present underneath this fixed overlay) from scrolling
   // while this is up, same pattern as useModalA11y's scroll lock.
@@ -91,7 +107,7 @@ export function LandingScreen() {
     <div className="landing-screen">
       <div className="landing-card">
         <Logo size={46} />
-        <h1 className="landing-h1">The Dispatch</h1>
+        <h1 className="landing-h1">Dispatch Social</h1>
         <p className="landing-desc">Where college students argue about markets, under their real name and school.</p>
 
         {step === "email" ? (

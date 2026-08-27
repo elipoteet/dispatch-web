@@ -3150,6 +3150,20 @@
 .social-main {
   max-width: 640px;
   min-width: 0;
+  /* Neutralizes a bare, global `main { position: relative; z-index: 2 }`
+     rule elsewhere in this file (predates the social surface, likely for
+     the retired research product's own layering) — that z-index gives
+     <main> its own stacking context, which traps any fixed-position
+     descendant's z-index inside it instead of letting it compete with
+     the rest of the page. Found live: LandingScreen.tsx's full-viewport
+     overlay was rendering BELOW SocialHeader (z-index 40) because it was
+     only ever competing at z-index 2. .promote-scrim (the one existing
+     modal) has the identical latent bug. Only position: relative from
+     the element-selector rule still applies here (unaffected — this
+     doesn't reset it), just the z-index that was creating the trap.
+     Scoped to .social-main specifically (a class beats an element
+     selector) so the research surface's own <main> is untouched. */
+  z-index: auto;
 }
 
 /* Matches the prototype's .main — a bordered, rounded card the feed/post/
