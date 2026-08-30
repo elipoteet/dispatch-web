@@ -1,139 +1,143 @@
 # The Dispatch — State of Play
 
-August 2026. One page covering what exists, what is left, and what was deliberately deferred.
-Written to be the fastest way for anyone, human or Claude, to know where this project stands.
+30 August 2026. What exists, what is broken, and what is next.
+Audited against the live site and the repo, not against the briefs.
 
 Read `docs/product-spec.md` (v2) for what the product is.
 
 ## Where it lives
 
-- **Live old product:** https://www.dispatchresearch.com, serving `master`, untouched
-- **The new product:** https://try.dispatchresearch.com, serving the `feat/social-v1`
-  branch, public to read, noindexed
-- **Branch:** `feat/social-v1`, pushed, **not merged**, no PR
-- Vercel Deployment Protection is off for this domain, so strangers can actually open it
+- **Old product:** https://www.dispatchresearch.com, serving `master`, untouched
+- **New product:** https://try.dispatchresearch.com, serving `feat/social-v1`
+- **Branch:** `feat/social-v1`, not merged, no PR
+- Signed-out visitors now get a sign-in screen at the root; every other route stays public
 
-## Done, and live on try.dispatchresearch.com
+## Built since the last update
 
-**Identity.** Sign up with a school email, eight-digit code, choose handle, display name, and
-graduation year. Past years produce alumni badges automatically. Domain-gated server-side
-before any code is sent, rate-limited three per hour by email and by IP. School badge on
-every post, tinted with the school's own colour, near-white in dark mode.
+Phases five, six and seven were all built between 25 and 26 August. **None of them has a
+recap**, which is why this file had drifted so far from reality.
 
-**Posting.** Four types: Take, Question, Thesis with a scaffold and a 320-character floor,
-and Link with a required reason. Typing a ticker attaches live market data after an 800ms
-debounce and freezes it onto the post as JSON, so the feed makes zero provider calls.
-Change-my-mind field. Position disclosure, required when a ticker is attached and locked
-after publish by a database trigger.
+**Phase five — research inside the site.** `/research` and `/research/[ticker]` now live in
+the social shell; the retired product's copy is gone. A ticker page carries price, day change,
+a one-year chart, the 52-week range, market cap, P/E, revenue growth, gross margin, average
+volume, and every post about that ticker. Post matching catches both an attached ticker and a
+`$SYM` mention in the body. The desk lists tickers people have actually posted about rather
+than a static grid. No rating, no score, no verdict anywhere on it. Confirmed live.
 
-**Conversation.** Replies. Pushback with an 80-character minimum, counted separately.
-Editable for twelve hours with an edited marker, deletable any time leaving a tombstone that
-keeps its replies.
+*Deviation, deliberate:* the numbers sit **above** the conversation, not below. Eli's call,
+overriding the brief, and documented in the code.
 
-**Spaces.** Create one and you own it. Invite by link only, resolving all four arrival states
-including signed-out signup that lands the new user inside the space. Owner can rename, edit,
-remove members, regenerate the link, transfer ownership, and delete. Posting inside is bare:
-text and a ticker, no types.
+**Phase six — landing screen and roles.** A signed-out visitor at the root gets the sign-in
+screen. The gate is scoped to the feed page's own render, exactly as the brief demanded, so
+`/j/[token]` invite links still work signed out — verified against the live site, and this was
+the highest-risk regression in the phase. Metadata flips correctly: the signed-out screen is
+indexable, the signed-in feed is not. `0014_roles.sql` adds the four human roles plus mentor
+onboarding. `VerifiedBadge` ships all four rosette tiers and the square system badge, with the
+shape rule written into the component so nobody adds a fifth rosette by accident.
 
-**Promotion.** The author publishes a space post to the public feed through a modal that
-collects type, change-my-mind, and position. Creates a public copy, leaves replies behind,
-marks both sides. The public copy shows an anonymous "from a space" kicker and never names
-the club.
+**Phase seven — Dispatch AI.** Migrations `0016`–`0019`, a cron route at
+`/api/cron/dispatch-ai`, a `generated` flag on posts, pushback disabled on generated posts, and
+generated posts excluded from ticker counts so the bot cannot report on itself.
 
-**Everything else.** Public read without an account. Profiles with avatars, uploaded and
-resized client-side to 400x400 WebP. Email notifications for replies and pushback plus a
-weekly digest, with per-type toggles and unsubscribe tokens. Ticker tape on Finnhub with a
-twenty-minute cache. Light and dark themes with a toggle. Footer, disclaimer, and guidelines
-pages.
+**Also built, unplanned:** LinkedIn on profiles (`0013`), a display-name cooldown (`0015`), and
+several phase-four items — the bordered feed card, optimistic posting, and the rail ticker
+search.
 
-**Database.** Twelve migrations applied by hand. Row level security throughout, including
-`security definer` helpers for space membership after a real recursion bug was caught and
-fixed.
+## Broken or wrong, in priority order
 
-## Left to do before a club sees it
+1. **The research desk inherits the retired product's page description.** `/research/page.tsx`
+   sets no `description` of its own, so it falls through to the site-wide default in the root
+   layout, which still reads *"A full research memo on any U.S. stock in five seconds —
+   scored, sourced, and written to be read."* That word "scored" is the retired product's
+   language, and the description is what appears in Google results and link previews. The page
+   itself is clean. One line to fix.
 
-### Phase four, parity and feel
+2. **The sign-in screen is an overlay, not a replacement.** The header, nav and footer are
+   still rendered in the page underneath it. Two real consequences: a keyboard user can tab
+   into navigation links hidden behind the overlay, and the page that is meant to be indexable
+   carries the shell's text. The fix is to mark the background `inert` while the screen is up,
+   or not render the shell for a signed-out visitor at all.
+3. **No recaps for phases four through seven.** Nothing records what was actually built, what
+   deviated, or what was found along the way. This file is the stopgap; the recaps are still
+   worth writing while the work is fresh.
+4. **Nothing else.** Two items that appeared here in the first draft of this audit were wrong
+   and have been removed — see "Corrections" below.
 
-The visual diff is written and reviewed. Nothing is implemented. In priority order:
+## Corrections to the 30 August audit
 
-1. **Mobile bottom navigation.** Spaces are currently unreachable on a phone, since the nav
-   is hidden below 900px with nothing replacing it. This is not polish, it is the core of
-   the product being unusable on the device the first club will open the link on.
-2. **Optimistic updates** on the composer, reply box, space composer, and promotion. Nothing
-   appears until a server round trip completes, which is what makes it feel like a website.
-3. **The bordered card container.** The feed sits loose on the page rather than inside a
-   card. Biggest visual return for the least work.
-4. **Modal behaviour.** Escape does not close, focus is not managed, the page behind still
-   scrolls. Backdrop click already works.
-5. **Ticker search and the profile card**, both in the left rail.
-6. Smaller items: space header tint, position buttons stretching to fill, backdrop blur,
-   profile URL chip, name weight, hover pills on the action row.
+Two claims in the first version of this file were checked against the repo and the live site
+and did not hold. Recording them so they are not repeated.
 
-### Phase five, research inside the site
+- **"`/leaderboard` is live and two clicks from the feed."** Wrong. It is not linked anywhere
+  in the social surface — not the nav, not any page — and it was removed from `sitemap.ts`
+  with a comment citing `docs/phase-five.md` section D. The brief's instruction was "remove the
+  entry, leave the route files in place," and that is exactly what was done. It is reachable
+  only by typing the URL. The audit also blamed the wrong phase.
+  *Still worth deciding later:* `robots.ts` disallows `/portfolio` and `/api/` but not
+  `/leaderboard`. That costs nothing today, because the whole branch is noindexed apart from
+  the sign-in screen. It becomes a live question on the day this merges to `master`.
+- **"Saturday's changes may not be deployed."** They are pushed and live. Confirmed against
+  origin.
 
-Specified in `docs/phase-five.md`, approved, not started. `/research` on this branch is
-currently the **retired product** — old masthead and nav, the Time Machine, a Leaderboard
-link, and a rule-based buy/hold/sell verdict, which the spec forbids outright. Clicking
-Research in the left nav throws a student out of the social app.
+## Still never verified
 
-Phase five moves `/research` and `/research/[ticker]` into the social shell and rebuilds the
-ticker page as the prototype's version: header, one-year chart, six numbers, and every post
-about that ticker above them. Cashtags in posts, replies and space posts become clickable, so
-"one click from any post" stops being aspirational. The Leaderboard is hidden on this branch.
-No watchlist, no scorecard, no verdict.
+Unchanged from the last audit, and now more urgent because everything else is further along.
 
-The rate-limit plan is settled: the five Finnhub-backed numbers come free from the existing
-`getTickerSnapshot`, and the chart is one Twelve Data request per ticker per day behind
-`unstable_cache`.
-
-### Things that have never met reality
-
-Every one of these is built and unverified.
-
-- **SPF and DKIM on the domain, never confirmed.** Every user needs a code to sign up, and
-  every notification depends on it. Highest-value unresolved item.
-- `RESEND_API_KEY` not confirmed in Vercel production, so notifications may simply not send
-  on the live site.
-- Unsubscribe verified by code path, never clicked from a real email. Has a legal dimension.
+- **SPF and DKIM on the domain.** Every signup needs a code to arrive. Still the single
+  highest-value unknown in the project.
+- `RESEND_API_KEY` present in Vercel production.
 - The weekly digest has never sent a populated email.
-- Notification toggles built, never click-tested.
-- Avatar upload built, never click-tested against the live bucket.
-- Transfer ownership never tested with a second real member.
-- The full invite flow has never been walked on a real phone from a real text message.
+- Unsubscribe has never been clicked from a real email.
+- Avatar upload has never been click-tested against the live bucket.
+- Ownership transfer has never been tested with a second real member.
+- The invite flow has never been walked on a real phone from a real text.
 - Nothing has been tested at 390px.
+- **New:** no faculty or mentor account has been granted and viewed end to end.
 
-### Decisions never made
+## The thing no feature fixes
 
-- The moderation escalation path, and who executes it.
+**The site has almost no posts.** Dispatch AI's cron has now been run live and there is a real
+generated post up, which is one more than there was. Beyond that, `/research` lists a single ticker, VST, with one post behind it.
+Every remaining item on this page is finishing work on a room nobody is in yet.
+
+## Decisions still open
+
+- Moderation escalation, and who executes it.
 - Whether a promoted post should ever name the space it came from.
 - Whether spaces can span schools.
 - Terms and privacy need a lawyer, particularly the seventeen-year-old freshman question.
-- Two handle systems still exist with no shared uniqueness constraint.
-- Ticker search has no home on mobile, since the rail is hidden there.
-- `getFeedPosts` has a flat limit of fifty with no cursor, so post fifty-one silently does
-  not exist for a reader.
+- Two handle systems with no shared uniqueness constraint.
+- `getFeedPosts` has a flat limit of fifty with no cursor.
+- Whether generated posts belong in the weekly digest.
 
-## Deliberately deferred
+## Deferred
 
-Not cancelled. Waiting until there are users, because a feature built before anyone uses the
-product is designed from a guess.
-
-Themes. Watchlists, the public and private toggle, and network aggregates. Thesis-tested
-events, still the best deferred idea in the product. School thresholds and school-versus-school
-comparisons. Campus editors as a formal role, since a club officer already is one. Push
-notifications and the installable web app. Redirects from the old memo URLs. Direct messages, permanently unless something
-changes. Brokerage connections. Paid tiers. LinkedIn sign-in for alumni without a school
-address.
+Themes. Watchlists and the public/private toggle. Thesis-tested events — still the best
+deferred idea in the product, and the natural next job for Dispatch AI. School thresholds and
+school-versus-school. Campus editors as a formal role. Push notifications and the installable
+app. Redirects from the old memo URLs. Direct messages. Brokerage connections. Paid tiers.
 
 ## Cut
 
-The Open, the pinned daily thread. From the desk, the weekly hand-picked selection. Both
-because Spaces do their jobs permanently and better.
+The Open. From the desk. Both because Spaces do their jobs better.
 
-## After phases four and five
+## What is next
 
-There is no phase six build. The next thing is a club.
+For Claude Code, in order:
 
-One officer, one conversation, one invite link. The product exists to find out whether a
-finance club will move its pitch discussion somewhere it survives, and no further code
-answers that question.
+1. Give `/research` its own page description. One line, and it is currently the only place the
+   retired product's scoring language still shows to the outside world.
+2. Make the shell behind the sign-in screen `inert`, so keyboard users cannot tab into
+   navigation hidden underneath it.
+3. Write the phase four to seven recaps while the work is still fresh.
+
+For Eli, and only Eli can do it:
+
+4. **Send yourself a signup code from a browser you have never used.** SPF, DKIM and
+   `RESEND_API_KEY` in production have never been confirmed. Every single person who joins
+   needs that email to arrive. If it does not, nothing above matters.
+
+Then:
+
+5. Put real posts on the site.
+6. One club officer, one invite link.
