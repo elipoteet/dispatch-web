@@ -2,6 +2,7 @@
 
 import { Composer } from "./Composer";
 import { PostCard } from "./PostCard";
+import { PostActions } from "./PostActions";
 import { EmptyState } from "./EmptyState";
 import { useOptimisticFeed } from "@/lib/social/useOptimisticFeed";
 import type { FeedPost, PostAuthor } from "@/lib/social/queries";
@@ -22,6 +23,7 @@ export function FeedClient({
   initialComposerBody?: string;
 }) {
   const [posts, dispatch] = useOptimisticFeed(initialPosts);
+  const viewerId = author?.id ?? null;
 
   return (
     <>
@@ -38,7 +40,27 @@ export function FeedClient({
           sub="Post an argument, not just a headline — say what you think and what would change your mind."
         />
       ) : (
-        posts.map((post) => <PostCard key={post.id} post={post} />)
+        posts.map((post) => (
+          <PostCard
+            key={post.id}
+            post={post}
+            actions={
+              // An optimistic post has no real id yet — nothing to edit/
+              // delete until router.refresh() lands the real row.
+              post.id.startsWith("optimistic-") ? undefined : (
+                <PostActions
+                  postId={post.id}
+                  authorId={post.author.id}
+                  viewerId={viewerId}
+                  body={post.body}
+                  createdAt={post.createdAt}
+                  deletedAt={post.deletedAt}
+                  onOptimisticUpdate={(patch) => dispatch({ type: "update", id: post.id, patch })}
+                />
+              )
+            }
+          />
+        ))
       )}
     </>
   );

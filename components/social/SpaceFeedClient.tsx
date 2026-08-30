@@ -2,6 +2,7 @@
 
 import { SpaceComposer } from "./SpaceComposer";
 import { PostCard } from "./PostCard";
+import { PostActions } from "./PostActions";
 import { PromoteAction } from "./PromoteAction";
 import { PromotedMarker } from "./PromotionMarker";
 import { EmptyState } from "./EmptyState";
@@ -42,10 +43,26 @@ export function SpaceFeedClient({
             key={post.id}
             post={post}
             actions={
-              post.id.startsWith("optimistic-") ? undefined : post.promotedToId ? (
-                <PromotedMarker publicPostId={post.promotedToId} />
-              ) : (
-                <PromoteAction post={post} viewerId={viewerId} />
+              // An optimistic post has no real id yet — nothing to
+              // promote or edit/delete until router.refresh() lands the
+              // real row.
+              post.id.startsWith("optimistic-") ? undefined : (
+                <>
+                  {post.promotedToId ? (
+                    <PromotedMarker publicPostId={post.promotedToId} />
+                  ) : (
+                    <PromoteAction post={post} viewerId={viewerId} />
+                  )}
+                  <PostActions
+                    postId={post.id}
+                    authorId={post.author.id}
+                    viewerId={viewerId}
+                    body={post.body}
+                    createdAt={post.createdAt}
+                    deletedAt={post.deletedAt}
+                    onOptimisticUpdate={(patch) => dispatch({ type: "update", id: post.id, patch })}
+                  />
+                </>
               )
             }
           />

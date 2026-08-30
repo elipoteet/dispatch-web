@@ -19,13 +19,18 @@ import type { FeedPost, Reply } from "./queries";
 // fails, the caller never lets that refresh happen, so the optimistic
 // entry needs to be explicitly reverted — see each composer's own
 // try/catch.
-// Only "add" — editing/deleting an existing post (PostActions) only ever
-// happens on /p/[id], one post at a time, not inside a list, so that path
-// goes through PostDetailClient's own inline useOptimistic instead of
-// this hook.
+// "update" patches a post in place within the list — same shape as
+// ReplyAction below, added so edit/delete (PostActions) can render
+// directly on the feed/space list, not just on /p/[id]. Delete still
+// patches deletedAt rather than removing the row, same soft-delete
+// reasoning as everywhere else: the real row survives as a tombstone
+// after router.refresh(), so an actual removal would just pop back.
+export type FeedAction = { type: "add"; post: FeedPost } | { type: "update"; id: string; patch: Partial<FeedPost> };
+
 export function useOptimisticFeed(initialPosts: FeedPost[]) {
-  return useOptimistic(initialPosts, (state: FeedPost[], action: { type: "add"; post: FeedPost }) => {
+  return useOptimistic(initialPosts, (state: FeedPost[], action: FeedAction) => {
     if (action.type === "add") return [action.post, ...state];
+    if (action.type === "update") return state.map((p) => (p.id === action.id ? { ...p, ...action.patch } : p));
     return state;
   });
 }
