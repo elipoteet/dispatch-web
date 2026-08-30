@@ -11,10 +11,21 @@ import { TickerSearchBar } from "@/components/social/TickerSearchBar";
 // provider request per cell on every load. Instead this reads what the
 // campus is actually posting about, for zero additional provider calls —
 // see getTrendingTickers' own comment.
+// Explicit description, not inherited: the root layout's SITE_DESCRIPTION
+// (app/layout.tsx) is the retired product's own copy — "a full research
+// memo... scored, sourced" — and without one here it silently bled
+// through, the last place that scoring language was still visible to a
+// search result or a link preview. Found in a live audit, not by reading
+// the code.
+const DESCRIPTION =
+  "Look up any ticker and see what the campus is actually posting about it — market cap, P/E, and every post, no rating or score.";
+
 export const metadata: Metadata = {
   title: "Research",
+  description: DESCRIPTION,
   alternates: { canonical: "/research" },
-  openGraph: { url: "/research" },
+  openGraph: { url: "/research", description: DESCRIPTION },
+  twitter: { description: DESCRIPTION },
 };
 
 export default async function ResearchPage({

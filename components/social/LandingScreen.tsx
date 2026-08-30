@@ -64,6 +64,32 @@ export function LandingScreen() {
     };
   }, []);
 
+  // The header/nav/footer/mobile-nav are still rendered underneath this
+  // overlay (docs/phase-six.md's own architecture note: the overlay is
+  // what covers them, layout.tsx never learns this screen exists) — real
+  // gap found in a live audit: a keyboard user could still tab into Sign
+  // In/Sign Up/nav links hidden behind it, and the page meant to be
+  // indexable carried the shell's own text alongside it. `inert` removes
+  // that whole subtree from the tab order and from assistive tech without
+  // touching layout.tsx or its visual covering (already handled by CSS) —
+  // same imperative-DOM-effect shape as the scroll lock above, not a
+  // second, competing mechanism. Scoped to exactly the elements this
+  // screen covers; nothing else on the page is touched.
+  useEffect(() => {
+    const selectors = [".social-header", ".social-nav", ".social-footer", ".mobile-nav"];
+    const elements = selectors
+      .map((s) => document.querySelector<HTMLElement>(s))
+      .filter((el): el is HTMLElement => el !== null);
+    elements.forEach((el) => {
+      el.inert = true;
+    });
+    return () => {
+      elements.forEach((el) => {
+        el.inert = false;
+      });
+    };
+  }, []);
+
   async function handleContinue(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
