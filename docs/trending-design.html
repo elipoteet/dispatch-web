@@ -1,0 +1,221 @@
+<title>Most Traded Rail</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --navy:#0E1D33; --cream:#F6F2E9; --gold:#B08430;
+    --bg:var(--cream); --surface:#FFFDF7; --surface2:#EDE7DA;
+    --border:rgba(14,29,51,.13); --border-strong:rgba(14,29,51,.28);
+    --text:var(--navy); --dim:#5B6472;
+    --green:#2F7D4F; --red:#A33A32;
+    --font:'Inter',system-ui,-apple-system,sans-serif;
+    --mono:'IBM Plex Mono','SF Mono',ui-monospace,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --bg:#0B1727; --surface:#101F35; --surface2:#16283F;
+    --border:rgba(246,242,233,.12); --border-strong:rgba(246,242,233,.26);
+    --text:#F0EBE0; --dim:#93A0B2; --gold:#D2A44E;
+    --green:#63B583; --red:#D97A70;
+  }}
+  :root[data-theme="dark"]{
+    --bg:#0B1727; --surface:#101F35; --surface2:#16283F;
+    --border:rgba(246,242,233,.12); --border-strong:rgba(246,242,233,.26);
+    --text:#F0EBE0; --dim:#93A0B2; --gold:#D2A44E;
+    --green:#63B583; --red:#D97A70;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:900px;margin:0 auto;padding:50px 22px 80px}
+  .lab{font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:1.6px;text-transform:uppercase;color:var(--dim)}
+  h1{margin:13px 0 0;font-size:29px;font-weight:600;letter-spacing:-.02em}
+  h2{margin:0;font-size:17px;font-weight:600}
+  .intro{margin-top:13px;color:var(--dim);max-width:62ch}
+  section{margin-top:44px}
+  .sec__hd{margin-bottom:20px;padding-bottom:11px;border-bottom:1px solid var(--border)}
+  .sec__hd p{margin:8px 0 0;font-size:14px;color:var(--dim)}
+  .note{margin-top:15px;font-size:13.5px;color:var(--dim)}
+  code{font-family:var(--mono);font-size:.9em;background:var(--surface2);padding:1px 5px}
+
+  /* ---------- the panel ---------- */
+  .rail{width:260px}
+  .panel{border:1px solid var(--border-strong);background:var(--surface)}
+  .panel__hd{
+    display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+    padding:13px 14px 11px;border-bottom:1px solid var(--border);
+  }
+  .panel__hd h3{margin:0;font-family:var(--mono);font-size:10.5px;font-weight:600;
+    letter-spacing:1.5px;text-transform:uppercase}
+  .panel__hd span{font-family:var(--mono);font-size:9px;letter-spacing:.9px;
+    text-transform:uppercase;color:var(--dim);white-space:nowrap}
+  .row{
+    display:grid;grid-template-columns:1fr auto;gap:3px 10px;
+    padding:10px 14px;border-bottom:1px solid var(--border);
+    text-decoration:none;color:inherit;transition:background .12s;
+  }
+  .row:last-of-type{border-bottom:0}
+  .row:hover{background:var(--surface2)}
+  .row:focus-visible{outline:2px solid var(--gold);outline-offset:-2px}
+  .row__s{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.4px}
+  .row__p{font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums;text-align:right}
+  .row__n{font-size:11.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px}
+  .row__d{font-family:var(--mono);font-size:11.5px;font-variant-numeric:tabular-nums;text-align:right}
+  .up{color:var(--green)} .down{color:var(--red)}
+  .row__meta{grid-column:1/-1;display:flex;align-items:center;gap:7px;margin-top:3px}
+  .vol{font-family:var(--mono);font-size:9.5px;letter-spacing:.8px;text-transform:uppercase;color:var(--dim)}
+  .posts{
+    font-family:var(--mono);font-size:9px;letter-spacing:.9px;text-transform:uppercase;
+    color:var(--gold);border:1px solid currentColor;padding:1px 5px;
+  }
+  .panel__ft{padding:10px 14px;border-top:1px solid var(--border);background:var(--surface2)}
+  .panel__ft a{font-family:var(--mono);font-size:9.5px;letter-spacing:1.2px;
+    text-transform:uppercase;color:var(--dim);text-decoration:none}
+  .panel__ft a:hover{color:var(--text)}
+
+  /* layout demo */
+  .shell{display:grid;grid-template-columns:150px minmax(0,1fr) 260px;gap:24px;align-items:start;
+    border:1px dashed var(--border-strong);padding:16px;background:var(--surface)}
+  .ghost{background:var(--surface2);border:1px solid var(--border)}
+  .ghost--nav{height:190px} .ghost--main{height:280px}
+  .ghost span{display:block;padding:10px;font-family:var(--mono);font-size:9.5px;
+    letter-spacing:1.2px;text-transform:uppercase;color:var(--dim)}
+  @media(max-width:720px){.shell{grid-template-columns:1fr}.rail{width:100%}}
+
+  .states{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+  .empty{padding:16px 14px;font-size:12.5px;color:var(--dim);line-height:1.55}
+</style>
+
+<div class="wrap">
+  <span class="lab">The Dispatch</span>
+  <h1>Most traded</h1>
+  <p class="intro">
+    A right-rail panel of the day's highest-volume stocks, every row one click from that
+    ticker's page. One API call a day fills the whole thing — price, move and volume all come
+    back in the same response.
+  </p>
+
+  <section>
+    <div class="sec__hd">
+      <h2>The panel</h2>
+      <p>260px wide. Sample data, shaped like the real thing.</p>
+    </div>
+    <div class="rail">
+      <div class="panel">
+        <div class="panel__hd">
+          <h3>Most traded</h3>
+          <span>Fri 28 Aug close</span>
+        </div>
+
+        <a class="row" href="#">
+          <span class="row__s">NVDA</span>
+          <span class="row__p">217.55</span>
+          <span class="row__n">NVIDIA Corp</span>
+          <span class="row__d down">−4.57%</span>
+          <span class="row__meta"><span class="vol">$41.2B traded</span><span class="posts">3 posts</span></span>
+        </a>
+
+        <a class="row" href="#">
+          <span class="row__s">TSLA</span>
+          <span class="row__p">402.18</span>
+          <span class="row__n">Tesla Inc</span>
+          <span class="row__d up">+2.14%</span>
+          <span class="row__meta"><span class="vol">$28.7B traded</span></span>
+        </a>
+
+        <a class="row" href="#">
+          <span class="row__s">AAPL</span>
+          <span class="row__p">246.90</span>
+          <span class="row__n">Apple Inc</span>
+          <span class="row__d up">+0.42%</span>
+          <span class="row__meta"><span class="vol">$19.4B traded</span></span>
+        </a>
+
+        <a class="row" href="#">
+          <span class="row__s">ANET</span>
+          <span class="row__p">195.38</span>
+          <span class="row__n">Arista Networks</span>
+          <span class="row__d down">−2.84%</span>
+          <span class="row__meta"><span class="vol">$12.1B traded</span><span class="posts">1 post</span></span>
+        </a>
+
+        <a class="row" href="#">
+          <span class="row__s">AMD</span>
+          <span class="row__p">178.44</span>
+          <span class="row__n">Advanced Micro Dev</span>
+          <span class="row__d up">+1.09%</span>
+          <span class="row__meta"><span class="vol">$9.8B traded</span></span>
+        </a>
+
+        <a class="row" href="#">
+          <span class="row__s">VST</span>
+          <span class="row__p">137.09</span>
+          <span class="row__n">Vistra Corp</span>
+          <span class="row__d down">−1.95%</span>
+          <span class="row__meta"><span class="vol">$7.3B traded</span><span class="posts">1 post</span></span>
+        </a>
+
+        <div class="panel__ft"><a href="#">Look up any ticker &rarr;</a></div>
+      </div>
+    </div>
+    <p class="note">
+      The gold chip is the part Yahoo doesn't have. It shows how many people <em>here</em> have
+      written about a ticker, so the panel says what the market is trading <em>and</em> what
+      the campus has said about it. Rows with nothing said stay quiet — no zero, no empty
+      state, just an absent chip.
+    </p>
+  </section>
+
+  <section>
+    <div class="sec__hd">
+      <h2>Where it goes</h2>
+      <p>The shell becomes three columns. This affects every page in the app.</p>
+    </div>
+    <div class="shell">
+      <div class="ghost ghost--nav"><span>Left nav<br>200px</span></div>
+      <div class="ghost ghost--main"><span>Feed / post / profile</span></div>
+      <div class="rail">
+        <div class="panel">
+          <div class="panel__hd"><h3>Most traded</h3><span>Fri 28 Aug</span></div>
+          <a class="row" href="#"><span class="row__s">NVDA</span><span class="row__p">217.55</span>
+            <span class="row__n">NVIDIA Corp</span><span class="row__d down">−4.57%</span></a>
+          <a class="row" href="#"><span class="row__s">TSLA</span><span class="row__p">402.18</span>
+            <span class="row__n">Tesla Inc</span><span class="row__d up">+2.14%</span></a>
+          <a class="row" href="#"><span class="row__s">AAPL</span><span class="row__p">246.90</span>
+            <span class="row__n">Apple Inc</span><span class="row__d up">+0.42%</span></a>
+        </div>
+      </div>
+    </div>
+    <p class="note">
+      Max width goes from 920px to about 1220px. The rail needs its own breakpoint — it should
+      disappear before the left nav does, since navigation matters more than a data panel.
+      Suggested: rail hides below 1100px, nav still hides at 900px as it does today.
+    </p>
+  </section>
+
+  <section>
+    <div class="sec__hd">
+      <h2>The two states that aren't the happy path</h2>
+    </div>
+    <div class="states">
+      <div class="rail" style="width:260px">
+        <div class="panel">
+          <div class="panel__hd"><h3>Most traded</h3><span>Fri 28 Aug close</span></div>
+          <div class="empty">
+            Markets are closed. Showing the last full session.
+          </div>
+        </div>
+      </div>
+      <div class="rail" style="width:260px">
+        <div class="panel">
+          <div class="panel__hd"><h3>Most traded</h3><span>Unavailable</span></div>
+          <div class="empty">
+            Couldn't load volume data. It'll be back with the next session's close.
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="note">
+      The date in the header is not decoration — on the free data tier these are
+      <strong>previous-session</strong> figures, not live intraday like Yahoo's. Saying which
+      session is what keeps it honest rather than subtly wrong all weekend.
+    </p>
+  </section>
+</div>
