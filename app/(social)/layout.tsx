@@ -5,6 +5,8 @@ import type { HeaderProfile } from "@/components/social/SocialHeader";
 import { SocialNav } from "@/components/social/SocialNav";
 import { MobileNav } from "@/components/social/MobileNav";
 import { Footer } from "@/components/social/Footer";
+import { MostTradedRail } from "@/components/social/MostTradedRail";
+import { RailVisibility } from "@/components/social/RailVisibility";
 import { getUserSpaces } from "@/lib/social/spaces";
 import type { SpaceNavItem } from "@/lib/social/spaces";
 
@@ -92,6 +94,15 @@ export default async function SocialLayout({
       <div className="social-shell">
         <SocialNav spaces={spaces} canCreateSpace={Boolean(profile)} profile={profile} />
         <main className="social-main">{children}</main>
+        {/* docs/phase-eight.md — third grid column, gated to a route
+            allow-list (and signed-in visitors only) by RailVisibility,
+            since this layout has no server-side way to know which page is
+            active. .social-shell's own CSS widens itself via :has()
+            rather than a class threaded back up from this client
+            decision — see app/globals.css. */}
+        <RailVisibility signedIn={Boolean(user)}>
+          <MostTradedRail />
+        </RailVisibility>
       </div>
       <Footer />
       {profile && <MobileNav handle={profile.handle} />}

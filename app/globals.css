@@ -3147,6 +3147,16 @@
   gap: 32px;
   align-items: start;
 }
+/* Phase eight: a third column for the Most Traded rail, present only on
+   the routes RailVisibility (components/social/RailVisibility.tsx)
+   actually renders it on. :has() lets the shell's own column count follow
+   whether .mtr-rail is really in the DOM, with no class threaded back up
+   from that client-side route decision. Every other page keeps the
+   two-column shape above untouched. */
+.social-shell:has(.mtr-rail) {
+  grid-template-columns: 200px minmax(0, 1fr) 260px;
+  max-width: 1220px;
+}
 .social-main {
   max-width: 640px;
   min-width: 0;
@@ -3324,6 +3334,144 @@
   .social-nav {
     display: none;
   }
+  /* The rail vanishes at the same point the nav does — reusing this
+     breakpoint rather than adding a separate one (docs/phase-eight.md
+     suggested the rail hide earlier than the nav; the app has no other
+     breakpoint between this and 640px, and letting the panel outlive the
+     nav alone in that gap read worse than both collapsing together). */
+  .mtr-rail {
+    display: none;
+  }
+}
+
+/* ---------- most traded rail (docs/phase-eight.md) ---------- */
+.mtr-rail {
+  min-width: 0;
+}
+.mtr-panel {
+  position: sticky;
+  top: 76px;
+  border: 1px solid var(--rule);
+  border-radius: var(--social-r);
+  background: var(--paper);
+  overflow: hidden;
+}
+.mtr-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 13px 14px 11px;
+  border-bottom: 1px solid var(--rule);
+}
+.mtr-panel-head h3 {
+  margin: 0;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.mtr-panel-head span {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.mtr-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--rule);
+  text-decoration: none;
+  color: inherit;
+}
+.mtr-row:last-of-type {
+  border-bottom: 0;
+}
+.mtr-row:hover {
+  background: var(--cream-2);
+}
+.mtr-row-symbol {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.mtr-row-price {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.mtr-row-name {
+  font-size: 11.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+.mtr-row-change {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.mtr-row-change.up {
+  color: var(--green);
+}
+.mtr-row-change.down {
+  color: var(--accent);
+}
+.mtr-row-meta {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 2px;
+}
+.mtr-vol {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.mtr-posts {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--gold);
+  border: 1px solid currentColor;
+  border-radius: var(--social-pill);
+  padding: 1px 6px;
+}
+.mtr-panel-foot {
+  padding: 10px 14px;
+  border-top: 1px solid var(--rule);
+  background: var(--cream-2);
+}
+.mtr-panel-foot a {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none;
+}
+.mtr-panel-foot a:hover {
+  color: var(--ink);
+}
+.mtr-empty {
+  padding: 16px 14px;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.55;
 }
 
 .social-orientation {
