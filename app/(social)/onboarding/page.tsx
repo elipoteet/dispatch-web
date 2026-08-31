@@ -88,7 +88,7 @@ export default async function OnboardingPage(props: Props) {
         <div className="social-auth-card">
           <h1>This email isn&rsquo;t a supported school.</h1>
           <p className="sub">
-            {user.email} isn&rsquo;t associated with a school Dispatch recognizes yet. Sign up with
+            {user.email} isn&rsquo;t associated with a school Dispatch Social recognizes yet. Sign up with
             your school email instead.
           </p>
         </div>

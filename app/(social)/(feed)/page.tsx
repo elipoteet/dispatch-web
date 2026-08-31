@@ -7,7 +7,7 @@ import { FeedClient } from "@/components/social/FeedClient";
 import { LandingScreen } from "@/components/social/LandingScreen";
 import { TICKER_PATTERN } from "@/lib/analysis/loadReport";
 
-const TITLE = "The Dispatch";
+const TITLE = "Dispatch Social";
 const DESCRIPTION =
   "College students talking about markets under their real name and school. Not a trading app.";
 

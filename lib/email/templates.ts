@@ -23,7 +23,7 @@ function wrapEmail(bodyHtml: string, token: string, type: "replies" | "pushback"
   return `
 <div style="font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;color:#0d1b2a;">
   <div style="padding:18px 0;border-bottom:2px solid #0d1b2a;">
-    <strong style="font-size:15px;letter-spacing:0.08em;">THE DISPATCH</strong>
+    <strong style="font-size:15px;letter-spacing:0.08em;">DISPATCH SOCIAL</strong>
   </div>
   <div style="padding:22px 0;font-size:15px;line-height:1.55;">
     ${bodyHtml}
@@ -101,7 +101,7 @@ export function digestEmail({
   pushbackCount: number;
   unsubToken: string;
 }): { subject: string; html: string } {
-  const subject = "Your week on The Dispatch";
+  const subject = "Your week on Dispatch Social";
   const parts: string[] = [];
   if (replyCount > 0) parts.push(`${replyCount} ${replyCount === 1 ? "reply" : "replies"}`);
   if (pushbackCount > 0) parts.push(`${pushbackCount} pushback${pushbackCount === 1 ? "" : "s"}`);

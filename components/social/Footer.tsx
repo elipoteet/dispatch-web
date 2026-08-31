@@ -21,7 +21,7 @@ export function Footer() {
       <div aria-hidden="true" />
       <div className="social-footer-content">
         <p className="social-footer-disclaimer">
-          The Dispatch is a place for students to discuss markets. Nothing here is investment
+          Dispatch Social is a place for students to discuss markets. Nothing here is investment
           advice. Posts are written by users, not by professionals, and are not checked for
           accuracy.
         </p>

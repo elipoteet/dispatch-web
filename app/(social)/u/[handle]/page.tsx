@@ -24,7 +24,9 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   const profile = await getProfileByHandle(supabase, handle.toLowerCase());
 
   if (!profile) {
-    return { robots: { index: false, follow: false } };
+    // title explicit — same doubled-title reasoning as not-found.tsx's
+    // own comment for this segment.
+    return { title: "Profile Not Found", robots: { index: false, follow: false } };
   }
   return {
     title: `${profile.displayName} (@${profile.handle})`,

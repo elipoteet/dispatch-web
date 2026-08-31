@@ -17,8 +17,9 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   if (!post) {
     // Set noindex explicitly rather than relying on notFound()'s automatic
     // injection — see not-found.tsx's comment and gotcha #2 in
-    // docs/claude-project-context.md.
-    return { robots: { index: false, follow: false } };
+    // docs/claude-project-context.md. title explicit too, same doubled-
+    // title reasoning as not-found.tsx's own comment.
+    return { title: "Post Not Found", robots: { index: false, follow: false } };
   }
 
   const snippet = post.deletedAt ? "Deleted post" : post.body.slice(0, 60);

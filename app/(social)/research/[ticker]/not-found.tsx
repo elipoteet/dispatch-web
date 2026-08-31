@@ -5,7 +5,11 @@ import { EmptyState } from "@/components/social/EmptyState";
 // injection for notFound() — verified empirically in the retired page's
 // own comment that it doesn't reliably apply once a custom not-found.tsx
 // exists for the segment; same fix carried over here.
+//
+// title is explicit too — see app/(social)/p/[id]/not-found.tsx's
+// comment on the doubled-title bug an omitted title produced live.
 export const metadata: Metadata = {
+  title: "Ticker Not Found",
   robots: { index: false, follow: false },
 };
 

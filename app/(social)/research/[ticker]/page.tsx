@@ -42,11 +42,11 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   // cost a second fetch on success, since getTickerSnapshot is cached.
   const snapshot = await getTickerSnapshot(ticker);
   if (!snapshot) {
-    return { title: `${ticker} — The Dispatch`, robots: { index: false, follow: false } };
+    return { title: `${ticker} — Dispatch Social`, robots: { index: false, follow: false } };
   }
-  const description = `${snapshot.name ?? ticker} (${ticker}) on The Dispatch: what the campus network is saying, plus market cap, P/E, revenue growth, gross margin, and a one-year chart.`;
+  const description = `${snapshot.name ?? ticker} (${ticker}) on Dispatch Social: what the campus network is saying, plus market cap, P/E, revenue growth, gross margin, and a one-year chart.`;
   return {
-    title: `${ticker} — ${snapshot.name ?? "The Dispatch"}`,
+    title: `${ticker} — ${snapshot.name ?? "Dispatch Social"}`,
     description,
     alternates: { canonical: `/research/${ticker.toLowerCase()}` },
     openGraph: { url: `/research/${ticker.toLowerCase()}`, description },

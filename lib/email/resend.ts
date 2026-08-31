@@ -8,7 +8,7 @@ import { Resend } from "resend";
 // SMTP username/password used for the sign-in code relay. See
 // docs/phase-two.md and docs/phase-one-recap.md's "Resend is already wired
 // up" note — it wasn't, for this.
-const FROM_ADDRESS = "The Dispatch <notifications@dispatchresearch.com>";
+const FROM_ADDRESS = "Dispatch Social <notifications@dispatchresearch.com>";
 
 let client: Resend | null = null;
 function getClient(): Resend | null {

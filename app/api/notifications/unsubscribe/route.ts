@@ -14,9 +14,9 @@ function isNotifyType(value: string | null): value is NotifyType {
 
 function page(message: string): Response {
   const html = `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>The Dispatch</title></head>
+<html lang="en"><head><meta charset="utf-8"><title>Dispatch Social</title></head>
 <body style="font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:480px;margin:80px auto;color:#0d1b2a;text-align:center;">
-  <p style="font-size:11px;letter-spacing:0.08em;color:#5c6b7f;">THE DISPATCH</p>
+  <p style="font-size:11px;letter-spacing:0.08em;color:#5c6b7f;">DISPATCH SOCIAL</p>
   <p style="font-size:16px;">${message}</p>
 </body></html>`;
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });

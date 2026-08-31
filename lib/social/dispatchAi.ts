@@ -209,7 +209,7 @@ async function findFirstMention(supabase: SupabaseClient): Promise<GeneratedPost
       .lt("created_at", post.created_at);
     if ((count ?? 0) === 0) {
       return {
-        body: `First post about $${post.ticker} on The Dispatch.`,
+        body: `First post about $${post.ticker} on Dispatch Social.`,
         ticker: post.ticker,
         generatedTemplate: "first_mention",
         generatedRefPostId: post.id,

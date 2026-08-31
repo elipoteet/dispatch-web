@@ -15,29 +15,29 @@ specific things worth paying someone to look at.
 
 ### Short version, for the footer of every page
 
-> The Dispatch is a place for students to discuss markets. Nothing here is investment
+> Dispatch Social is a place for students to discuss markets. Nothing here is investment
 > advice. Posts are written by users, not by professionals, and are not checked for
 > accuracy.
 
 ### Full version, for `/disclaimer`
 
-**The Dispatch is educational. It is not investment advice.**
+**Dispatch Social is educational. It is not investment advice.**
 
-Everything published on The Dispatch is for information and discussion. It is not a
+Everything published on Dispatch Social is for information and discussion. It is not a
 recommendation to buy, sell, or hold any security, and it should not be treated as the
 basis for any financial decision.
 
 **We are not advisers, brokers, or professionals.**
 
-The Dispatch is not a registered investment adviser, a broker-dealer, or a financial
+Dispatch Social is not a registered investment adviser, a broker-dealer, or a financial
 institution of any kind. It does not manage money, execute trades, hold customer assets, or
 connect to brokerage accounts. It has no relationship with any company discussed on it.
 
 **The people posting are students.**
 
-Content on The Dispatch is written by verified college students and alumni. They are not
+Content on Dispatch Social is written by verified college students and alumni. They are not
 professionals, they are frequently wrong, and being wrong in public is part of what the site
-is for. Nothing anyone writes here has been reviewed, verified, or endorsed by The Dispatch.
+is for. Nothing anyone writes here has been reviewed, verified, or endorsed by Dispatch Social.
 
 **Market data may be wrong, delayed, or missing.**
 
@@ -114,15 +114,15 @@ real, which is a large part of why the identity system is worth its cost.
 To be reviewed by an attorney. Structure and plain-language intent are here; the
 enforceability is not something this document can promise.
 
-**Who can use The Dispatch.** Reading is open to anyone. Posting requires a verified account,
+**Who can use Dispatch Social.** Reading is open to anyone. Posting requires a verified account,
 which requires an email address at a recognized school. You must be at least 18, or the age
 of majority where you live, to create an account.
 
 **Your account.** One per person. You are responsible for what happens under it. Do not share
 credentials. We can suspend or remove accounts that break the community guidelines.
 
-**Your content.** You keep ownership of everything you write. By posting you grant The
-Dispatch a non-exclusive, worldwide, royalty-free licence to display, distribute, and archive
+**Your content.** You keep ownership of everything you write. By posting you grant Dispatch
+Social a non-exclusive, worldwide, royalty-free licence to display, distribute, and archive
 it on the platform, including after you delete it in the limited form described below.
 
 **Deleting content.** You can edit a post for twelve hours after publishing and delete it at
@@ -130,7 +130,7 @@ any time. Deleting removes the text but leaves a marker so that replies from oth
 remain readable and conversations do not silently rewrite themselves. Replies you did not
 write belong to the people who wrote them.
 
-**Content is public.** The Dispatch is readable without an account and is indexed by search
+**Content is public.** Dispatch Social is readable without an account and is indexed by search
 engines. Anything you post publicly should be treated as permanently public, including on
 your profile page. Only your email address is never displayed.
 
@@ -139,7 +139,7 @@ accuracy of market data, accuracy of anything a user writes, or that the service
 continue to exist. We are not liable for financial losses arising from anything you read
 here. See the disclaimer.
 
-**Other people's content.** The Dispatch hosts user-generated content and does not review it
+**Other people's content.** Dispatch Social hosts user-generated content and does not review it
 before publication. We are not responsible for it and do not endorse it. Report anything that
 breaks the guidelines.
 
@@ -211,7 +211,7 @@ asking about specifically.
 **Student data and school email addresses.** Verifying against university domains and storing
 that association is worth a sanity check, especially as more schools are added.
 
-**The name.** A trademark search on The Dispatch in the financial-media space, before it is
+**The name.** A trademark search on Dispatch Social in the financial-media space, before it is
 worth anything to anyone.
 
 ### Cheap ways to do this well

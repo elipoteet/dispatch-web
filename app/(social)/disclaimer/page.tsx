@@ -14,16 +14,16 @@ export default function DisclaimerPage() {
     <article className="legal-page">
       <h1>Disclaimer</h1>
 
-      <p className="legal-lead">The Dispatch is educational. It is not investment advice.</p>
+      <p className="legal-lead">Dispatch Social is educational. It is not investment advice.</p>
       <p>
-        Everything published on The Dispatch is for information and discussion. It is not a
+        Everything published on Dispatch Social is for information and discussion. It is not a
         recommendation to buy, sell, or hold any security, and it should not be treated as the
         basis for any financial decision.
       </p>
 
       <p className="legal-lead">We are not advisers, brokers, or professionals.</p>
       <p>
-        The Dispatch is not a registered investment adviser, a broker-dealer, or a financial
+        Dispatch Social is not a registered investment adviser, a broker-dealer, or a financial
         institution of any kind. It does not manage money, execute trades, hold customer assets,
         or connect to brokerage accounts. It has no relationship with any company discussed on
         it.
@@ -31,10 +31,10 @@ export default function DisclaimerPage() {
 
       <p className="legal-lead">The people posting are students.</p>
       <p>
-        Content on The Dispatch is written by verified college students and alumni. They are not
+        Content on Dispatch Social is written by verified college students and alumni. They are not
         professionals, they are frequently wrong, and being wrong in public is part of what the
-        site is for. Nothing anyone writes here has been reviewed, verified, or endorsed by The
-        Dispatch.
+        site is for. Nothing anyone writes here has been reviewed, verified, or endorsed by
+        Dispatch Social.
       </p>
 
       <p className="legal-lead">Market data may be wrong, delayed, or missing.</p>

@@ -36,7 +36,12 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   // Never index a private Space page — same reasoning as every other
   // not-yet-public surface in this app, just permanent here rather than a
   // TODO, since a Space is never meant to become publicly indexable.
-  if (!space) return { robots: { index: false, follow: false } };
+  // title explicit even in the !space branch — see
+  // app/(social)/p/[id]/not-found.tsx's comment on the doubled-title bug
+  // an omitted title produced live (this route has no dedicated
+  // not-found.tsx of its own, so it falls through to Next's generic
+  // boundary, which is exactly where that bug showed up).
+  if (!space) return { title: "Space Not Found", robots: { index: false, follow: false } };
   return { title: space.name, robots: { index: false, follow: false } };
 }
 

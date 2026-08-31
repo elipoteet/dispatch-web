@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { SocialHeader } from "@/components/social/SocialHeader";
 import type { HeaderProfile } from "@/components/social/SocialHeader";
@@ -15,6 +16,34 @@ import type { SpaceNavItem } from "@/lib/social/spaces";
 // below it (.social-shell, app/globals.css). Scoped under .social so the
 // loosened radius stays out of the equity-research surface in
 // app/(research)/.
+
+// Overrides the root layout's title/openGraph/twitter defaults — all
+// three still say "The Dispatch — Equity Research," correct for the
+// retired research surface under app/(research)/, which keeps its own
+// identity untouched — for every page nested under this layout. Per
+// Next's metadata merging rules (root → nested layout → page, evaluated
+// in that order, duplicate keys replaced by the later one), the closer
+// layout wins for any descendant page that doesn't set the same key
+// itself. `title` has real templating (`%s — Dispatch Social`); OG/
+// Twitter titles don't, so those are flat defaults, matching the same
+// level of specificity the root already gives its own surface. Found
+// live: without this, a page's own explicit `description` override
+// (e.g. /research's fix for the same underlying leak) still left the
+// *title* shown in a shared link preview reading the old name.
+export const metadata: Metadata = {
+  title: {
+    template: "%s — Dispatch Social",
+    default: "Dispatch Social",
+  },
+  openGraph: {
+    title: "Dispatch Social",
+    siteName: "Dispatch Social",
+  },
+  twitter: {
+    title: "Dispatch Social",
+  },
+};
+
 export default async function SocialLayout({
   children,
 }: Readonly<{
