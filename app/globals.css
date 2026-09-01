@@ -3232,7 +3232,15 @@
   border-radius: var(--social-r);
   background: var(--paper);
   overflow: hidden;
-  padding: 0 20px;
+  padding: 0 20px 24px;
+  /* padding-bottom added — real gap reported between the "+ New space"
+     button and the card's own bottom edge on /spaces. Zero vertical
+     padding here was previously only rescued from looking cramped by
+     whatever happened to be the last child having its own bottom padding
+     (.post-card's 18px 0, e.g.) — a plain Link like "+ New space" has
+     none, so it sat flush against the border. General fix, not
+     /spaces-specific: every page using this card gets the same real
+     breathing room before its own bottom edge. */
 }
 /* Phone pass: goes edge-to-edge below the same "PHONE WIDTHS" 640px
    threshold the research/portfolio surface already uses (~2624) — a
@@ -3263,6 +3271,32 @@
   }
   .social-footer {
     margin-top: 16px;
+  }
+  /* Real bug reported: the feed appeared "zoomed in" right after signing
+     in, requiring a manual pinch-to-unzoom. Root cause is a well-known
+     WebKit behavior, not a feed bug at all — iOS Safari auto-zooms the
+     whole page when a focused text input's font-size is under 16px, and
+     several social-surface inputs were (the login/signup email+code
+     fields at 14.5px, search boxes at 12-14px, the composer/reply
+     textareas at 15px). Sign-in is entirely client-side navigation
+     (EmailCodeForm -> router.push, no full page reload anywhere in that
+     chain), so a zoom triggered while typing the code on /login never
+     gets a fresh viewport computation before landing on the feed — it
+     just carries over. Blanket floor, scoped to .social (the retired
+     research surface has its own separate input sizes and is out of
+     scope here) rather than hunting down and patching every input
+     individually — this can never regress by someone adding a new small
+     input later. !important is deliberate, not a shortcut: every one of
+     the input-specific rules this needs to beat (.social-field input,
+     .composer textarea, .research-search-in input, etc.) shares the same
+     specificity and is defined later in this file, so a plain override
+     here would lose the exact same way the .social-shell:has() rule lost
+     to its own collapse rule earlier in this pass — this is a hard floor
+     that must never lose, not a style preference. */
+  .social input,
+  .social textarea,
+  .social select {
+    font-size: 16px !important;
   }
 }
 
