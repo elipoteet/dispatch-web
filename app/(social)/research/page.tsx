@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getTrendingTickers } from "@/lib/social/queries";
 import { TickerSearchBar } from "@/components/social/TickerSearchBar";
+import { MostTradedRail } from "@/components/social/MostTradedRail";
 
 // docs/phase-five.md section B. "Look up any ticker. Everything here is
 // also one click away from any post." Deliberately not the prototype's
@@ -50,6 +51,14 @@ export default async function ResearchPage({
         <p>Look up any ticker.</p>
         <p>Everything here is also one click away from any post.</p>
       </div>
+
+      {/* Phone pass: the sidebar rail disappears below 900px with no
+          replacement, and phone visitors previously had no nav path to
+          this page at all — inline variant, hidden on desktop where the
+          real sidebar already covers it (see MostTradedRail.tsx and
+          app/globals.css's .mtr-inline). Unconditional, no auth gate:
+          this page is already public content. */}
+      <MostTradedRail variant="inline" />
 
       <div className="research-search">
         <TickerSearchBar className="research-search-in" placeholder="TICKER OR COMPANY" />

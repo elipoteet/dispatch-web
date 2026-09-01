@@ -3099,6 +3099,11 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  /* Phone pass: previously relied only on the parent (.social-header-inner)
+     wrapping this whole block onto its own line — real overflow risk with
+     a near-max-length (20-char) handle, or between 480-700px where the
+     school badge is still shown alongside everything else. */
+  flex-wrap: wrap;
 }
 /* Overrides the research surface's sharp navy-bordered square (.theme-toggle,
    defined above) with the social surface's rounded, warmer look — same
@@ -3196,6 +3201,28 @@
   background: var(--paper);
   overflow: hidden;
   padding: 0 20px;
+}
+/* Phone pass: goes edge-to-edge below the same "PHONE WIDTHS" 640px
+   threshold the research/portfolio surface already uses (~2624) — a
+   normal mobile social app (Twitter/Instagram/Threads web) runs content
+   to the screen edge with no visible card border, divided only by the
+   existing hairlines between rows (.post-card already has just a
+   border-bottom, not a full box, so nothing about individual posts needs
+   to change — this is purely the outer container). .social-content-card's
+   own padding stays, so text keeps a sane inset from the true edge; only
+   the visible border/corner-rounding and the shell's extra 20px go away.
+   Applies everywhere .social-content-card is used — feed, post, profile,
+   research, a Space — not feed-only. */
+@media (max-width: 640px) {
+  .social-shell {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .social-content-card {
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+  }
 }
 
 .social-nav {
@@ -3349,12 +3376,31 @@
   min-width: 0;
 }
 .mtr-panel {
-  position: sticky;
-  top: 76px;
   border: 1px solid var(--rule);
   border-radius: var(--social-r);
   background: var(--paper);
   overflow: hidden;
+}
+/* Sticky is a sidebar-only behavior — scoped here rather than on the bare
+   .mtr-panel so the inline variant (phone /research, below) stays a plain
+   block in normal document flow. */
+.mtr-rail .mtr-panel {
+  position: sticky;
+  top: 76px;
+}
+/* Phone pass: full-width variant for /research below 900px, where the
+   sidebar is hidden and (before this pass) had no replacement at all.
+   Hidden ≥900px so it never doubles up with the real sidebar on desktop —
+   see app/(social)/research/page.tsx and MostTradedRail.tsx's own
+   variant="inline" comment. */
+.mtr-inline {
+  display: none;
+  margin-bottom: 24px;
+}
+@media (max-width: 900px) {
+  .mtr-inline {
+    display: block;
+  }
 }
 .mtr-panel-head {
   display: flex;
@@ -3619,6 +3665,12 @@
   align-items: center;
   gap: 14px;
   margin-top: 8px;
+  /* Phone pass: a long validationHint ("State whether you hold a position
+     in $NVDA") plus Guidelines plus the Post button had no wrap — a real
+     overflow risk, since a hint is showing most of the time someone's
+     actually typing. */
+  flex-wrap: wrap;
+  row-gap: 8px;
 }
 .sign-in-prompt {
   padding: 18px 20px;
@@ -3757,6 +3809,8 @@
   align-items: center;
   gap: 24px;
   margin-top: 12px;
+  /* Consistency/insurance — .post-head right above this already wraps. */
+  flex-wrap: wrap;
 }
 .post-actions button,
 .post-actions a {
@@ -3986,6 +4040,15 @@
   align-items: center;
   padding: 22px 0;
   border-bottom: 1px solid var(--rule);
+}
+/* Phone pass: this was a bare, unclassed <div> — no min-width:0, so its
+   longest unbreakable line (the dispatchresearch.com/@handle chip) could
+   force the whole .profile-head row wider than the viewport. Same
+   treatment .post-card-body/.composer-body already give their equivalent
+   "info" column. */
+.profile-head-info {
+  flex: 1;
+  min-width: 0;
 }
 .profile-avatar {
   width: 66px;
@@ -4323,6 +4386,10 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  /* Phone pass: without this a grid item's default min-width:auto lets its
+     content (see .ticker-stat-value below) force the track wider than the
+     cell, silently clipped by .ticker-card's overflow:hidden. */
+  min-width: 0;
 }
 .ticker-stat-label {
   font-family: 'IBM Plex Mono', monospace;
@@ -4338,6 +4405,12 @@
   font-family: 'IBM Plex Mono', monospace;
   font-size: 12.5px;
   font-variant-numeric: tabular-nums;
+  /* Phone pass: the 52wk range renders as one unbreakable token
+     ("$45.20–$189.30", no space around the en dash) — lets it break as a
+     last resort instead of overflowing a 2-column grid cell at phone
+     width. .tk-stats on the ticker page avoids this a different way
+     (minmax(0,1fr) columns); this is the equivalent fix here. */
+  overflow-wrap: break-word;
 }
 .ticker-card-stamp {
   font-family: 'IBM Plex Mono', monospace;
@@ -4424,6 +4497,11 @@
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px dashed var(--bot-line);
+  /* Phone pass: 3 tiles at ~251px of content vs ~243px available inside a
+     .post--bot card was the tightest overflow found in this audit —
+     matches .type-pills/.position-toggle, which already wrap. */
+  flex-wrap: wrap;
+  row-gap: 10px;
 }
 .gen-stat {
   display: flex;

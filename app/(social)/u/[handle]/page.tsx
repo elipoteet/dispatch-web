@@ -76,7 +76,7 @@ export default async function ProfilePage(props: Props) {
             className="profile-avatar"
           />
         )}
-        <div>
+        <div className="profile-head-info">
           <DisplayNameField
             profileId={profile.id}
             displayName={profile.displayName}

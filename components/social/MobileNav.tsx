@@ -9,6 +9,13 @@ import { usePathname } from "next/navigation";
 // don't apply to a signed-out visitor, and the header's Sign In/Sign Up
 // buttons (already visible at every width) are that visitor's actual
 // navigation, not a third bottom-nav item that would do nothing for them.
+//
+// Phone pass: Research was missing entirely — desktop's SocialNav.tsx has
+// Feed/Research/Spaces, but this only had Feed/Spaces/Profile, leaving
+// phone users with no way to reach /research except clicking a ticker
+// inside a post. Added as the 2nd tab (matching SocialNav's order), with
+// Profile staying last, matching where every mainstream mobile app's
+// tab bar puts "you."
 export function MobileNav({ handle }: { handle: string }) {
   const pathname = usePathname();
   const profileHref = `/@${handle}`;
@@ -20,6 +27,13 @@ export function MobileNav({ handle }: { handle: string }) {
           <path d="M2 3h12M2 8h12M2 13h8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
         </svg>
         Feed
+      </Link>
+      <Link href="/research" className={`mobile-nav-item${pathname.startsWith("/research") ? " active" : ""}`}>
+        <svg width="19" height="19" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle cx="6.8" cy="6.8" r="4.3" stroke="currentColor" strokeWidth="1.4" />
+          <path d="M10.2 10.2 14 14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+        </svg>
+        Research
       </Link>
       <Link href="/spaces" className={`mobile-nav-item${pathname.startsWith("/spaces") || pathname.startsWith("/s/") ? " active" : ""}`}>
         <svg width="19" height="19" viewBox="0 0 16 16" fill="none" aria-hidden="true">
