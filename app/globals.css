@@ -3055,6 +3055,30 @@
   text-transform: uppercase;
   font-weight: 600;
 }
+/* Phone pass: was a decorative, unclickable <svg> — see
+   TickerSearchBar.tsx's comment. Shared reset for both search boxes
+   (header + /research); each positions it via .header-search
+   .search-submit / .research-search-in .search-submit below. */
+.search-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 4px;
+  margin: 0;
+  cursor: pointer;
+  color: inherit;
+}
+.search-submit:hover,
+.search-submit:focus-visible {
+  opacity: 1 !important;
+}
+.search-submit:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+  border-radius: 3px;
+}
 .header-search {
   position: relative;
   flex: 1;
@@ -3063,11 +3087,10 @@
   display: flex;
   align-items: center;
 }
-.header-search svg {
+.header-search .search-submit {
   position: absolute;
-  left: 11px;
+  left: 7px;
   opacity: 0.5;
-  pointer-events: none;
 }
 .header-search input {
   width: 100%;
@@ -3226,11 +3249,20 @@
   .social-shell {
     padding-left: 0;
     padding-right: 0;
+    /* A short page (an empty Spaces list, a fresh profile) measured with a
+       real ~100px dead gap here (60px shell padding + 30px footer margin
+       below, next finding) before the footer even starts — reads as
+       "spacing is off" on a small screen in a way the same values don't
+       on desktop, where there's usually more content around them. */
+    padding-bottom: 24px;
   }
   .social-content-card {
     border-left: 0;
     border-right: 0;
     border-radius: 0;
+  }
+  .social-footer {
+    margin-top: 16px;
   }
 }
 
@@ -4142,6 +4174,18 @@
   border: 1px dashed var(--rule-dark);
   border-radius: var(--social-pill);
   padding: 4px 11px;
+  /* Phone pass: real bug found via a live measurement — this rendered at
+     its full unbroken-text width (dispatchresearch.com/@handle, ~269px)
+     regardless of its ~167px available column on a phone, running 82px
+     past the actual screen edge. .profile-head-info's min-width:0 stops
+     the row itself from being forced wider, but doesn't make an
+     inline-block child's own content wrap or shrink — this chip needed
+     its own constraint. */
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: top;
 }
 
 /* ---------- profile LinkedIn field ---------- */
@@ -5408,11 +5452,10 @@
   display: flex;
   align-items: center;
 }
-.research-search-in svg {
+.research-search-in .search-submit {
   position: absolute;
-  left: 14px;
+  left: 10px;
   opacity: 0.5;
-  pointer-events: none;
 }
 .research-search-in input {
   width: 100%;

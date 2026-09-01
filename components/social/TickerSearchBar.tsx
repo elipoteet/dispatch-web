@@ -37,16 +37,25 @@ export function TickerSearchBar({
 
   return (
     <form className={className} onSubmit={handleSubmit} role="search">
-      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.6" />
-        <path d="M11 11l4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-      </svg>
+      {/* Phone pass: this icon was purely decorative — Enter-to-submit
+          works, but a phone user reported no way to search without it,
+          since there's nothing visibly tappable. A real submit button
+          fixes that without changing anything for anyone still pressing
+          Enter/Go on the keyboard; enterKeyHint just labels that keyboard
+          key "Search" instead of the default "return". */}
+      <button type="submit" className="search-submit" aria-label="Search">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.6" />
+          <path d="M11 11l4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
+      </button>
       <input
         type="text"
         placeholder={placeholder}
         aria-label="Search tickers"
         autoComplete="off"
         spellCheck={false}
+        enterKeyHint="search"
         value={value}
         onChange={(e) => setValue(e.target.value.toUpperCase())}
       />
