@@ -4057,6 +4057,24 @@
   padding: 48px 20px;
   text-align: center;
 }
+/* Phone pass: a short empty state (no Spaces, no posts) left the actual
+   message stranded near the top of the screen with a large dead stretch
+   below it — the page title/divider above it is untouched (still reads
+   top-down normally), just the message itself uses more of what's
+   actually empty space below it instead of being marooned in a thin
+   band. Scoped to phone width; desktop's shorter, wider viewport doesn't
+   have this problem. NOT applied to a short-but-populated list (e.g. one
+   real Space) — that's normal app behavior (a short list just being
+   short), not something to force-fill. */
+@media (max-width: 640px) {
+  .social-empty {
+    min-height: 40vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+}
 .social-empty-headline {
   font-family: 'Inter', sans-serif;
   font-size: 16px;
@@ -4081,6 +4099,24 @@
   align-items: center;
   padding: 22px 0;
   border-bottom: 1px solid var(--rule);
+}
+/* Real phone bug found from a live screenshot: an account that already
+   has an avatar renders TWO buttons (Change photo/Remove photo, not one
+   Add photo) — .avatar-upload has no wrap and no min-width:0, so that
+   wider two-button block forced .profile-head-info (the name/handle/
+   badge/URL chip column) far enough right to run past the screen edge,
+   even with profile-head-info's own min-width:0 already in place. Missed
+   in the first phone pass because the account tested against didn't have
+   an avatar yet, so it only ever rendered the single-button case. Rather
+   than chase wrap fixes on every child, stack the row at phone width —
+   avatar+actions on top, identity info below — which is also just how
+   Twitter/Instagram present a profile header on mobile. */
+@media (max-width: 640px) {
+  .profile-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
 }
 /* Phone pass: this was a bare, unclassed <div> — no min-width:0, so its
    longest unbreakable line (the dispatchresearch.com/@handle chip) could
