@@ -3157,10 +3157,19 @@
    actually renders it on. :has() lets the shell's own column count follow
    whether .mtr-rail is really in the DOM, with no class threaded back up
    from that client-side route decision. Every other page keeps the
-   two-column shape above untouched. */
-.social-shell:has(.mtr-rail) {
-  grid-template-columns: 200px minmax(0, 1fr) 260px;
-  max-width: 1220px;
+   two-column shape above untouched.
+   Real phone-view bug found live: :has() adds specificity a bare
+   .social-shell selector can't beat regardless of media-query nesting or
+   source order — .mtr-rail is still IN THE DOM (just display:none) below
+   900px, so an unscoped version of this rule kept winning over the
+   collapse-to-1fr rule below even on a phone, reserving a blank 260px
+   column nothing was rendering into. Scoping this to desktop widths only
+   makes the two rules mutually exclusive instead of racing. */
+@media (min-width: 901px) {
+  .social-shell:has(.mtr-rail) {
+    grid-template-columns: 200px minmax(0, 1fr) 260px;
+    max-width: 1220px;
+  }
 }
 .social-main {
   max-width: 640px;
