@@ -14,7 +14,7 @@ import Link from "next/link";
 type PostType = "take" | "question" | "thesis" | "link";
 
 const TYPES: Record<PostType, { label: string; placeholder: string; minLength: number }> = {
-  take: { label: "Take", placeholder: "What's on your mind, and why does it matter?", minLength: 0 },
+  take: { label: "Take", placeholder: "What are you seeing? Type $GPRO to pull the numbers in.", minLength: 0 },
   question: {
     label: "Question",
     placeholder: "What are you trying to work out? Say what you already know.",

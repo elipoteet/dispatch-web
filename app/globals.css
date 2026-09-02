@@ -3739,6 +3739,17 @@
   outline: none;
   border-color: var(--gold);
 }
+/* Real contrast shortfall found by measuring it, not assuming: with no
+   explicit rule here the browser's own default placeholder gray
+   (Chrome's #757575) only reaches 4.14:1 against this app's dark --paper
+   background — under WCAG AA's 4.5:1 floor for normal text, exactly the
+   "easy to lose against the dark surface" risk. --muted measures 6.37:1
+   against the same dark background (5.43:1 in light mode, also a clear
+   pass), so it's an explicit fix, not a hypothetical one. */
+.composer textarea::placeholder,
+.reply-box textarea::placeholder {
+  color: var(--muted);
+}
 .composer-foot {
   display: flex;
   align-items: center;

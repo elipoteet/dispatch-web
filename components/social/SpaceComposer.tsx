@@ -115,7 +115,7 @@ export function SpaceComposer({
       <div className="composer-body">
         <textarea
           ref={textareaRef}
-          placeholder="Working note — what are you thinking?"
+          placeholder="What are you seeing? Type $GPRO to pull the numbers in."
           value={body}
           onChange={(e) => setBody(uppercaseCashtags(e.target.value))}
           rows={3}
