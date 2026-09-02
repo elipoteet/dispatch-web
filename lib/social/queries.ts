@@ -246,6 +246,25 @@ export async function getPromotedToIds(
 // one — a flat cap is enough for the first slice.
 export const EMPTY_COUNTS: Counts = { replyCount: 0, pushbackCount: 0 };
 
+// A deleted post still renders as a tombstone ("This post was deleted" —
+// PostCard.tsx) that "still shows its replies," per docs/phase-one.md —
+// that guarantee is unchanged, and holds forever via direct permalink
+// (getPostById below has no time filter at all). This only controls how
+// long the tombstone itself keeps surfacing in *list* views (the feed,
+// a profile) before it's just noise — real user report: an old deleted
+// post was still sitting in the feed days later. Soft-delete only ever
+// sets deleted_at (PostActions.tsx's handleDelete never touches body),
+// so nothing is destroyed here, this is purely a visibility cutoff.
+const DELETED_POST_LIST_VISIBILITY_HOURS = 24;
+
+// PostgREST .or() filter clause — "not deleted, or deleted less than 24h
+// ago." A function (not a constant) since it has to be evaluated fresh
+// per request, not once at module load.
+function notDeletedOrRecentlyDeletedFilter(): string {
+  const cutoffIso = new Date(Date.now() - DELETED_POST_LIST_VISIBILITY_HOURS * 60 * 60 * 1000).toISOString();
+  return `deleted_at.is.null,deleted_at.gt.${cutoffIso}`;
+}
+
 // KNOWN LIMITATION, not just an unbuilt feature: this is a flat LIMIT, not
 // a cursor. Once a feed/profile/Space genuinely has more than `limit`
 // rows, whatever's past the cutoff isn't paginated to — it's just gone
@@ -261,6 +280,7 @@ export async function getFeedPosts(supabase: SupabaseClient, limit = 50): Promis
     .from("posts")
     .select(POST_SELECT)
     .is("space_id", null)
+    .or(notDeletedOrRecentlyDeletedFilter())
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error || !data) return [];
@@ -287,6 +307,7 @@ export async function getPostsByAuthor(
     .select(POST_SELECT)
     .eq("author_id", authorId)
     .is("space_id", null)
+    .or(notDeletedOrRecentlyDeletedFilter())
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error || !data) return [];
