@@ -3856,7 +3856,14 @@
 }
 .post-head {
   display: flex;
-  align-items: baseline;
+  /* Real bug found from a screenshot: baseline aligned each item's TEXT
+     baseline correctly, but .post-type/.school-badge are padded pills at
+     a much smaller font-size (9.5-10.5px) than .post-name (14.5px) — same
+     baseline, very different box heights, so the pill's visible colored
+     box sat at a noticeably different height than the plain name text
+     next to it. center aligns the actual boxes instead, which is what
+     reads as "lined up" for a row mixing plain text and pill badges. */
+  align-items: center;
   gap: 8px;
   flex-wrap: wrap;
   margin-bottom: 5px;
