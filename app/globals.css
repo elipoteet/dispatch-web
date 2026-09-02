@@ -3232,9 +3232,13 @@
   border-radius: var(--social-r);
   background: var(--paper);
   overflow: hidden;
-  padding: 0 20px 24px;
+  padding: 0 20px 40px;
   /* padding-bottom added — real gap reported between the "+ New space"
-     button and the card's own bottom edge on /spaces. Zero vertical
+     button and the card's own bottom edge on /spaces. First pass used
+     24px; measured live afterward and the actual visible gap (after the
+     button's own internal padding eats into it) was only ~21px — too
+     subtle to read as deliberate at this scale, confirmed against a real
+     screenshot. Bumped to 40px so it's unambiguous. Zero vertical
      padding here was previously only rescued from looking cramped by
      whatever happened to be the last child having its own bottom padding
      (.post-card's 18px 0, e.g.) — a plain Link like "+ New space" has
