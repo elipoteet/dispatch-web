@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { OnboardingForm } from "@/components/social/OnboardingForm";
 import { MentorOnboardingForm } from "@/components/social/MentorOnboardingForm";
+import { canonicalSchoolDomain } from "@/lib/social/schoolDomain";
 
 export const metadata: Metadata = {
   title: "Set Up Your Profile",
@@ -50,7 +51,7 @@ export default async function OnboardingPage(props: Props) {
     redirect("/");
   }
 
-  const domain = user.email?.split("@").pop()?.toLowerCase() ?? "";
+  const domain = canonicalSchoolDomain(user.email?.split("@").pop()?.toLowerCase() ?? "");
   const { data: school } = await supabase
     .from("schools")
     .select("id, name")

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient, createPublicClient } from "@/lib/supabase/service";
+import { canonicalSchoolDomain } from "@/lib/social/schoolDomain";
 
 // Deliberately basic — not a full RFC 5322 email validator, just enough to
 // reject obvious junk before it reaches the domain lookup or Supabase.
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
   }
 
-  const domain = email.split("@").pop() ?? "";
+  const domain = canonicalSchoolDomain(email.split("@").pop() ?? "");
   const ip = getClientIp(request);
   const windowStart = new Date(Date.now() - WINDOW_MS).toISOString();
 
