@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-type Props = { searchParams: Promise<{ invite?: string }> };
+type Props = { searchParams: Promise<{ invite?: string; confirmed?: string }> };
 
 // Only reachable with a session and no profile row yet, per
 // docs/phase-one.md. Redirects to /signup with no session, and to / if a
@@ -20,7 +20,8 @@ type Props = { searchParams: Promise<{ invite?: string }> };
 // resolves. See app/(social)/j/[token]/page.tsx for where this token
 // originates and why it travels as a query param rather than a cookie.
 export default async function OnboardingPage(props: Props) {
-  const { invite } = await props.searchParams;
+  const { invite, confirmed } = await props.searchParams;
+  const inviteConfirmed = confirmed === "1";
   const inviteSuffix = invite ? `?invite=${encodeURIComponent(invite)}` : "";
   const supabase = await createClient();
   const {
@@ -39,14 +40,13 @@ export default async function OnboardingPage(props: Props) {
 
   if (existingProfile) {
     // Someone who already has an account opened an invite link while
-    // signed in but somehow landed here — join now rather than just
-    // bouncing to /. A failed/invalid token degrades to the normal "/"
-    // redirect rather than blocking anything.
+    // signed in but somehow landed here — send them to the invite modal
+    // rather than joining silently. They haven't confirmed via the modal
+    // either way (this branch is for people who never even saw it, same
+    // as the mid-onboarding case below), so the same confirm step
+    // applies here for consistency rather than a silent auto-join.
     if (invite) {
-      const { data: joined } = await supabase.rpc("join_space_via_token", { p_token: invite });
-      if (joined && joined.length > 0) {
-        redirect(`/s/${joined[0].slug}`);
-      }
+      redirect(`/j/${encodeURIComponent(invite)}`);
     }
     redirect("/");
   }
@@ -75,7 +75,14 @@ export default async function OnboardingPage(props: Props) {
       .maybeSingle();
 
     if (mentorEntry) {
-      return <MentorOnboardingForm userId={user.id} defaultDisplayName={defaultDisplayName} />;
+      return (
+        <MentorOnboardingForm
+          userId={user.id}
+          defaultDisplayName={defaultDisplayName}
+          inviteToken={invite}
+          inviteConfirmed={inviteConfirmed}
+        />
+      );
     }
 
     // Reachable if a signed-in user with a non-school, non-allowlisted
@@ -103,6 +110,7 @@ export default async function OnboardingPage(props: Props) {
       schoolId={school.id}
       defaultDisplayName={defaultDisplayName}
       inviteToken={invite}
+      inviteConfirmed={inviteConfirmed}
     />
   );
 }

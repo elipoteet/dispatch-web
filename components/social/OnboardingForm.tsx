@@ -16,11 +16,20 @@ export function OnboardingForm({
   schoolId,
   defaultDisplayName,
   inviteToken,
+  inviteConfirmed,
 }: {
   userId: string;
   schoolId: string;
   defaultDisplayName: string;
   inviteToken?: string;
+  // True only when this account arrived via InviteModal's "Verify and
+  // join" (docs/invite-modal-build-brief.md) — they already confirmed
+  // intent to join before ever signing up, so auto-join below rather
+  // than showing the modal a second time. False (the mid-onboarding
+  // case: a session existed with no profile yet) means they've never
+  // actually seen the modal, so send them to it now instead of joining
+  // silently.
+  inviteConfirmed?: boolean;
 }) {
   const router = useRouter();
   const [handle, setHandle] = useState("");
@@ -67,17 +76,25 @@ export function OnboardingForm({
     }
 
     // The profile row now exists, so join_space_via_token's "finish
-    // setting up your profile first" check passes. A failed/invalid token
-    // degrades to the normal "/" landing rather than blocking account
-    // creation, which already succeeded — the invite was a bonus, not the
-    // primary action here.
-    if (inviteToken) {
+    // setting up your profile first" check passes.
+    if (inviteToken && inviteConfirmed) {
+      // Already confirmed at the modal before signup — auto-join, no
+      // second confirmation. A failed/invalid token degrades to the
+      // normal "/" landing rather than blocking account creation, which
+      // already succeeded — the invite was a bonus, not the primary
+      // action here.
       const { data: joined } = await supabase.rpc("join_space_via_token", { p_token: inviteToken });
       if (joined && joined.length > 0) {
         router.push(`/s/${joined[0].slug}`);
         router.refresh();
         return;
       }
+    } else if (inviteToken) {
+      // Never actually confirmed via the modal (the mid-onboarding path)
+      // — show it now instead of joining silently.
+      router.push(`/j/${encodeURIComponent(inviteToken)}`);
+      router.refresh();
+      return;
     }
 
     router.push("/");

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { EmptyState } from "@/components/social/EmptyState";
+import { getSpaceInvitePreview } from "@/lib/social/spaces";
+import { getProfileAuthorById } from "@/lib/social/queries";
+import { InviteModal } from "@/components/social/InviteModal";
 
 export const metadata: Metadata = {
   title: "Join a Space",
@@ -10,21 +12,29 @@ export const metadata: Metadata = {
 
 type Props = { params: Promise<{ token: string }> };
 
-// Resolves an invite link. Four cases, only two of which the brief names
-// explicitly:
-//   - signed out -> validate the token, then send them through signup,
-//     carrying it as ?invite= so it survives to /onboarding (see
-//     EmailCodeForm/OnboardingForm — a cookie can't be set from a plain
-//     page render in this Next.js version, only from a Server Function or
-//     Route Handler, so this carries the token in the URL instead).
-//   - signed in, no profiles row yet (mid-onboarding — the same state
-//     SocialHeader.tsx already branches on) -> same as signed out, but
-//     straight to /onboarding since there's already a session.
-//   - signed in and onboarded -> join now (join_space_via_token is
-//     idempotent, so "already a member" is a no-op, not an error) and go
-//     straight to the space.
-//   - invalid or revoked token -> a plain page saying so, never a hard
-//     error or a confusing bounce.
+// docs/invite-modal-build-brief.md. Resolves an invite link into one of
+// five states — see InviteModal.tsx's own header comment for the modal
+// itself; this page's job is just resolving which state applies and
+// fetching what that state needs, never throwing (error.tsx boundaries
+// are unreliable in this Next version — an invalid/revoked token is a
+// plain 200 render, same discipline as every not-found path elsewhere in
+// this app).
+//
+//   - Token doesn't resolve to a real, non-deleted space -> expired state.
+//   - Signed out -> the confirm modal in its signed-out form. Previously
+//     this redirected straight to /signup with zero confirmation; now
+//     that redirect only happens once someone actually clicks "Verify and
+//     join" inside the modal (carrying &confirmed=1, so onboarding knows
+//     to auto-join afterward rather than showing this modal a second
+//     time — see OnboardingForm.tsx/MentorOnboardingForm.tsx).
+//   - Signed in, no profiles row yet (mid-onboarding) -> straight to
+//     /onboarding, unchanged — this person has never seen the modal, so
+//     onboarding redirects back here (no &confirmed=1) once the profile
+//     form is done, and *that* visit is what shows the modal.
+//   - Signed in, onboarded, already a member -> straight to the space,
+//     no modal — a confirmation prompt for something already done is
+//     noise, and members re-open their own invite link often.
+//   - Signed in, onboarded, not a member -> the confirm modal.
 export default async function JoinSpacePage(props: Props) {
   const { token } = await props.params;
   const supabase = await createClient();
@@ -32,24 +42,50 @@ export default async function JoinSpacePage(props: Props) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const preview = await getSpaceInvitePreview(supabase, token);
+  if (!preview) return <InviteModal state="expired" />;
+
   if (!user) {
-    const { data } = await supabase.rpc("get_space_by_invite_token", { p_token: token });
-    if (!data || data.length === 0) return <InvalidInvite />;
-    redirect(`/signup?invite=${encodeURIComponent(token)}`);
+    const owner = await getProfileAuthorById(supabase, preview.ownerId);
+    return <InviteModal state="confirm" signedOut token={token} preview={preview} owner={owner ?? FALLBACK_OWNER} />;
   }
 
   const { data: profile } = await supabase.from("profiles").select("id").eq("id", user.id).maybeSingle();
   if (!profile) {
-    const { data } = await supabase.rpc("get_space_by_invite_token", { p_token: token });
-    if (!data || data.length === 0) return <InvalidInvite />;
     redirect(`/onboarding?invite=${encodeURIComponent(token)}`);
   }
 
-  const { data: joined, error } = await supabase.rpc("join_space_via_token", { p_token: token });
-  if (error || !joined || joined.length === 0) return <InvalidInvite />;
-  redirect(`/s/${joined[0].slug}`);
+  // Already a member? Straight to the space, no modal — RLS already lets
+  // a member read their own membership row (is_space_member resolves
+  // true for them), so this is a plain request-scoped query, no new
+  // function needed.
+  const { data: membership } = await supabase
+    .from("space_members")
+    .select("space_id")
+    .eq("space_id", preview.id)
+    .eq("profile_id", user.id)
+    .maybeSingle();
+  if (membership) {
+    redirect(`/s/${preview.slug}`);
+  }
+
+  const owner = await getProfileAuthorById(supabase, preview.ownerId);
+  return <InviteModal state="confirm" token={token} preview={preview} owner={owner ?? FALLBACK_OWNER} />;
 }
 
-function InvalidInvite() {
-  return <EmptyState headline="This link isn't valid anymore." sub="Ask whoever shared it for a new one." />;
-}
+// Reached only if the owner's own profile row somehow can't be read
+// (profiles_select_all is `using (true)`, fully public, so this should
+// be unreachable in practice) — the brief is explicit that naming the
+// wrong person is worse than naming none, so this renders as a plain
+// "Space owner" line rather than guessing or crashing.
+const FALLBACK_OWNER = {
+  id: "",
+  handle: "",
+  displayName: "The space owner",
+  gradYear: null,
+  schoolShortName: null,
+  schoolColorPrimary: null,
+  avatarUrl: null,
+  verifiedRole: "student" as const,
+  affiliation: null,
+};

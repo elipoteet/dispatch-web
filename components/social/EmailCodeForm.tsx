@@ -57,7 +57,17 @@ const MAX_CODE_LENGTH = 12;
 // redirect to /signup?invite=..., not a cookie: Next.js can't set a
 // cookie from a plain page render (only a Server Function or Route
 // Handler), so the token travels in the URL through this step instead.
-export function EmailCodeForm({ mode, inviteToken }: { mode: "signup" | "login"; inviteToken?: string }) {
+export function EmailCodeForm({
+  mode,
+  inviteToken,
+  inviteConfirmed,
+}: {
+  mode: "signup" | "login";
+  inviteToken?: string;
+  // See app/(social)/signup/page.tsx's comment — only ever true when this
+  // form was reached via InviteModal's "Verify and join" button.
+  inviteConfirmed?: boolean;
+}) {
   const router = useRouter();
   const copy = COPY[mode];
   const [step, setStep] = useState<Step>("email");
@@ -121,8 +131,12 @@ export function EmailCodeForm({ mode, inviteToken }: { mode: "signup" | "login";
     }
     // Onboarding itself decides whether this user already has a profile
     // and bounces to / (or, with an invite token, straight into the
-    // space) if so — see app/(social)/onboarding/page.tsx.
-    router.push(inviteToken ? `/onboarding?invite=${encodeURIComponent(inviteToken)}` : "/onboarding");
+    // space, or back to the invite modal if it was never confirmed) if
+    // so — see app/(social)/onboarding/page.tsx.
+    const onboardingUrl = inviteToken
+      ? `/onboarding?invite=${encodeURIComponent(inviteToken)}${inviteConfirmed ? "&confirmed=1" : ""}`
+      : "/onboarding";
+    router.push(onboardingUrl);
     router.refresh();
   }
 

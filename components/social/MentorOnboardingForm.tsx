@@ -15,7 +15,23 @@ import { AuthSteps } from "./AuthSteps";
 // default, and supabase/migrations/0014_roles.sql's own trigger is what
 // actually promotes it to mentor server-side, based on that same
 // allowlist — this form has no ability to request a role for itself.
-export function MentorOnboardingForm({ userId, defaultDisplayName }: { userId: string; defaultDisplayName: string }) {
+//
+// inviteToken/inviteConfirmed — a real gap found while building
+// docs/invite-modal-build-brief.md: this form previously dropped an
+// invite token silently (a mentor who clicked an invite link would sign
+// up and just land on the plain feed, invite forgotten). Same handling
+// as OnboardingForm.tsx now, mirrored exactly.
+export function MentorOnboardingForm({
+  userId,
+  defaultDisplayName,
+  inviteToken,
+  inviteConfirmed,
+}: {
+  userId: string;
+  defaultDisplayName: string;
+  inviteToken?: string;
+  inviteConfirmed?: boolean;
+}) {
   const router = useRouter();
   const [handle, setHandle] = useState("");
   const [displayName, setDisplayName] = useState(defaultDisplayName);
@@ -51,6 +67,19 @@ export function MentorOnboardingForm({ userId, defaultDisplayName }: { userId: s
       } else {
         setError("That handle isn't available. Pick another.");
       }
+      return;
+    }
+
+    if (inviteToken && inviteConfirmed) {
+      const { data: joined } = await supabase.rpc("join_space_via_token", { p_token: inviteToken });
+      if (joined && joined.length > 0) {
+        router.push(`/s/${joined[0].slug}`);
+        router.refresh();
+        return;
+      }
+    } else if (inviteToken) {
+      router.push(`/j/${encodeURIComponent(inviteToken)}`);
+      router.refresh();
       return;
     }
 

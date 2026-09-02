@@ -31,6 +31,20 @@ export type SpaceNavItem = {
   unreadCount: number;
 };
 
+// docs/invite-modal-build-brief.md. Deliberately count-only, no member
+// list/avatars — get_space_by_invite_token (0011/0020) is callable by
+// anyone holding the link, signed out, with no membership check, so a
+// member list there would expose a private club's roster to anyone who'd
+// merely seen a forwarded link. Confirmed with Eli before building this.
+export type SpaceInvitePreview = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  ownerId: string;
+  memberCount: number;
+};
+
 function mapSpaceRow(row: unknown): SpaceSummary {
   const r = row as {
     id: string;
@@ -73,6 +87,34 @@ export async function getOwnerInviteToken(supabase: SupabaseClient, spaceId: str
   const { data, error } = await supabase.from("spaces").select("invite_token").eq("id", spaceId).maybeSingle();
   if (error || !data) return null;
   return (data as { invite_token: string }).invite_token;
+}
+
+// The one RLS-legal read path for a non-member — spaces/space_members are
+// both member-only SELECT (0012_fix_space_rls_recursion.sql), so this has
+// to go through the security-definer RPC rather than a plain .from()
+// query, same as the pre-existing (id, slug, name)-only version of this
+// function did (supabase/migrations/0020_invite_preview.sql widened its
+// return shape; this just wraps the call instead of leaving it inline in
+// the page, matching this file's own convention).
+export async function getSpaceInvitePreview(supabase: SupabaseClient, token: string): Promise<SpaceInvitePreview | null> {
+  const { data, error } = await supabase.rpc("get_space_by_invite_token", { p_token: token });
+  if (error || !data || data.length === 0) return null;
+  const r = data[0] as {
+    id: string;
+    slug: string;
+    name: string;
+    description: string | null;
+    owner_id: string;
+    member_count: number;
+  };
+  return {
+    id: r.id,
+    slug: r.slug,
+    name: r.name,
+    description: r.description,
+    ownerId: r.owner_id,
+    memberCount: r.member_count,
+  };
 }
 
 export async function getSpaceMembers(supabase: SupabaseClient, spaceId: string): Promise<SpaceMember[]> {

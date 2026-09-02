@@ -5265,6 +5265,173 @@
   justify-content: flex-end;
 }
 
+/* ---------- invite modal (docs/invite-modal-build-brief.md) ---------- */
+/* New classes rather than reusing .promote-*: that one has no mobile
+   treatment at all (checked — no @media touches it anywhere), and this
+   modal explicitly needs a bottom sheet on phones, since a phone is the
+   device an invite link actually gets opened on. Same tokens/rhythm as
+   .promote-modal* though — border-radius vars, padding rhythm, IBM Plex
+   Mono for small uppercase labels — translated from the mock's own
+   --r/--border/--dim/--accent/--text names to this app's real tokens,
+   not copied verbatim. Breakpoint (520px) matches the mock's own. */
+.invite-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 27, 42, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.invite-modal {
+  background: var(--paper);
+  border: 1px solid var(--rule-dark);
+  border-radius: var(--social-r);
+  max-width: 440px;
+  width: 100%;
+  max-height: 88vh;
+  overflow: auto;
+}
+.invite-h {
+  padding: 22px 24px 0;
+}
+.invite-k,
+.invite-done-k {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 14px;
+}
+.invite-inviter {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 18px;
+}
+.invite-av {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+}
+.invite-inviter-t {
+  font-size: 14.5px;
+  line-height: 1.45;
+  min-width: 0;
+}
+.invite-inviter-t b {
+  font-weight: 600;
+}
+.invite-badge-row {
+  display: block;
+  margin-top: 2px;
+}
+.invite-space {
+  border: 1px solid var(--rule);
+  border-radius: var(--social-rs);
+  background: var(--cream-2);
+  padding: 16px 17px;
+}
+.invite-space h2 {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+.invite-space p {
+  font-size: 13.5px;
+  color: var(--muted);
+  margin-top: 7px;
+  line-height: 1.55;
+}
+.invite-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.invite-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--rule);
+  border-radius: var(--social-pill);
+  padding: 4px 10px;
+}
+.invite-memb {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.invite-note {
+  padding: 16px 24px 0;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.invite-f {
+  padding: 20px 24px 22px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+}
+.invite-fnote {
+  flex: 1;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.invite-done {
+  padding: 30px 26px;
+  text-align: left;
+}
+.invite-done h2 {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.invite-done p {
+  font-size: 13.5px;
+  color: var(--muted);
+  margin-top: 9px;
+  line-height: 1.6;
+}
+.invite-done .invite-f {
+  padding: 22px 0 0;
+}
+@media (max-width: 520px) {
+  .invite-scrim {
+    padding: 0;
+    align-items: flex-end;
+  }
+  .invite-modal {
+    max-width: none;
+    border-radius: var(--social-r) var(--social-r) 0 0;
+    border-bottom: none;
+    max-height: 92vh;
+  }
+  .invite-f {
+    flex-wrap: wrap;
+  }
+  .invite-f .social-btn {
+    flex: 1;
+    text-align: center;
+  }
+}
+
 /* ---------- mobile bottom nav ---------- */
 /* Replaces the left rail below 900px, the same breakpoint .social-nav
    already hides at — mutually exclusive with it, never both, never

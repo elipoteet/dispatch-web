@@ -428,6 +428,23 @@ export async function getTrendingTickers(supabase: SupabaseClient, limit = 24): 
     .slice(0, limit);
 }
 
+// A minimal PostAuthor lookup by id, not the wider ProfileDetail
+// getProfileByHandle returns (no linkedin_url/displayNameChangedAt — the
+// invite modal only needs handle/display_name/avatar/badge to show who
+// invited you, the same shape every other author render in this app
+// already uses). Deliberately plain — profiles_select_all (0006_social.sql)
+// is `using (true)`, fully public, so this needs no security-definer
+// treatment even for a signed-out caller.
+export async function getProfileAuthorById(supabase: SupabaseClient, id: string): Promise<PostAuthor | null> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, handle, display_name, grad_year, avatar_url, role, affiliation, school:schools ( short_name, color_primary )")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return null;
+  return mapAuthor(data);
+}
+
 export async function getProfileByHandle(
   supabase: SupabaseClient,
   handle: string,
