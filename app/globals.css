@@ -3777,6 +3777,17 @@
 
 /* ---------- buttons ---------- */
 .social-btn {
+  /* Real bug found live: on an <a> (this class is used on both <button>
+     and Link), the browser's default display:inline means vertical
+     margin has NO effect at all — not a specificity loss, a fundamental
+     CSS rule (inline boxes ignore margin-top/bottom entirely). "+ New
+     space"'s marginTop:16 was computing as a real 16px value the whole
+     time and doing literally nothing, which is why it sat flush against
+     the divider above it despite the style being present. inline-block
+     fixes this everywhere .social-btn is used on a link, not just this
+     one instance, and changes nothing for existing <button> usages
+     (already inline-block-equivalent by default). */
+  display: inline-block;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 11px;
   letter-spacing: 0.08em;
