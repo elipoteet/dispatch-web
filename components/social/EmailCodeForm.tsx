@@ -1,11 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { AuthSteps } from "./AuthSteps";
 
 type Step = "email" | "code";
+
+// Real launch-risk bug, not a Supabase problem: app/api/auth/request-code
+// caps at 3 requests per email AND 3 per IP per hour (the IP cap is the
+// sharp one — campus/club WiFi means many people share one IP, so a
+// single confused person tapping "Send code" repeatedly because nothing
+// visibly happened can burn through the WHOLE NETWORK's hourly budget,
+// locking out everyone else on it, not just themselves). The button
+// previously just flashed "Sending…" for the one in-flight request and
+// then either sat there again (after an error) or the form moved on to
+// the code step — nothing stopped someone from immediately going back
+// via "Use a different email" and tapping Send again. This cooldown is
+// deliberately NOT per-email: it has to survive switching email/typo-ing
+// a retry too, since the thing actually at risk (the shared IP's budget)
+// doesn't care which address the requests were for.
+const RESEND_COOLDOWN_SECONDS = 60;
 
 const COPY = {
   signup: {
@@ -50,9 +65,26 @@ export function EmailCodeForm({ mode, inviteToken }: { mode: "signup" | "login";
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set once a code has actually been sent at least once — never reset by
+  // "Use a different email", by design (see RESEND_COOLDOWN_SECONDS
+  // comment above). null = no code sent yet this session.
+  const [cooldownEndsAt, setCooldownEndsAt] = useState<number | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState(0);
+
+  useEffect(() => {
+    if (!cooldownEndsAt) return;
+    const tick = () => setSecondsLeft(Math.max(0, Math.ceil((cooldownEndsAt - Date.now()) / 1000)));
+    tick();
+    const id = setInterval(tick, 250);
+    return () => clearInterval(id);
+  }, [cooldownEndsAt]);
+
+  const inCooldown = cooldownEndsAt !== null && secondsLeft > 0;
+  const hasSentACode = cooldownEndsAt !== null;
 
   async function handleRequestCode(e: React.FormEvent) {
     e.preventDefault();
+    if (inCooldown) return; // belt-and-suspenders — the disabled button already blocks this
     setError(null);
     setLoading(true);
     const normalized = email.trim().toLowerCase();
@@ -70,6 +102,7 @@ export function EmailCodeForm({ mode, inviteToken }: { mode: "signup" | "login";
       setEmail(normalized);
       setCode("");
       setStep("code");
+      setCooldownEndsAt(Date.now() + RESEND_COOLDOWN_SECONDS * 1000);
     } finally {
       setLoading(false);
     }
@@ -115,15 +148,23 @@ export function EmailCodeForm({ mode, inviteToken }: { mode: "signup" | "login";
               />
             </div>
             {error && <div className="social-error">{error}</div>}
-            <button className="social-btn social-btn-primary" type="submit" disabled={loading}>
-              {loading ? "Sending…" : "Send code"}
+            {hasSentACode && (
+              <p className="hint" style={{ marginTop: -4, marginBottom: 10 }}>
+                {inCooldown
+                  ? `Code sent — you can request another in ${secondsLeft}s.`
+                  : "You can request another code now."}{" "}
+                Check your spam folder if you don&rsquo;t see it.
+              </p>
+            )}
+            <button className="social-btn social-btn-primary" type="submit" disabled={loading || inCooldown}>
+              {loading ? "Sending…" : inCooldown ? `Resend available in ${secondsLeft}s` : "Send code"}
             </button>
           </form>
         ) : (
           <form onSubmit={handleVerify}>
             <p className="social-field" style={{ marginTop: 4 }}>
               <span className="hint">
-                Code sent to {email}.{" "}
+                Code sent to {email}. Check your spam folder if you don&rsquo;t see it.{" "}
                 <button
                   type="button"
                   className="social-auth-switch"
