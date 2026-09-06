@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { TICKER_PATTERN } from "@/lib/analysis/loadReport";
+import { TICKER_PATTERN } from "@/lib/ticker";
 import { getTickerSnapshot } from "@/lib/analysis/tickerSnapshot";
 import type { TickerSnapshot } from "@/lib/analysis/tickerSnapshot";
 import { getTickerChart } from "@/lib/analysis/tickerChart";

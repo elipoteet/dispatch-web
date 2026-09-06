@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { loadTickerData, TICKER_PATTERN } from "@/lib/analysis/loadReport";
+import { loadTickerData } from "@/lib/analysis/loadReport";
+import { TICKER_PATTERN } from "@/lib/ticker";
 
 const ASOF_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 

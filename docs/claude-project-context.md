@@ -1,8 +1,17 @@
 # The Dispatch — Claude Project Context
 
-Last updated August 2026. A fresh Claude conversation should be able to pick up this
-project from this file plus `docs/product-spec.md` (v2), `docs/state-of-play.md`,
-`ARCHITECTURE.md`, and `AGENTS.md`.
+Last updated September 2026.
+
+**Start with `CLAUDE.md` at the repository root, not with this file.** It carries the
+rules, the import boundaries, the verification ritual and a condensed version of the
+gotchas below, and it loads automatically. This file is the long-form backing detail —
+read it when you need the full explanation of a trap rather than the one-line warning.
+
+The rest of the orienting set: `docs/product-spec.md` (v2, what the product is),
+`docs/product-spec-v3.md` (the research-network direction — **a draft with open
+decisions, do not treat it as settled**), `docs/state-of-play.md` (status), and
+`ARCHITECTURE.md` (the map, rewritten September 2026 — the previous version described
+only the retired product).
 
 ## How to talk to Eli — read this first
 
@@ -100,11 +109,20 @@ Set in `.env.local` locally and in Vercel's project settings for production:
 ```
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
+NEXT_PUBLIC_SITE_URL
 SUPABASE_SERVICE_ROLE_KEY
 TWELVE_DATA_API_KEY
+TIINGO_API_KEY
 FINNHUB_API_KEY
+POLYGON_API_KEY
 RESEND_API_KEY
+CRON_SECRET
 ```
+
+(Corrected September 2026 — this list previously omitted `TIINGO_API_KEY`,
+`POLYGON_API_KEY`, `NEXT_PUBLIC_SITE_URL` and `CRON_SECRET`, all of which the code
+reads. Verified by grepping `process.env` across `app/`, `lib/`, `components/` and
+`proxy.ts`.)
 
 (Values are secrets — never commit them, never paste them into a Claude conversation.)
 
@@ -113,7 +131,9 @@ not arriving, check that first.
 
 ## Database and migrations
 
-Twelve migrations, `0001`–`0012`. The social ones: `0006_social.sql` (schools, profiles,
+**Nineteen migration files, `0001`–`0020` — `0005` does not exist**, and nothing on disk
+explains why. `ARCHITECTURE.md` carries the full list with a line on each. The social
+ones: `0006_social.sql` (schools, profiles,
 posts, replies, the `auth_code_requests` rate-limit table, the post-edit-window and
 reply-immutability triggers), `0007_composer.sql`, `0008_pushback_notifications.sql`,
 `0009_school_colors.sql`, `0010_avatars.sql`, `0011_spaces.sql`,
@@ -219,21 +239,18 @@ caching, or metadata.** Traps already hit and worked around:
 
 ## Current state
 
+**`docs/state-of-play.md` is authoritative for status. This section is a pointer, not a
+record** — it drifted badly once already by trying to be both.
+
 **The old product** is complete and live at dispatchresearch.com and is being left alone.
 
-**The new product** is built through phase three and live at try.dispatchresearch.com:
-identity and eight-digit email verification, four post types with frozen ticker data,
-replies and pushback, the twelve-hour edit window and tombstones, Spaces with invite links
-and ownership transfer, promotion to the public feed, profiles with avatars, email
-notifications and a weekly digest, the ticker tape, and light/dark themes.
+**The new product** is live at try.dispatchresearch.com and is built well past what this
+file used to claim: phases five (research inside the site), six (landing screen and roles)
+and seven (Dispatch AI) all shipped, along with parts of phase four. Phase eight — the
+"most traded" rail — has a brief at `docs/phase-eight.md`.
 
-**Phase four** — mobile bottom navigation, optimistic updates, the bordered card container,
-modal accessibility, and rail search — is specified and approved but **not implemented**.
-Mobile navigation is the blocker: Spaces are currently unreachable on a phone, which is the
-device the first club will open the link on.
-
-**After phase four there is no phase five build.** The next step is one club officer, one
-conversation, one invite link. See the end of `docs/state-of-play.md`.
+**The next direction is the research network**, drafted at `docs/product-spec-v3.md` and
+awaiting Eli's approval on the open decisions it lists.
 
 ## Open threads
 

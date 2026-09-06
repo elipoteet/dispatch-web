@@ -5,7 +5,7 @@ import { getFeedPosts, mapAuthor } from "@/lib/social/queries";
 import type { PostAuthor } from "@/lib/social/queries";
 import { FeedClient } from "@/components/social/FeedClient";
 import { LandingScreen } from "@/components/social/LandingScreen";
-import { TICKER_PATTERN } from "@/lib/analysis/loadReport";
+import { TICKER_PATTERN } from "@/lib/ticker";
 
 const TITLE = "Dispatch Social";
 const DESCRIPTION =

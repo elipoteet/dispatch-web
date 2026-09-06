@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { TICKER_PATTERN } from "@/lib/analysis/loadReport";
+import { TICKER_PATTERN } from "@/lib/ticker";
 
 // Built from TICKER_PATTERN's own character class (stripping its ^/$
 // anchors) rather than a separate hand-written regex, so cashtag detection
@@ -32,7 +32,7 @@ function liveCashtagPattern(): RegExp {
 // transform (case change only), so it's safe to apply on every keystroke
 // without the textarea's cursor position jumping.
 export function uppercaseCashtags(body: string): string {
-  return body.replace(liveCashtagPattern(), (match, ticker: string) => `$${ticker.toUpperCase()}`);
+  return body.replace(liveCashtagPattern(), (_match, ticker: string) => `$${ticker.toUpperCase()}`);
 }
 
 // Every `$TICKER`-shaped token in a draft, in order of first appearance —

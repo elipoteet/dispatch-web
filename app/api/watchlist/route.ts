@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { TICKER_PATTERN } from "@/lib/ticker";
 
 const MAX_WATCH = 8;
 
 function isValidTicker(t: unknown): t is string {
-  return typeof t === "string" && /^[A-Z.\-]{1,10}$/.test(t);
+  return typeof t === "string" && TICKER_PATTERN.test(t);
 }
 
 export async function GET() {

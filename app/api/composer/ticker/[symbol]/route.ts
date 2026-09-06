@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getTickerSnapshot } from "@/lib/analysis/tickerSnapshot";
-import { TICKER_PATTERN } from "@/lib/analysis/loadReport";
+import { TICKER_PATTERN } from "@/lib/ticker";
 
 type Params = { params: Promise<{ symbol: string }> };
 

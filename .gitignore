@@ -12,6 +12,12 @@
 
 # testing
 /coverage
+/test-results
+/playwright-report
+/blob-report
+/playwright/.cache
+# A saved browser session is a spare key to a real account — never commit one.
+/e2e/.auth
 
 # next.js
 /.next/

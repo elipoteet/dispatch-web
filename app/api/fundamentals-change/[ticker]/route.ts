@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { TICKER_PATTERN } from "@/lib/analysis/loadReport";
+import { TICKER_PATTERN } from "@/lib/ticker";
 import { fetchFinancialsReported } from "@/lib/providers";
 import { buildFundamentalsChange } from "@/lib/analysis/fundamentalsChange";
 

@@ -1,7 +1,7 @@
 import { unstable_cache } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getTickerSnapshot } from "@/lib/analysis/tickerSnapshot";
-import { TICKER_PATTERN } from "@/lib/analysis/loadReport";
+import { TICKER_PATTERN } from "@/lib/ticker";
 
 // docs/phase-eight.md. The right-rail "Most traded" panel — the day's top 6
 // US stocks by dollar volume, sourced from Polygon's Daily Market Summary

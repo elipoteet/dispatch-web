@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getLatestPrice, loadPortfolioState, upsertTodayEquitySnapshot } from "@/lib/portfolio";
+import { TICKER_PATTERN } from "@/lib/ticker";
 
 // Executes a buy/sell server-side. The client sends only {ticker, side,
 // shares} — never a price. Price is looked up here, from our own provider
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
   const side = body.side === "buy" || body.side === "sell" ? body.side : null;
   const shares = Number(body.shares);
 
-  if (!ticker || !/^[A-Z.\-]{1,10}$/.test(ticker)) {
+  if (!ticker || !TICKER_PATTERN.test(ticker)) {
     return NextResponse.json({ error: "Invalid ticker symbol." }, { status: 400 });
   }
   if (!side) return NextResponse.json({ error: "side must be 'buy' or 'sell'." }, { status: 400 });

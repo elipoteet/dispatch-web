@@ -7,8 +7,6 @@ import type { Fundamentals, NewsItem, PriceRow } from "@/lib/providers";
 import { buildHistoricalFundamentals, sliceRowsAsOf } from "@/lib/analysis/historical";
 import { buildReport, type ReportData } from "@/lib/analysis/report";
 
-export const TICKER_PATTERN = /^[A-Z.\-]{1,10}$/;
-
 // A genuinely bad ticker (unrecognized symbol, or not enough history) —
 // callers should 404, not show a "try again" state. Kept distinct from a
 // plain thrown Error, which means the *request* failed (rate limit,
