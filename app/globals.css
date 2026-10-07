@@ -5646,10 +5646,51 @@
   background: var(--cream-2);
   padding: 14px 16px;
 }
+/* Chart range selector (1D / 1W / 1M / 1Y). Its own row above the chart
+   rather than inside .tk-chart-range's footer — four tap targets wedged
+   between the two 52wk labels cramp badly at phone width. */
+.tk-range-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.tk-range-btn {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--social-rs);
+  /* 28px tall so the hit target stays thumb-sized on a phone even though the
+     label itself is 9.5px, matching the rest of this page's mono kickers. */
+  padding: 0 10px;
+  min-height: 28px;
+  cursor: pointer;
+}
+.tk-range-btn:hover {
+  color: var(--ink);
+  border-color: var(--rule);
+}
+.tk-range-btn.is-active {
+  color: var(--ink);
+  border-color: var(--rule);
+  background: var(--paper);
+}
 .tk-chart-svg {
   display: block;
   width: 100%;
   height: 130px;
+}
+/* Same height as .tk-chart-svg so switching ranges never reflows the page. */
+.tk-chart-pending {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 130px;
+  color: var(--muted);
+  font-size: 13px;
 }
 .tk-chart-svg .up {
   stroke: var(--green);

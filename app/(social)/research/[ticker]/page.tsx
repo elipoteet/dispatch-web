@@ -6,10 +6,11 @@ import { TICKER_PATTERN } from "@/lib/ticker";
 import { getTickerSnapshot } from "@/lib/analysis/tickerSnapshot";
 import type { TickerSnapshot } from "@/lib/analysis/tickerSnapshot";
 import { getTickerChart } from "@/lib/analysis/tickerChart";
-import type { ChartPoint } from "@/lib/analysis/tickerChart";
+import type { ChartPoint } from "@/lib/analysis/chartRanges";
 import { getPostsByTicker } from "@/lib/social/queries";
 import { PostCard } from "@/components/social/PostCard";
 import { EmptyState } from "@/components/social/EmptyState";
+import { TickerChart } from "@/components/social/TickerChart";
 import { formatPrice } from "@/components/social/TickerCard";
 
 // docs/phase-five.md section A. Every ticker mentioned anywhere is one
@@ -66,28 +67,6 @@ function formatPct(n: number): string {
   return `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
 }
 
-// A plain SVG line, not a charting library — matches the prototype's own
-// spark() approach, just plotting real closes instead of a seeded random
-// walk. Scaled to the min/max close in the window so the line always uses
-// the full height, same as any sparkline.
-function chartPath(points: ChartPoint[], width: number, height: number): string {
-  if (points.length < 2) return "";
-  const closes = points.map((p) => p.close);
-  const min = Math.min(...closes);
-  const max = Math.max(...closes);
-  const range = max - min || 1;
-  return points
-    .map((p, i) => {
-      const x = (i / (points.length - 1)) * width;
-      const y = height - ((p.close - min) / range) * height;
-      return `${i === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
-    })
-    .join(" ");
-}
-
-const CHART_W = 600;
-const CHART_H = 150;
-
 function TickerStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="tk-stat">
@@ -98,36 +77,29 @@ function TickerStat({ label, value }: { label: string; value: string }) {
 }
 
 function TheNumbers({
+  symbol,
   snapshot,
   chart,
   postCount,
 }: {
+  symbol: string;
   snapshot: TickerSnapshot;
   chart: ChartPoint[] | null;
   postCount: number;
 }) {
   const hasChart = Boolean(chart && chart.length >= 2);
-  const chartUp = hasChart && chart ? chart[chart.length - 1].close >= chart[0].close : snapshot.dayChangePct >= 0;
 
   return (
     <div className="tk-numbers">
       {hasChart && chart ? (
-        <div className="tk-chart-box">
-          <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} preserveAspectRatio="none" className="tk-chart-svg">
-            <path
-              d={chartPath(chart, CHART_W, CHART_H)}
-              fill="none"
-              className={chartUp ? "up" : "down"}
-              strokeWidth={2}
-              strokeLinejoin="round"
-            />
-          </svg>
-          <div className="tk-chart-range">
-            <span>52wk low {snapshot.weekLow52 != null ? formatPrice(snapshot.weekLow52) : "—"}</span>
-            <span>1Y</span>
-            <span>52wk high {snapshot.weekHigh52 != null ? formatPrice(snapshot.weekHigh52) : "—"}</span>
-          </div>
-        </div>
+        // 1D and 1W are fetched by the chart itself, on click — the page's own
+        // cost here is unchanged, one daily series per symbol per day.
+        <TickerChart
+          symbol={symbol}
+          daily={chart}
+          weekLow52={snapshot.weekLow52}
+          weekHigh52={snapshot.weekHigh52}
+        />
       ) : (
         // Provider down/rate-limited, or Twelve Data doesn't recognize a
         // symbol Finnhub does — never throws, per docs/phase-five.md:
@@ -207,7 +179,7 @@ export default async function TickerPage(props: Props) {
         <h2>The numbers</h2>
         <span className="count">supporting the argument</span>
       </div>
-      <TheNumbers snapshot={snapshot} chart={chart} postCount={total} />
+      <TheNumbers symbol={ticker} snapshot={snapshot} chart={chart} postCount={total} />
 
       <div className="section-head">
         <h2>What the network is saying</h2>
