@@ -228,6 +228,15 @@ caching, or metadata.** Traps already hit and worked around:
 13. **Always verify empirically, not just against docs.** Multiple times, documented
     Next.js behavior did not match actual behavior in this version/bundler combo. Build,
     run a real server (`next start`, not just `next dev`), and hit it with `curl`.
+14. **`unstable_cache` cannot run outside a Next request context** — it throws
+    `Invariant: incrementalCache missing`. So any module that wraps its fetches in it
+    (`lib/providers.ts`, `lib/sec/*`) **cannot be integration-tested from Vitest**: the
+    call fails instantly and, because the public wrappers catch and return `null`, it
+    looks exactly like "the provider returned nothing" rather than an error. A Vitest
+    test that calls one of these and gets `null` has proved nothing. Unit-test the pure
+    functions against saved fixtures, and verify the wired-up path through a real route
+    on a running server. Discovered in phase nine stage 1, which has no UI of its own —
+    a throwaway route under `app/api/` hit with `curl` was the only way to exercise it.
 
 ## Workflow conventions
 
