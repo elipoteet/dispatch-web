@@ -53,6 +53,11 @@ export type FinancialRow = {
   // True when we computed it rather than read it: Q4, an unwound year-to-date
   // quarter, or free cash flow.
   derived: boolean;
+  // Which provider the figure came from. "sec" for everything the SEC's own
+  // companyfacts API carries; "finnhub" only where that API has no standard tag
+  // and the filing's as-reported line was used instead (see capexFallback.ts).
+  // Stored so a figure's provenance survives into the database and the UI.
+  source: "sec" | "finnhub";
 };
 
 const DAY_MS = 86_400_000;
@@ -151,15 +156,6 @@ function buildFiscalCalendar(companyFacts: CompanyFacts): FiscalYearSpan[] {
   return [...byYear.values()].sort((a, b) => (a.end < b.end ? -1 : 1));
 }
 
-// Which fiscal year does a date fall in? Exact year-end match first, then
-// containment, then the nearest year whose end is on or after the date — the
-// last case covers quarters of a year whose 10-K has not been filed yet.
-function fiscalYearFor(calendar: FiscalYearSpan[], endDate: string): FiscalYearSpan | null {
-  for (const span of calendar) if (span.end === endDate) return span;
-  for (const span of calendar) if (endDate > span.start && endDate <= span.end) return span;
-  return null;
-}
-
 // Projects the calendar forward for the year in progress, whose annual period
 // has not been filed yet. Without this, the current year's quarters have no home.
 function projectedYear(calendar: FiscalYearSpan[], endDate: string): FiscalYearSpan | null {
@@ -247,24 +243,55 @@ function rankTags(
     .map((t) => t.tag);
 }
 
-function collectByPeriod(
+// Every period one tag covers, restatements already resolved.
+function periodsForTag(
   companyFacts: CompanyFacts,
-  item: Exclude<LineItem, "free_cash_flow">,
-): Map<string, Candidate> {
-  const unit = unitFor(item);
-  const taxonomy = companyFacts.facts["us-gaap"] ?? {};
+  tag: string,
+  unit: string,
+): Map<string, Candidate> | null {
+  const rows = companyFacts.facts["us-gaap"]?.[tag]?.units?.[unit]?.filter((f) => isPeriodicReport(f.form));
+  if (!rows?.length) return null;
   const byPeriod = new Map<string, Candidate>();
-
-  for (const tag of rankTags(companyFacts, item, unit)) {
-    const rows = taxonomy[tag]?.units?.[unit]?.filter((f) => isPeriodicReport(f.form));
-    if (!rows?.length) continue;
-    for (const [periodKey, facts] of groupByPeriod(rows)) {
-      if (byPeriod.has(periodKey)) continue; // a better-covering tag already filled it
-      const resolved = resolvePeriod(facts);
-      if (resolved) byPeriod.set(periodKey, { ...resolved, tag });
-    }
+  for (const [periodKey, facts] of groupByPeriod(rows)) {
+    const resolved = resolvePeriod(facts);
+    if (resolved) byPeriod.set(periodKey, { ...resolved, tag });
   }
   return byPeriod;
+}
+
+// What one tag has to say about one fiscal year.
+type YearSlice = {
+  annual: Candidate | null;
+  quarters: Map<FiscalPeriod, Candidate>;
+  ytd: { candidate: Candidate; days: number; period: FiscalPeriod }[];
+};
+
+function sliceYear(periods: Map<string, Candidate>, year: FiscalYearSpan, isInstant: boolean): YearSlice {
+  const slice: YearSlice = { annual: null, quarters: new Map(), ytd: [] };
+  for (const [, candidate] of periods) {
+    const fact = candidate.fact;
+    if (!(fact.end > year.start && fact.end <= year.end)) continue;
+    const days = spanDays(fact);
+
+    if (isInstant) {
+      const period = quarterFor(fact, year);
+      if (!slice.quarters.has(period)) slice.quarters.set(period, candidate);
+      continue;
+    }
+    if (isAnnualSpan(days)) {
+      if (fact.end === year.end && !slice.annual) slice.annual = candidate;
+    } else if (isQuarterSpan(days)) {
+      const period = quarterFor(fact, year);
+      if (!slice.quarters.has(period)) slice.quarters.set(period, candidate);
+    } else if (days != null) {
+      slice.ytd.push({ candidate, days, period: quarterFor(fact, year) });
+    }
+  }
+  return slice;
+}
+
+function isEmptySlice(slice: YearSlice): boolean {
+  return !slice.annual && slice.quarters.size === 0 && slice.ytd.length === 0;
 }
 
 function rowFrom(
@@ -287,6 +314,7 @@ function rowFrom(
     filedAt: candidate.fact.filed,
     restated: candidate.restated,
     derived,
+    source: "sec",
   };
 }
 
@@ -314,66 +342,93 @@ export function normalizeCompanyFacts(
 
   const items = Object.keys(CONCEPT_TAGS) as Exclude<LineItem, "free_cash_flow">[];
 
+  // Which fiscal years exist at all, including the one in progress whose 10-K
+  // has not been filed yet.
+  const years: FiscalYearSpan[] = [...calendar];
+  {
+    const taxonomy = companyFacts.facts["us-gaap"] ?? {};
+    let latest = "";
+    for (const tags of Object.values(CONCEPT_TAGS)) {
+      for (const tag of tags) {
+        for (const unitRows of Object.values(taxonomy[tag]?.units ?? {})) {
+          for (const fact of unitRows) {
+            if (isPeriodicReport(fact.form) && fact.end > latest) latest = fact.end;
+          }
+        }
+      }
+    }
+    const projected = latest ? projectedYear(calendar, latest) : null;
+    if (projected) years.push(projected);
+  }
+
   for (const item of items) {
     if (suppressed.has(item)) continue;
     const unit = unitFor(item);
-    const byPeriod = collectByPeriod(companyFacts, item);
     const isInstant = INSTANT_ITEMS.has(item);
+    const ranked = rankTags(companyFacts, item, unit);
 
-    // One slot per (fiscal year, period). Keyed this way from the start so two
-    // different date ranges can never both claim to be, say, fiscal 2019's year.
-    const slots = new Map<string, FinancialRow>();
-    const ytd: { candidate: Candidate; days: number; year: FiscalYearSpan; period: FiscalPeriod }[] = [];
-
-    const put = (row: FinancialRow) => {
-      const key = `${row.fiscalYear}|${row.fiscalPeriod}`;
-      // First writer wins: annual and quarterly facts are considered in a fixed
-      // order below, and a later restatement has already been resolved upstream.
-      if (!slots.has(key)) slots.set(key, row);
-    };
-
-    for (const [, candidate] of byPeriod) {
-      const fact = candidate.fact;
-      const year = fiscalYearFor(calendar, fact.end) ?? projectedYear(calendar, fact.end);
-      if (!year) continue;
-      const days = spanDays(fact);
-
-      if (isInstant) {
-        // Point-in-time. A balance-sheet date belongs to whichever period closed
-        // on it, and these are never added together.
-        put(rowFrom(item, candidate, year.fiscalYear, quarterFor(fact, year), unit));
-        continue;
-      }
-
-      if (isAnnualSpan(days)) {
-        // Only a span that actually ends on the fiscal year end is that year.
-        // A trailing-twelve-month stub ending mid-year is not.
-        if (fact.end === year.end) put(rowFrom(item, candidate, year.fiscalYear, "FY", unit));
-      } else if (isQuarterSpan(days)) {
-        put(rowFrom(item, candidate, year.fiscalYear, quarterFor(fact, year), unit));
-      } else if (days != null) {
-        ytd.push({ candidate, days, year, period: quarterFor(fact, year) });
-      }
+    // Every tag's periods, built once per line item.
+    const perTag = new Map<string, Map<string, Candidate>>();
+    for (const tag of ranked) {
+      const periods = periodsForTag(companyFacts, tag, unit);
+      if (periods) perTag.set(tag, periods);
     }
 
-    if (!isInstant) {
-      // —— Unwind year-to-date quarters ——
-      // Cash-flow statements in a 10-Q are cumulative from the year's start, and
-      // for most filers that is the ONLY form the quarter appears in. NVDA's
-      // fiscal 2026 operating cash flow exists as 90, 181, 272 and 363-day spans
-      // and never as a standalone Q2 or Q3. Revenue, by contrast, is filed both
-      // ways — so only subtract where a real standalone quarter is missing.
-      const byYear = new Map<number, typeof ytd>();
-      for (const entry of ytd) {
-        const list = byYear.get(entry.year.fiscalYear) ?? [];
-        list.push(entry);
-        byYear.set(entry.year.fiscalYear, list);
+    // —— One tag per line item per fiscal year ——
+    // Tag choice is made for a whole year at a time, not period by period. A year
+    // whose annual figure comes from one tag and whose quarters come from another
+    // is not a row of comparable numbers: Caterpillar files `ProfitLoss` (which
+    // includes noncontrolling interests) alongside
+    // `NetIncomeLossAvailableToCommonStockholdersBasic` (which does not), and
+    // Verizon files capex under two different concepts in the same year. Both are
+    // real figures; putting them in one row is the error.
+    //
+    // The tag that reports the full year wins, because that is the one the
+    // company's own annual statement uses. Only if no tag has the year do we fall
+    // back to the best-covering tag that has anything at all — which is how a
+    // year still in progress gets its quarters.
+    //
+    // The cost is that a year can lose its quarters when the annual tag has none.
+    // That is the right trade: a blank is fine, a wrong number is not.
+    for (const year of years) {
+      let chosen: { tag: string; slice: YearSlice } | null = null;
+      let fallback: { tag: string; slice: YearSlice } | null = null;
+
+      for (const tag of ranked) {
+        const periods = perTag.get(tag);
+        if (!periods) continue;
+        const slice = sliceYear(periods, year, isInstant);
+        if (isEmptySlice(slice)) continue;
+        if (isInstant || slice.annual) {
+          chosen = { tag, slice };
+          break;
+        }
+        fallback ??= { tag, slice };
       }
-      for (const [fiscalYear, entries] of byYear) {
-        const ordered = entries.slice().sort((a, b) => a.days - b.days);
+      const picked = chosen ?? fallback;
+      if (!picked) continue;
+
+      const { slice } = picked;
+      const fiscalYear = year.fiscalYear;
+      const slots = new Map<string, FinancialRow>();
+      const put = (row: FinancialRow) => {
+        if (!slots.has(row.fiscalPeriod)) slots.set(row.fiscalPeriod, row);
+      };
+
+      if (slice.annual) put(rowFrom(item, slice.annual, fiscalYear, "FY", unit));
+      for (const [period, candidate] of slice.quarters) put(rowFrom(item, candidate, fiscalYear, period, unit));
+
+      if (!isInstant) {
+        // —— Unwind year-to-date quarters ——
+        // Cash-flow statements in a 10-Q are cumulative from the year's start, and
+        // for most filers that is the ONLY form the quarter appears in. NVDA's
+        // fiscal 2026 operating cash flow exists as 90, 181, 272 and 363-day
+        // spans and never as a standalone Q2 or Q3. Revenue, by contrast, is
+        // filed both ways — so only subtract where a real quarter is missing.
+        const ordered = slice.ytd.slice().sort((a, b) => a.days - b.days);
         for (let i = 0; i < ordered.length; i++) {
           const current = ordered[i];
-          if (slots.has(`${fiscalYear}|${current.period}`)) continue;
+          if (slots.has(current.period)) continue;
           const previous = i === 0 ? null : ordered[i - 1];
           const base = previous ? previous.candidate.fact.val : 0;
           put({
@@ -382,30 +437,27 @@ export function normalizeCompanyFacts(
             derived: Boolean(previous),
           });
         }
+
+        // —— Derive Q4 ——
+        // A 10-K reports the full year, never a fourth quarter. Q4 is the year
+        // minus the three filed quarters, and only when all three are present —
+        // a missing quarter would silently inflate it.
+        const fy = slots.get("FY");
+        const q1 = slots.get("Q1");
+        const q2 = slots.get("Q2");
+        const q3 = slots.get("Q3");
+        if (fy && q1 && q2 && q3 && !slots.has("Q4")) {
+          put({
+            ...fy,
+            fiscalPeriod: "Q4",
+            value: fy.value - (q1.value + q2.value + q3.value),
+            derived: true,
+          });
+        }
       }
 
-      // —— Derive Q4 ——
-      // A 10-K reports the full year, never a fourth quarter. Q4 is the year
-      // minus the three filed quarters. Only attempted when all three are
-      // present, because a missing quarter would silently inflate Q4.
-      for (const [key, yearRow] of [...slots]) {
-        if (!key.endsWith("|FY")) continue;
-        const fiscalYear = yearRow.fiscalYear;
-        if (slots.has(`${fiscalYear}|Q4`)) continue;
-        const q1 = slots.get(`${fiscalYear}|Q1`);
-        const q2 = slots.get(`${fiscalYear}|Q2`);
-        const q3 = slots.get(`${fiscalYear}|Q3`);
-        if (!q1 || !q2 || !q3) continue;
-        put({
-          ...yearRow,
-          fiscalPeriod: "Q4",
-          value: yearRow.value - (q1.value + q2.value + q3.value),
-          derived: true,
-        });
-      }
+      rows.push(...slots.values());
     }
-
-    rows.push(...slots.values());
   }
 
   // —— Free cash flow ——

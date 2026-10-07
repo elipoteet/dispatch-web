@@ -441,11 +441,22 @@ export type FinancialsReportedFiling = {
     cf?: FinancialsReportedLineItem[];
   };
 };
-async function fetchFinancialsReportedRaw(symbol: string): Promise<FinancialsReportedFiling[]> {
-  console.log(`[cache] MISS fetchFinancialsReported(${symbol}) — calling Finnhub`);
+// freq defaults to quarterly, which is what the Time Machine's
+// "how the business changed" panel has always asked for. Phase nine's SEC layer
+// asks for annual, to recover capital expenditure for companies whose own filings
+// tag it with a company-specific concept the SEC's companyfacts API does not
+// carry (see lib/sec/capexFallback.ts). Each argument joins the cache key, so the
+// two frequencies never collide.
+export type ReportedFrequency = "annual" | "quarterly";
+
+async function fetchFinancialsReportedRaw(
+  symbol: string,
+  freq: ReportedFrequency,
+): Promise<FinancialsReportedFiling[]> {
+  console.log(`[cache] MISS fetchFinancialsReported(${symbol}, ${freq}) — calling Finnhub`);
   const res = await fh<{ data: FinancialsReportedFiling[] }>("stock/financials-reported", {
     symbol: symbol.toUpperCase(),
-    freq: "quarterly",
+    freq,
   });
   if (!res || !Array.isArray(res.data)) throw new Error("Finnhub financials-reported request failed");
   return res.data;
@@ -453,10 +464,13 @@ async function fetchFinancialsReportedRaw(symbol: string): Promise<FinancialsRep
 const cachedFetchFinancialsReported = unstable_cache(fetchFinancialsReportedRaw, ["fetchFinancialsReported"], {
   revalidate: LIVE_TTL_S,
 });
-export async function fetchFinancialsReported(symbol: string): Promise<FinancialsReportedFiling[] | null> {
+export async function fetchFinancialsReported(
+  symbol: string,
+  freq: ReportedFrequency = "quarterly",
+): Promise<FinancialsReportedFiling[] | null> {
   if (!process.env.FINNHUB_API_KEY) return null;
   try {
-    return await cachedFetchFinancialsReported(symbol);
+    return await cachedFetchFinancialsReported(symbol, freq);
   } catch {
     return null;
   }

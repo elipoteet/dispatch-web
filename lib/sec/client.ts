@@ -21,14 +21,38 @@ import { unstable_cache } from "next/cache";
 // has no SEC data" from "the SEC is unreachable right now".
 export class NoSecDataError extends Error {}
 
-// The contact address the SEC sees. Configurable because it is a real decision
-// (phase nine, decision 1) and because the address must actually exist and be
-// monitored — the SEC uses it to reach site owners whose scripts misbehave.
-// Falling back to the site's own domain rather than anyone's personal inbox.
+// The contact address the SEC sees, from SEC_CONTACT_EMAIL. There is deliberately
+// NO fallback: the SEC uses this address to reach the owner of a script that
+// misbehaves, so a default pointing at an unmonitored mailbox would be worse
+// than not calling at all. If it is unset we skip the SEC entirely and say so in
+// the logs, rather than sending a request that earns a 403 or, worse, one that
+// works and names an inbox nobody reads.
+export class SecNotConfiguredError extends Error {}
+
+// Logged once per process rather than per request — an unset variable would
+// otherwise bury every other line in the logs.
+let warnedMissingContact = false;
+
 function userAgent(): string {
-  const configured = process.env.SEC_USER_AGENT?.trim();
-  if (configured) return configured;
-  return "The Dispatch (dispatchresearch.com) research@dispatchresearch.com";
+  const email = process.env.SEC_CONTACT_EMAIL?.trim();
+  if (!email) {
+    if (!warnedMissingContact) {
+      warnedMissingContact = true;
+      console.warn(
+        "[sec] SEC_CONTACT_EMAIL is not set — skipping all SEC requests. " +
+          "The SEC requires a contact email in the User-Agent and returns 403 without one. " +
+          "Set it in .env.local and in Vercel's project settings.",
+      );
+    }
+    throw new SecNotConfiguredError("SEC_CONTACT_EMAIL is not set.");
+  }
+  return `The Dispatch (dispatchresearch.com) ${email}`;
+}
+
+// True when the SEC can be called at all. Callers that want to degrade quietly
+// rather than catch can check this first.
+export function isSecConfigured(): boolean {
+  return Boolean(process.env.SEC_CONTACT_EMAIL?.trim());
 }
 
 // —— Rate limiting ——
@@ -53,9 +77,12 @@ async function waitForSlot(): Promise<void> {
 }
 
 async function secFetch(url: string): Promise<Response> {
+  // Built before the rate-limit wait so an unconfigured contact fails instantly
+  // instead of sleeping first.
+  const ua = userAgent();
   await waitForSlot();
   return fetch(url, {
-    headers: { "User-Agent": userAgent(), Accept: "application/json" },
+    headers: { "User-Agent": ua, Accept: "application/json" },
     cache: "no-store",
   });
 }
@@ -72,7 +99,7 @@ async function getJson<T>(url: string, what: string): Promise<T> {
   if (res.status === 404) throw new NoSecDataError(`No SEC data for ${what}.`);
   if (res.status === 403) {
     // Almost always the User-Agent. Say so, rather than letting it look like an outage.
-    throw new Error(`SEC returned 403 for ${what} — check SEC_USER_AGENT names the site and a contact email.`);
+    throw new Error(`SEC returned 403 for ${what} — check SEC_CONTACT_EMAIL is a real, monitored address.`);
   }
   if (!res.ok) throw new Error(`SEC HTTP ${res.status} for ${what}`);
   return (await res.json()) as T;

@@ -88,9 +88,33 @@ create table if not exists public.sec_financials (
   filed_at      date,
   restated      boolean not null default false,
   derived       boolean not null default false,
+  -- Which provider the figure came from. Almost always 'sec'. It is 'finnhub'
+  -- only where the SEC's companyfacts API carries no standard tag for a line and
+  -- the filing's own as-reported statement was used instead — see the note on
+  -- the alter below, and lib/sec/capexFallback.ts.
+  source        text not null default 'sec',
   updated_at    timestamptz not null default now(),
   constraint sec_financials_period_item_key unique (cik, fiscal_year, fiscal_period, line_item)
 );
+
+-- ============================================================
+-- ADDED AFTER THE FIRST PASTE — please run this part again.
+--
+-- This ALTERS an existing table, which is normally a stop-and-ask. It is additive
+-- and safe: it adds one new column with a default and changes nothing already
+-- stored. No data is dropped, no column is renamed, no type is changed. If the
+-- table was created before this line existed, this adds the column; if it was
+-- created after, the column is already there and this does nothing.
+--
+-- Why it is needed: NVIDIA reports capital expenditure under its own
+-- company-specific tag, and the SEC's companyfacts API serves only the standard
+-- tags — so fiscal 2013 to 2021 had no capex and therefore no free cash flow,
+-- even though the figure appears in every one of those 10-Ks. Those years are now
+-- filled from the filing's own as-reported cash-flow statement via Finnhub, and
+-- this column records that, so a figure's origin is never guessed at later.
+-- ============================================================
+alter table public.sec_financials
+  add column if not exists source text not null default 'sec';
 
 create index if not exists sec_financials_lookup_idx
   on public.sec_financials (cik, line_item, fiscal_year desc);

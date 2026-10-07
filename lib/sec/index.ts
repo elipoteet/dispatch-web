@@ -11,6 +11,8 @@ import { fetchCompanyFacts, getSubmissions, latestFiling, lookupCik, NoSecDataEr
 import { normalizeCompanyFacts, type FinancialRow } from "@/lib/sec/normalize";
 import { filerKindFromSic, suppressedItems, type FilerKind, type LineItem } from "@/lib/sec/concepts";
 import { getStoredCompany, getStoredFinancials, saveFinancials, upsertCompany } from "@/lib/sec/store";
+import { fetchFinancialsReported } from "@/lib/providers";
+import { indexAnnualFilings, mergeCapexFromFilings, yearsMissingCapex } from "@/lib/sec/capexFallback";
 
 export type CompanyFinancials = {
   cik: string;
@@ -37,6 +39,24 @@ function isForeignFiler(rows: FinancialRow[], hasFacts: boolean): boolean {
 }
 
 export class NoFinancialsError extends Error {}
+
+// —— Filling capex gaps from the filings themselves ——
+// Only runs when companyfacts actually left a hole: a fiscal year that has
+// operating cash flow but no capital expenditure, which means free cash flow is
+// missing too. Costs one Finnhub request for affected companies and none at all
+// for the rest, and the result is persisted, so it happens once per company
+// until its next filing.
+async function fillCapexGaps(symbol: string, rows: FinancialRow[]): Promise<FinancialRow[]> {
+  if (yearsMissingCapex(rows).length === 0) return rows;
+
+  const filings = await fetchFinancialsReported(symbol, "annual");
+  if (!filings?.length) return rows;
+
+  const merged = mergeCapexFromFilings(rows, indexAnnualFilings(filings));
+  const filled = (merged.length - rows.length) / 2;
+  if (filled > 0) console.log(`[sec] ${symbol}: filled ${filled} capex gaps from the filings via Finnhub`);
+  return merged;
+}
 
 export async function getCompanyFinancials(symbolRaw: string): Promise<CompanyFinancials | null> {
   const symbol = symbolRaw.trim().toUpperCase();
@@ -97,7 +117,10 @@ export async function getCompanyFinancials(symbolRaw: string): Promise<CompanyFi
     throw err;
   }
 
-  const { rows, suppression } = normalizeCompanyFacts(facts, { sic: submissions?.sic });
+  const { rows: secRows, suppression } = normalizeCompanyFacts(facts, { sic: submissions?.sic });
+  // Banks and insurers have capex suppressed on purpose; do not go looking for
+  // a figure we have decided not to show.
+  const rows = suppression?.items.includes("capex") ? secRows : await fillCapexGaps(ref.symbol, secRows);
 
   if (isForeignFiler(rows, true)) {
     // A company with facts but nothing our tag lists recognise is almost always

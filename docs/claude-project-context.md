@@ -117,7 +117,15 @@ FINNHUB_API_KEY
 POLYGON_API_KEY
 RESEND_API_KEY
 CRON_SECRET
+SEC_CONTACT_EMAIL
 ```
+
+**`SEC_CONTACT_EMAIL` (added phase nine)** is the contact address the SEC sees on
+every `data.sec.gov` request. It is required, with **no fallback in code on purpose**:
+the SEC returns 403 without a User-Agent naming the site and a real email, and it uses
+that address to reach the owner of a script that misbehaves — so a default pointing at
+an unmonitored mailbox would be worse than not calling at all. If it is unset, the SEC
+layer skips every request and logs why once. Must be set in Vercel for production too.
 
 (Corrected September 2026 — this list previously omitted `TIINGO_API_KEY`,
 `POLYGON_API_KEY`, `NEXT_PUBLIC_SITE_URL` and `CRON_SECRET`, all of which the code

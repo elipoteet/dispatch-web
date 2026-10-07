@@ -49,6 +49,7 @@ type FinancialRowDb = {
   filed_at: string | null;
   restated: boolean;
   derived: boolean;
+  source: string | null;
 };
 
 function toStoredCompany(row: CompanyRowDb): StoredCompany {
@@ -122,6 +123,7 @@ export async function saveFinancials(cik: string, rows: FinancialRow[]): Promise
     filed_at: r.filedAt,
     restated: r.restated,
     derived: r.derived,
+    source: r.source,
     updated_at: new Date().toISOString(),
   }));
 
@@ -166,5 +168,6 @@ export async function getStoredFinancials(
     filedAt: r.filed_at ?? "",
     restated: r.restated,
     derived: r.derived,
+    source: (r.source === "finnhub" ? "finnhub" : "sec") as "sec" | "finnhub",
   }));
 }
