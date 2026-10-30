@@ -188,6 +188,56 @@ export const fetchPrices = unstable_cache(fetchPricesRaw, ["fetchPrices"], {
   revalidate: LIVE_TTL_S,
 });
 
+// —— Twelve Data: intraday price history (the ticker page's 1D and 1W ranges) ——
+// Twelve Data is the only provider configured here that serves intraday bars
+// for the session in progress. Polygon's free tier has the data but refuses
+// the current day outright ("NOT_AUTHORIZED: Your plan doesn't include this
+// data timeframe" — verified empirically, October 2026), and Tiingo's free
+// tier is end-of-day only, so neither can back a 1D chart and there is no
+// fallback for this path.
+//
+// 15-minute bars at outputsize=200 is one request covering eight regular-hours
+// sessions (26 bars each, 09:30–15:45, no extended hours) — so a single call
+// serves both the 1D range (the newest session) and the 1W range (the newest
+// five), rather than one request per range. Deliberate, given the 8-req/min
+// ceiling: see getTickerIntraday for why this is only ever fetched on demand.
+const INTRADAY_TTL_S = 15 * 60; // one bar interval — a fresher chart isn't worth the quota
+
+async function fetchIntradayPricesRaw(symbol: string): Promise<PriceRow[]> {
+  console.log(`[cache] MISS fetchIntradayPrices(${symbol}) — calling Twelve Data`);
+  const key = process.env.TWELVE_DATA_API_KEY;
+  if (!key) throw new Error("Twelve Data API key not configured.");
+  const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=15min&outputsize=200&apikey=${encodeURIComponent(key)}`;
+  const res = await fetch(url, { cache: "no-store" });
+  // Same 404-before-!ok ordering as fetchPricesTwelveData, and for the same
+  // reason: a 429 rate-limit body also carries status:"error", so only the
+  // HTTP status separates "bad ticker" from "rate limited".
+  if (res.status === 404) throw new NoTickerDataError("No intraday data for this symbol.");
+  if (!res.ok) throw new Error("Twelve Data HTTP " + res.status);
+  const j = await res.json();
+  if (j.status === "error" || !j.values) throw new NoTickerDataError(j.message || "No intraday data for this symbol.");
+  const rows: PriceRow[] = j.values
+    .slice()
+    .reverse()
+    .map((v: Record<string, string>) => ({
+      // Full "YYYY-MM-DD HH:MM:SS" timestamp, unlike the date-only rows from
+      // fetchPricesTwelveData — callers split on the space to group by session.
+      date: v.datetime,
+      open: +v.open,
+      high: +v.high,
+      low: +v.low,
+      close: +v.close,
+      volume: +v.volume || 0,
+    }))
+    .filter((r: PriceRow) => !isNaN(r.close));
+  if (rows.length < 2) throw new NoTickerDataError("Not enough intraday history for this symbol.");
+  return rows;
+}
+
+export const fetchIntradayPrices = unstable_cache(fetchIntradayPricesRaw, ["fetchIntradayPrices"], {
+  revalidate: INTRADAY_TTL_S,
+});
+
 // Tiingo fallback for the live quote. IMPORTANT: Tiingo's free tier is
 // end-of-day only — this returns the previous close, not a live intraday
 // price. That's an acceptable degradation for a fallback that only fires
@@ -391,11 +441,22 @@ export type FinancialsReportedFiling = {
     cf?: FinancialsReportedLineItem[];
   };
 };
-async function fetchFinancialsReportedRaw(symbol: string): Promise<FinancialsReportedFiling[]> {
-  console.log(`[cache] MISS fetchFinancialsReported(${symbol}) — calling Finnhub`);
+// freq defaults to quarterly, which is what the Time Machine's
+// "how the business changed" panel has always asked for. Phase nine's SEC layer
+// asks for annual, to recover capital expenditure for companies whose own filings
+// tag it with a company-specific concept the SEC's companyfacts API does not
+// carry (see lib/sec/capexFallback.ts). Each argument joins the cache key, so the
+// two frequencies never collide.
+export type ReportedFrequency = "annual" | "quarterly";
+
+async function fetchFinancialsReportedRaw(
+  symbol: string,
+  freq: ReportedFrequency,
+): Promise<FinancialsReportedFiling[]> {
+  console.log(`[cache] MISS fetchFinancialsReported(${symbol}, ${freq}) — calling Finnhub`);
   const res = await fh<{ data: FinancialsReportedFiling[] }>("stock/financials-reported", {
     symbol: symbol.toUpperCase(),
-    freq: "quarterly",
+    freq,
   });
   if (!res || !Array.isArray(res.data)) throw new Error("Finnhub financials-reported request failed");
   return res.data;
@@ -403,10 +464,13 @@ async function fetchFinancialsReportedRaw(symbol: string): Promise<FinancialsRep
 const cachedFetchFinancialsReported = unstable_cache(fetchFinancialsReportedRaw, ["fetchFinancialsReported"], {
   revalidate: LIVE_TTL_S,
 });
-export async function fetchFinancialsReported(symbol: string): Promise<FinancialsReportedFiling[] | null> {
+export async function fetchFinancialsReported(
+  symbol: string,
+  freq: ReportedFrequency = "quarterly",
+): Promise<FinancialsReportedFiling[] | null> {
   if (!process.env.FINNHUB_API_KEY) return null;
   try {
-    return await cachedFetchFinancialsReported(symbol);
+    return await cachedFetchFinancialsReported(symbol, freq);
   } catch {
     return null;
   }

@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { getLatestPrice } from "@/lib/portfolio";
 import { isMarketOpen, nyMonthKey } from "@/lib/competition/marketHours";
 import { STARTING_BALANCE } from "@/lib/competition/rules";
+import { TICKER_PATTERN } from "@/lib/ticker";
 import { loadCompetitionState } from "@/lib/competition/trading";
 
 // Executes a competition buy/sell server-side — same rigor as
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
   const side = body.side === "buy" || body.side === "sell" ? body.side : null;
   const shares = Number(body.shares);
 
-  if (!ticker || !/^[A-Z.\-]{1,10}$/.test(ticker)) {
+  if (!ticker || !TICKER_PATTERN.test(ticker)) {
     return NextResponse.json({ error: "Invalid ticker symbol." }, { status: 400 });
   }
   if (!side) return NextResponse.json({ error: "side must be 'buy' or 'sell'." }, { status: 400 });

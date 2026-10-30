@@ -6,6 +6,12 @@ fresh Claude conversation can pick up this project with no prior history.
 
 ## What this is
 
+> **Out of date as of 30 October 2026.** The memo product described below (scorecard,
+> overall rating) is being replaced by the free research file planned in
+> `docs/phase-nine.md`, on the `feat/research-site` branch. Read
+> `docs/direction-2026-10-30.md` first. The stack, brand rules and gotchas in this file
+> still hold.
+
 **The Dispatch** is an equity-research web app. A visitor types a U.S. stock ticker and
 gets back a structured research memo in a few seconds — scorecard, fundamentals,
 technicals, sentiment, risks, catalysts, and an overall rating — built fresh from real
@@ -62,9 +68,17 @@ TIINGO_API_KEY
 FINNHUB_API_KEY
 CRON_SECRET
 NEXT_PUBLIC_SITE_URL
+SEC_CONTACT_EMAIL
 ```
 
 (Values are secrets — never commit them, never paste them into a Claude conversation.)
+
+**`SEC_CONTACT_EMAIL` (added phase nine)** is the contact address the SEC sees on
+every `data.sec.gov` request. It is required, with **no fallback in code on purpose**:
+the SEC returns 403 without a User-Agent naming the site and a real email, and it uses
+that address to reach the owner of a script that misbehaves — so a default pointing at
+an unmonitored mailbox would be worse than not calling at all. If it is unset, the SEC
+layer skips every request and logs why once. Must be set in Vercel for production too.
 
 ## Brand / design rules — apply these without being asked
 
@@ -157,6 +171,15 @@ in this codebase:
    only, so a quote served via either fallback is the previous close, not real-time
    — acceptable for a path that only fires when the primary provider is already
    down, but don't mistake it for live pricing if it's ever surfaced directly.
+8. **`unstable_cache` cannot run outside a Next request context** — it throws
+   `Invariant: incrementalCache missing`. So any module that wraps its fetches in it
+   (`lib/providers.ts`, `lib/sec/*`) **cannot be integration-tested from Vitest**: the
+   call fails instantly and, because the public wrappers catch and return `null`, it
+   looks exactly like "the provider returned nothing" rather than an error. A Vitest
+   test that calls one of these and gets `null` has proved nothing. Unit-test the pure
+   functions against saved fixtures, and verify the wired-up path through a real route
+   on a running server. Discovered in phase nine stage 1, which has no UI of its own —
+   a throwaway route under `app/api/` hit with `curl` was the only way to exercise it.
 
 ## Workflow conventions already established
 
