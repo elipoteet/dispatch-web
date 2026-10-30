@@ -1,6 +1,6 @@
 // Time Machine "How the business changed" — pure math over Finnhub's
 // as-reported quarterly filings. Deliberately narrow: this is NOT the full
-// historical fundamentals scorecard (stock/metric only ever returns today's
+// historical fundamentals section (stock/metric only ever returns today's
 // numbers, which is why that's hidden for past dates elsewhere). This just
 // diffs two headline income-statement figures between the filing on record
 // as of a past date and the latest filing available today.

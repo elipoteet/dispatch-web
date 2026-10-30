@@ -15,8 +15,6 @@ function CmpRow({ label, value, big }: { label: string; value: React.ReactNode; 
 function CompareSide({ snap }: { snap: ReportSnapshot }) {
   return (
     <>
-      <CmpRow label="Rating" value={<span className={`compare-verdict ${snap.ratingClass}`}>{snap.rating}</span>} />
-      <CmpRow label="Composite" value={`${snap.composite}/10`} big />
       <CmpRow label="Price" value={`$${fmt(snap.last)}`} big />
       <CmpRow label="52W High" value={`$${fmt(snap.w52high)}`} />
       <CmpRow label="52W Low" value={`$${fmt(snap.w52low)}`} />
@@ -63,45 +61,10 @@ function CompareSide({ snap }: { snap: ReportSnapshot }) {
   );
 }
 
-function ScoreDeltaStrip({ cmp }: { cmp: Comparison }) {
-  return (
-    <div className="compare-deltas">
-      <div className="compare-deltas-title">Score Change</div>
-      {cmp.scoreDeltas.map((d) => (
-        <div className="cmp-row" key={d.name}>
-          <span className="cmp-label">
-            {d.name}
-            {d.name === cmp.topMover && <span className="cmp-top-mover">Biggest mover</span>}
-            {d.note && <span className="cmp-subnote">{d.note}</span>}
-          </span>
-          <span className={`cmp-val${d.isComposite ? " big" : ""}`}>
-            {d.thenScore == null ? (
-              <span className="cmp-note">— not available as-of then</span>
-            ) : d.delta === 0 ? (
-              <>
-                {fmt(d.thenScore, 0)} <span className="cmp-note">unchanged</span>
-              </>
-            ) : (
-              <>
-                {fmt(d.thenScore, 0)} → {fmt(d.nowScore, 0)}{" "}
-                <span className={d.delta! > 0 ? "pos" : "neg"}>
-                  {d.delta! > 0 ? "▲" : "▼"} {sign(d.delta!)}
-                  {fmt(Math.abs(d.delta!), 0)}
-                </span>
-              </>
-            )}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function IntervalPanel({ cmp }: { cmp: Comparison }) {
   const { interval } = cmp;
   return (
     <div className="compare-interval">
-      <p className={`compare-interval-verdict ${cmp.verdictTone}`}>{cmp.verdict}</p>
       <div className="compare-interval-stats">
         <div className="cmp-row">
           <span className="cmp-label">Interval Return</span>
@@ -173,7 +136,7 @@ export function CompareView({
 }) {
   const then = thenReport.snapshot;
   const now = nowReport.snapshot;
-  const cmp = buildComparison(thenReport, nowReport, thenDate);
+  const cmp = buildComparison(nowReport, thenDate);
 
   const thenDateLabel = new Date(thenDate + "T00:00:00").toLocaleDateString("en-US", {
     year: "numeric",
@@ -213,7 +176,6 @@ export function CompareView({
           </div>
         </div>
       </div>
-      <ScoreDeltaStrip cmp={cmp} />
       <IntervalPanel cmp={cmp} />
       {fundamentalsChange && fundamentalsChange.figures.length > 0 && (
         <FundamentalsChangePanel change={fundamentalsChange} />

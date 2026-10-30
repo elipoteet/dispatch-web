@@ -42,10 +42,10 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   // fetch when it does succeed.
   try {
     const { report } = await loadReport(ticker, asOf);
-    const description = `${report.name} (${ticker}): ${report.rating} rating, composite score ${report.composite}/10, trading at ${report.price} (${report.changeText}). Fundamentals, technicals, sentiment, risks, and catalysts — sourced and scored.`;
+    const description = `${report.name} (${ticker}), trading at ${report.price} (${report.changeText}). Fundamentals, technicals, analyst sentiment, risks, and catalysts, drawn from live market data.`;
 
     return {
-      title: `${ticker} Stock Analysis — ${report.rating}`,
+      title: `${ticker} Stock Analysis — ${report.name}`,
       description,
       alternates: { canonical: `/research/${ticker.toLowerCase()}` },
       openGraph: { url: `/research/${ticker.toLowerCase()}`, description },
@@ -103,9 +103,8 @@ export default async function TickerResearchPage(props: Props) {
           {ticker} <span style={{ color: "var(--muted)", fontWeight: 400 }}>— {report.name}</span>
         </h1>
         <p>
-          {report.rating} rating, composite score {report.composite}/10 at {report.price} (
-          {report.changeText}). Full scorecard, fundamentals, technicals, sentiment, risks, and
-          catalysts below — or look up a different ticker.
+          Trading at {report.price} ({report.changeText}). Fundamentals, technicals, sentiment,
+          risks, and catalysts below — or look up a different ticker.
         </p>
       </div>
 

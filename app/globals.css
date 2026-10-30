@@ -344,7 +344,7 @@
   }
   .sk-header { padding: 48px 48px 40px; border-bottom: 2px solid var(--rule-dark); background: var(--paper); }
   .sk-header-top { display: flex; justify-content: space-between; margin-bottom: 36px; padding-bottom: 20px; border-bottom: 1px solid var(--rule); }
-  .sk-row { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 48px; align-items: end; }
+  .sk-row { display: grid; grid-template-columns: 1.5fr 1fr; gap: 48px; align-items: end; }
   .sk-line { height: 12px; }
   .sk-ticker { height: 44px; width: 180px; }
   .sk-name { height: 16px; width: 240px; margin-top: 8px; }
@@ -973,7 +973,7 @@
   .report-meta-top .ok { color: var(--green); }
   .report-title-row {
     display: grid;
-    grid-template-columns: 1.5fr 1fr 1fr;
+    grid-template-columns: 1.5fr 1fr;
     gap: 48px;
     align-items: end;
   }

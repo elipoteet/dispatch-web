@@ -6,18 +6,26 @@ fresh Claude conversation can pick up this project with no prior history.
 
 ## What this is
 
-> **Out of date as of 30 October 2026.** The memo product described below (scorecard,
-> overall rating) is being replaced by the free research file planned in
+> **Out of date as of 30 October 2026.** The memo product described below is being
+> replaced by the free research file planned in
 > `docs/phase-nine.md`, on the `feat/research-site` branch. Read
 > `docs/direction-2026-10-30.md` first. The stack, brand rules and gotchas in this file
 > still hold.
 
 **The Dispatch** is an equity-research web app. A visitor types a U.S. stock ticker and
-gets back a structured research memo in a few seconds — scorecard, fundamentals,
-technicals, sentiment, risks, catalysts, and an overall rating — built fresh from real
-market data every time, not templated boilerplate. It also has a paper-trading portfolio
-feature and a "Time Machine" that rebuilds any past memo as it would have read on a
-prior date.
+gets back a structured research memo in a few seconds — fundamentals, technicals,
+sentiment, risks, catalysts — built fresh from real market data every time, not
+templated boilerplate. It also has a paper-trading portfolio feature and a "Time
+Machine" that rebuilds any past memo as it would have read on a prior date.
+
+**No ratings, scores or leaderboard (30 October 2026).** The memo's 1–10 scorecard,
+composite score, Buy/Sell rating and Verdict section, the rating-change alerts, the
+Time Machine's score deltas and "did the call hold up" line, and the Monthly
+Leaderboard with its competition accounts were all removed. Nothing on the site
+delivers a rating, score, verdict, target price, fair value, leaderboard or track
+record; do not reintroduce one. The competition tables and old alert rows stay in the
+database untouched. The site is being rebuilt as a free research file per company on
+the `feat/research-site` branch (`docs/phase-nine.md` there).
 
 Solo project. Built and run by **Eli Poteet**, a finance student at the University of
 New Hampshire. Not a company, no team — see the "Who's behind this" section on the
@@ -46,8 +54,8 @@ New Hampshire. Not a company, no team — see the "Who's behind this" section on
   the site has no paid tier)
 - `app/api/` — `analyze/[ticker]` (client-side memo fetch), `watchlist`,
   `tape` (homepage ticker strip), `portfolio/*`, `alerts` (free for every signed-in
-  user), `cron/alerts` (daily Vercel Cron job — score-change/RSI/MA-cross detection)
-- `lib/analysis/` — the scoring engine: `indicators.ts`, `scoring.ts`, `report.ts`,
+  user), `cron/alerts` (daily Vercel Cron job — RSI/MA-cross detection)
+- `lib/analysis/` — the memo engine: `indicators.ts`, `report.ts`,
   `loadReport.ts` (shared fetch/build logic), `historical.ts` (Time Machine)
 - `lib/providers.ts` — Twelve Data / Finnhub fetch wrappers, server-only
 - `lib/portfolio.ts` — paper-trading math
@@ -130,7 +138,7 @@ in this codebase:
    `fetchFinnhubDayChange`) used to fire 5 Twelve Data calls on every cold load; and
    `getLatestPrice` (`lib/portfolio.ts`, via `fetchLatestQuote`) — mark-to-market
    pricing for every held position — used to fire on *every page load site-wide*
-   once `PortfolioProvider`/`CompetitionProvider` were both mounted globally, which
+   once `PortfolioProvider` (and the since-removed `CompetitionProvider`) were mounted globally, which
    was the actual dominant cause of intermittent search failures, not the tape.
    If you add anything that fires Twelve Data calls outside of an actual ticker
    search, ask whether it really needs Twelve Data's historical-series data or just
@@ -207,10 +215,10 @@ memo pages at `/research/[ticker]` (the biggest SEO lever — real content in th
 HTML instead of a client-fetched empty shell), a founder's note + real contact info on
 `/about`, the rate-limit/error-messaging fixes described above, `unstable_cache`-based
 provider caching (the `feat/provider-cache` branch — merged), the Time Machine's
-"Then vs. Now" analysis (score deltas, realized-performance verdict, "how the business
-changed" revenue/net-income comparison), and Subscriber Alerts (a daily cron job
-detects rating flips and RSI/MA technical triggers for every watched ticker, surfaced
-via a bell icon in the nav).
+"Then vs. Now" analysis (interval performance and a "how the business changed"
+revenue/net-income comparison; its score deltas and verdict line were removed on 30
+October 2026), and Alerts (a daily cron job detects RSI/MA technical triggers for every
+watched ticker, surfaced via a bell icon in the nav).
 
 **The site has no paid tier — decided 2026-07-27.** A paid Subscriber tier via Stripe
 ($7/month, 7-day trial) was built and merged but only ever ran in Stripe test mode (no
@@ -227,11 +235,9 @@ but nothing in the app queries it anymore.
 - The `notFound()` → `noindex` metadata gap (gotcha #2 above) has a best-effort fix
   but wasn't fully confirmed working in local testing — worth re-checking on the
   live domain if SEO of bad-ticker URLs ever matters.
-- Business/positioning decisions flagged by the site audit but deliberately left to
+- Business/positioning decision flagged by the site audit but deliberately left to
   the user's judgment, not yet acted on: deeper risk-engine coverage for "clean"
-  mega-cap tickers, and the "not a terminal" positioning vs. the Buy/Sell rating
-  badge + paper-trading button
-  sitting right next to it.
+  mega-cap tickers. (The other flag, the Buy/Sell rating badge, is gone.)
 
 ## What else to upload to the Claude Project
 

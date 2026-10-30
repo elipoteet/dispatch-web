@@ -45,8 +45,8 @@ export default function HomePage() {
           </div>
         </div>
         <div className="hero-lede">
-          Enter any U.S.-listed ticker and receive a structured research brief — scorecard,
-          technicals, fundamentals, sentiment, risks, catalysts — composed from real-time data.
+          Enter any U.S.-listed ticker and receive a structured research brief — technicals,
+          fundamentals, sentiment, risks, catalysts — composed from real-time data.
           No black boxes. No algorithmic trading signals dressed as insight. Just the work a
           thoughtful analyst would do, delivered in seconds.
         </div>
@@ -56,7 +56,7 @@ export default function HomePage() {
 
       <div className="features-head">
         <div className="label">The Dispatch Method</div>
-        <h2>Four dimensions. One coherent view.</h2>
+        <h2>Three dimensions. One coherent view.</h2>
       </div>
 
       <div className="features">
@@ -65,7 +65,7 @@ export default function HomePage() {
           <h3>The business underneath the ticker.</h3>
           <p>
             Market cap, P/E, profit margin, debt ratios, 52-week structure. Pulled live, labeled
-            honestly. We score on growth, profitability, and balance-sheet durability — not
+            honestly. We look at growth, profitability, and balance-sheet durability — not
             momentum dressed up as quality.
           </p>
         </div>

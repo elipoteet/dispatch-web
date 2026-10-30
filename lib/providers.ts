@@ -259,8 +259,8 @@ async function fetchQuotePriceTiingo(symbol: string): Promise<number> {
 }
 
 // Single lightweight quote for trade execution and mark-to-market pricing
-// (used for every held position, on every portfolio/competition page
-// load — see lib/portfolio.ts's getLatestPrice). Deliberately Finnhub, not
+// (used for every held position, on every portfolio page load — see
+// lib/portfolio.ts's getLatestPrice). Deliberately Finnhub, not
 // Twelve Data: this fires far more often than a ticker search does, and
 // sharing Twelve Data's tight 8-req/min quota with it caused real,
 // intermittent ticker-search failures (the tape had the same problem —
@@ -291,16 +291,14 @@ async function fh<T = unknown>(path: string, params: Record<string, string> = {}
   }
 }
 
-// —— Finnhub: lightweight quote (used by the Monthly Leaderboard's daily
-// scoring cron — app/api/competition/snapshot/route.ts — for shared,
-// once-per-ticker-per-day pricing across every entrant holding that
-// ticker). Not run through unstable_cache like the rest of this file: the
-// cron already dedupes via its own competition_price_cache table, so a
-// second cache layer here would just be redundant. Empirically confirmed
-// (real throttled test, July 2026) that Finnhub's free tier allows 60
-// requests/minute via the x-ratelimit-* response headers, then hard-fails
-// with 429 and remaining=0 for the rest of that rolling window — the
-// cron's own throttle stays comfortably under that.
+// —— Finnhub: lightweight quote. Backs fetchLatestQuote above (portfolio
+// trade execution and mark-to-market). It was first written for the Monthly
+// Leaderboard's daily scoring cron, removed on 30 October 2026. Not run
+// through unstable_cache like the rest of this file: getLatestPrice already
+// has its own short-TTL cache, so a second layer here would be redundant.
+// Empirically confirmed (real throttled test, July 2026) that Finnhub's free
+// tier allows 60 requests/minute via the x-ratelimit-* response headers, then
+// hard-fails with 429 and remaining=0 for the rest of that rolling window.
 export async function fetchFinnhubQuote(symbol: string): Promise<number | null> {
   const data = await fh<{ c: number }>("quote", { symbol: symbol.toUpperCase() });
   if (!data || typeof data.c !== "number" || data.c <= 0) return null;

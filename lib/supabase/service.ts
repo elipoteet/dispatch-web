@@ -11,14 +11,12 @@ export function createServiceRoleClient() {
   });
 }
 
-// Plain anon-key client with no cookie/session plumbing — used for reading
-// the Monthly Leaderboard's public views (public_leaderboard,
-// public_month_status, public_handles — see
-// supabase/migrations/0003_leaderboard.sql), which are grant-selected to
-// anon and carry no per-user data. Session-independent on purpose: unlike
-// the cookie-scoped client in lib/supabase/server.ts, this is safe to call
-// from inside unstable_cache (lib/competition/publicBoard.ts), which caches
-// across requests and can't depend on one request's cookies.
+// Plain anon-key client with no cookie/session plumbing, for reading public,
+// non-per-user data. Session-independent on purpose: unlike the cookie-scoped
+// client in lib/supabase/server.ts, this is safe to call from inside
+// unstable_cache, which caches across requests and can't depend on one
+// request's cookies. Written for the Monthly Leaderboard's public views
+// (removed 30 October 2026); kept for the research pages' public tables.
 export function createPublicClient() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
     auth: { persistSession: false },

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 type AlertEvent = {
   id: string;
   ticker: string;
-  type: "score_change" | "rsi" | "ma_cross";
+  type: "rsi" | "ma_cross";
   old_value: string | null;
   new_value: string;
   created_at: string;
@@ -15,8 +15,6 @@ type AlertEvent = {
 // "ALERT!!" transactional-notification look.
 function describeEvent(e: AlertEvent): string {
   switch (e.type) {
-    case "score_change":
-      return `${e.ticker} moved ${e.old_value ?? "—"} → ${e.new_value}`;
     case "rsi":
       return `${e.ticker}'s RSI just went ${e.new_value}`;
     case "ma_cross":

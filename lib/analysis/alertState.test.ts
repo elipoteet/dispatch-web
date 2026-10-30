@@ -35,26 +35,17 @@ describe("maState", () => {
 });
 
 function state(overrides: Partial<TickerState>): TickerState {
-  return { rating: "Hold", rsiState: "neutral", maState: "none", ...overrides };
+  return { rsiState: "neutral", maState: "none", ...overrides };
 }
 
 describe("detectAlerts", () => {
   it("never alerts when establishing a baseline (previous === null)", () => {
-    const current = state({ rating: "Buy", rsiState: "overbought", maState: "golden" });
+    const current = state({ rsiState: "overbought", maState: "golden" });
     expect(detectAlerts(null, current)).toEqual([]);
   });
 
-  it("fires a score_change alert on any rating change", () => {
-    const previous = state({ rating: "Hold" });
-    const current = state({ rating: "Buy" });
-    const alerts = detectAlerts(previous, current);
-    expect(alerts).toContainEqual({ type: "score_change", oldValue: "Hold", newValue: "Buy" });
-  });
-
-  it("does not fire when the rating is unchanged", () => {
-    const previous = state({ rating: "Hold" });
-    const current = state({ rating: "Hold" });
-    expect(detectAlerts(previous, current)).toEqual([]);
+  it("does not fire when nothing changed", () => {
+    expect(detectAlerts(state({}), state({}))).toEqual([]);
   });
 
   it("fires an rsi alert when entering overbought", () => {
@@ -105,11 +96,11 @@ describe("detectAlerts", () => {
     expect(detectAlerts(previous, current)).toEqual([]);
   });
 
-  it("fires all three alert types together when everything changes the same day", () => {
-    const previous: TickerState = { rating: "Hold", rsiState: "neutral", maState: "death" };
-    const current: TickerState = { rating: "Buy", rsiState: "overbought", maState: "golden" };
+  it("fires both alert types together when both change the same day", () => {
+    const previous: TickerState = { rsiState: "neutral", maState: "death" };
+    const current: TickerState = { rsiState: "overbought", maState: "golden" };
     const alerts = detectAlerts(previous, current);
-    expect(alerts).toHaveLength(3);
-    expect(alerts.map((a) => a.type).sort()).toEqual(["ma_cross", "rsi", "score_change"]);
+    expect(alerts).toHaveLength(2);
+    expect(alerts.map((a) => a.type).sort()).toEqual(["ma_cross", "rsi"]);
   });
 });

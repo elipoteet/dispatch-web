@@ -28,6 +28,12 @@ What the home page becomes once the memo is gone. Whether the portfolio simulato
 
 Claude sessions cannot push to the repo until the Claude GitHub App is installed on it or GitHub is reconnected in claude.ai settings.
 
+## Resolved later on 30 October
+
+- **Leaderboard and scorecard came off the live site the same day** (master `59b25ae`), not at relaunch. The leaderboard pages, competition accounts and their cron are gone, and `/leaderboard` and `/competition` redirect to `/portfolio`. The memo lost its scorecard, composite, Buy/Sell rating and Verdict section, the rating-change alerts stopped, and the Time Machine no longer grades past ratings. Database tables and old rows are untouched.
+- **The portfolio simulator stays, and so does sign-in,** which it needs.
+- **The home page:** Eli asked Claude to choose. The design is in `docs/phase-nine.md`, "The home page": search first, what's in a file, example companies, tools, and three lines on how it works, with no live prices.
+
 ## Repo notes (added when this was copied into the repo, 30 October)
 
 - This file is a copy of `claude/direction-2026-10-30.md` from the Claude Project. In this repo, `claude/phase-nine-build-brief.md` is `docs/phase-nine.md`.

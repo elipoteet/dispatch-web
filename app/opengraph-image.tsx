@@ -73,8 +73,8 @@ export default async function Image() {
             lineHeight: 1.4,
           }}
         >
-          A full research memo on any U.S. stock in five seconds — scored, sourced, and written to
-          be read.
+          A full research memo on any U.S. stock in five seconds — sourced, plainly explained, and
+          written to be read.
         </div>
       </div>
     ),

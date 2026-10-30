@@ -4,13 +4,13 @@ _A plain-language explanation of how The Dispatch works — no engineering backg
 
 ## What this app does
 
-You type a stock ticker (like `AAPL`). A few seconds later, you get back a full written analysis: how the business is doing financially, how the stock has been trading, what analysts and the news are saying, what could go wrong, and an overall rating — built fresh from real, live data every time you ask.
+You type a stock ticker (like `AAPL`). A few seconds later, you get back a full written analysis: how the business is doing financially, how the stock has been trading, what analysts and the news are saying, and what could go wrong — built fresh from real, live data every time you ask. There is no rating or score: the memo describes, and the judgment is yours (ratings, scores and the Monthly Leaderboard were removed on 30 October 2026).
 
 ## The three pieces working together
 
 **1. The website itself** — what you see and click on. It's hosted by a company called Vercel, which keeps the site running and reachable at `dispatchresearch.com` (think of Vercel like a landlord for the site).
 
-**2. The "analyst"** — the part of the app that does the actual thinking. It takes raw numbers and turns them into the scores, the write-up, and the rating you read. This never runs in your browser — it runs privately behind the scenes, so nobody visiting the site can see or tamper with how it works.
+**2. The "analyst"** — the part of the app that does the actual thinking. It takes raw numbers and turns them into the write-up you read. This never runs in your browser — it runs privately behind the scenes, so nobody visiting the site can see or tamper with how it works.
 
 **3. Outside data sources** — the app doesn't know anything about stocks on its own. It buys access to real data from a few outside companies:
 - **Twelve Data** — supplies stock prices, today's and years of history. If it's ever slow or temporarily unavailable, the app quietly asks **Tiingo** instead, so a price still shows up for you without any error.
@@ -23,7 +23,7 @@ There's also a fourth piece, **Supabase**, which is where the app keeps track of
 1. You type a ticker and hit search.
 2. The app quietly checks whether you're signed in, so it can keep you logged in without you having to re-enter anything.
 3. The app asks Twelve Data for the stock's price history and asks Finnhub for the company's financials and recent news — both at once, so it's fast.
-4. Once that raw information comes back, the "analyst" turns it into a score out of 10 for the fundamentals, the technicals (price trends), and the sentiment (news/analyst mood) — then blends those into one overall rating.
+4. Once that raw information comes back, the "analyst" writes up the fundamentals, the technicals (price trends), and the sentiment (news/analyst mood), plus the main risks and catalysts.
 5. That finished write-up is what shows up on the page.
 6. If you're signed in, that ticker is added to your watchlist automatically, and if you place a paper trade, it's saved to your account.
 
@@ -51,8 +51,8 @@ flowchart TD
         PROXY["proxy.ts<br/>refreshes the login session"]
         PAGES["Pages (React Server Components)<br/>Home · Research Desk · Time Machine · Portfolio · About"]
         API["API routes<br/>/api/analyze · /api/watchlist · /api/portfolio/* · /api/tape · /api/alerts"]
-        CRON["Daily cron — /api/cron/alerts<br/>rating/RSI/MA-cross detection"]
-        ENGINE["Scoring engine — lib/analysis<br/>indicators → scores → memo"]
+        CRON["Daily cron — /api/cron/alerts<br/>RSI/MA-cross detection"]
+        ENGINE["Memo engine — lib/analysis<br/>indicators → memo"]
     end
 
     subgraph EXT["Outside services"]
@@ -80,16 +80,16 @@ flowchart TD
 
 The site has no paid tier — every feature, including alerts, is free. There's
 a daily background job (Vercel Cron, not triggered by a visitor) that checks
-every ticker on anyone's watchlist for a rating change or a technical
-trigger and logs it; the bell icon in the nav reads those logged events.
+every ticker on anyone's watchlist for a technical trigger (RSI entering
+overbought/oversold, a moving-average cross) and logs it; the bell icon in the nav reads those logged events.
 
 ### The request lifecycle, step by step
 
 1. A visitor opens the site and searches a ticker (e.g. `AAPL`). The browser's request first passes through `proxy.ts`, which keeps the Supabase login session fresh.
-2. A page (server-rendered React) handles the view. Visiting `/research/[ticker]` directly (a shared link, a search result) calls the **scoring engine** server-side, in-process — no HTTP hop. Everything else that needs a memo (searching a new ticker without navigating, watchlist chips, the Time Machine's "compare to today") goes through the client and hits an internal **API route** instead, since it's the browser driving it after the page has already loaded. Both paths share the same fetch/cache/build logic (`lib/analysis/loadReport.ts`), so they can't drift apart.
-3. Either way, building a memo means calling the **scoring engine** in `lib/analysis`, which needs raw market data.
+2. A page (server-rendered React) handles the view. Visiting `/research/[ticker]` directly (a shared link, a search result) calls the **memo engine** server-side, in-process — no HTTP hop. Everything else that needs a memo (searching a new ticker without navigating, watchlist chips, the Time Machine's "compare to today") goes through the client and hits an internal **API route** instead, since it's the browser driving it after the page has already loaded. Both paths share the same fetch/cache/build logic (`lib/analysis/loadReport.ts`), so they can't drift apart.
+3. Either way, building a memo means calling the **memo engine** in `lib/analysis`, which needs raw market data.
 4. The engine pulls that data server-side from **Twelve Data** (prices, primary — falling back to **Tiingo** if Twelve Data is rate-limited or down) and **Finnhub** (fundamentals, news, analyst estimates), using API keys held privately on the server — never exposed to the visitor. Provider responses are cached (`lib/providers.ts`, via `unstable_cache`) so a repeat lookup of the same ticker doesn't re-spend API credits.
-5. The engine computes indicators, scores each dimension 1–10, and assembles the memo text.
+5. The engine computes indicators and assembles the memo text.
 6. The finished memo is rendered. If the visitor is signed in, their watchlist and paper-trading data are read from and written to **Supabase**.
 
 ### Tech stack
@@ -108,7 +108,7 @@ trigger and logs it; the bell icon in the nav reads those logged events.
 |---|---|
 | `app/` | Pages and routes. `page.tsx` (home), `about/`, `research/` (Research Desk + Time Machine, plus server-rendered `research/[ticker]/` memo pages), `portfolio/`, `give/` (charity donation — no paid tier), `auth/callback/` |
 | `app/api/` | Back-office endpoints: `analyze/[ticker]`, `watchlist`, `tape` (homepage ticker strip), `portfolio/account`, `portfolio/trade`, `portfolio/equity-curve`, `alerts` (reads logged events for the signed-in user), `cron/alerts` (daily Vercel Cron job) |
-| `lib/analysis/` | The scoring engine: `indicators.ts` (RSI, MACD, moving averages, volatility), `scoring.ts` (1–10 scores), `report.ts` (assembles the memo), `loadReport.ts` (shared fetch/cache/build used by both the API route and the SSR ticker pages), `historical.ts` (Time Machine slicing), `compare.ts` + `fundamentalsChange.ts` (Time Machine "Then vs. Now" analysis), `alertState.ts` (rating/RSI/MA-cross change detection for the alerts cron) |
+| `lib/analysis/` | The memo engine: `indicators.ts` (RSI, MACD, moving averages, volatility), `report.ts` (assembles the memo), `loadReport.ts` (shared fetch/cache/build used by both the API route and the SSR ticker pages), `historical.ts` (Time Machine slicing), `compare.ts` + `fundamentalsChange.ts` (Time Machine "Then vs. Now" analysis), `alertState.ts` (RSI/MA-cross change detection for the alerts cron) |
 | `lib/providers.ts` | Server-side wrappers for the Twelve Data, Tiingo, and Finnhub APIs, with per-symbol response caching and a Twelve Data → Tiingo price fallback |
 | `lib/db.ts`, `lib/supabase/` | Request-scoped Supabase client used by the API routes; `lib/supabase/service.ts` is the service-role client for writes that need to bypass RLS (the alerts cron job) |
 | `lib/portfolio.ts` | Paper-trading logic (positions, cash, equity snapshots) |

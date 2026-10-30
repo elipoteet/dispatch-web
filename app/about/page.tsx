@@ -20,20 +20,21 @@ export default function AboutPage() {
           </p>
 
           <p>
-            Every ticker submitted returns a structured memo — scorecard, fundamentals,
-            technicals, sentiment, risks, catalysts — composed from live market data. No
-            proprietary algorithms. No black-box signals. Every number is labeled with its source;
-            every rating is explained by the underlying evidence. What you see is what a diligent
+            Every ticker submitted returns a structured memo — fundamentals, technicals,
+            sentiment, risks, catalysts — composed from live market data. No proprietary
+            algorithms. No black-box signals. Every number is labeled with its source; every
+            statement is tied to the evidence behind it. What you see is what a diligent
             analyst would produce, performed in seconds rather than hours.
           </p>
 
           <h2>The method.</h2>
 
           <p>
-            We score on four dimensions: Fundamentals (growth, profitability, balance sheet),
-            Technicals (trend structure, momentum, volatility), Sentiment (analyst consensus, news
-            flow), and a Composite that weights them against one another. Each dimension receives a
-            score from one to ten, with the signal that drove it shown explicitly beside it.
+            We read every stock along three dimensions: Fundamentals (growth, profitability,
+            balance sheet), Technicals (trend structure, momentum, volatility), and Sentiment
+            (analyst consensus, news flow). We don&rsquo;t boil them down to a score or a rating. A
+            number like that looks precise, but it&rsquo;s really a judgment, and the judgment
+            should be yours.
           </p>
 
           <p>
@@ -48,15 +49,15 @@ export default function AboutPage() {
           <p>
             Every memo is a snapshot of a moment — but moments are worth revisiting. The Time
             Machine lets you pick any date within the last three years and see the memo as it
-            would have read then: technicals and sentiment recalculated from that day&rsquo;s
-            data, the rating recomputed under the same rules we use today. Fundamentals are held
+            would have read then, with technicals and sentiment recalculated from that
+            day&rsquo;s data. Fundamentals are held
             back rather than shown stale, since point-in-time filings aren&rsquo;t something we
             can honestly reconstruct after the fact.
           </p>
 
           <p>
             Pull up a memo from six months ago and compare it directly to the live one. Did the
-            thesis hold? Did the rating change, and why? Hindsight is usually wasted on investors
+            thesis hold? What changed, and why? Hindsight is usually wasted on investors
             who never write anything down. We&rsquo;d rather you could check your own work.
           </p>
 
@@ -64,9 +65,9 @@ export default function AboutPage() {
 
           <p>
             The Dispatch does not offer investment advice. Our memos are descriptive summaries of
-            public information — useful context for your own thinking, not substitutes for it. The
-            ratings reflect rule-based scoring against historical patterns; they have no predictive
-            warranty. Markets will continue to surprise everyone, including us.
+            public information — useful context for your own thinking, not substitutes for it. We
+            don&rsquo;t rate stocks, score them, or set price targets. Markets will continue to
+            surprise everyone, including us.
           </p>
 
           <h2 id="contact">Who&rsquo;s behind this.</h2>

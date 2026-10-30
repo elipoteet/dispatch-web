@@ -2,33 +2,22 @@
 // into the DOM (document.getElementById(...).innerHTML = ...); this version
 // keeps the exact same computation and prose wording but returns a plain
 // object for React to render instead.
+//
+// The memo describes; it does not judge. The 1–10 scorecard, the composite,
+// the Buy/Accumulate/Hold/Reduce/Sell rating and the Verdict section were
+// removed on 30 October 2026 (docs/direction-2026-10-30.md): nothing on the
+// site delivers a rating, score, verdict or track record. Do not add one back.
 
 import type { Fundamentals, NewsItem, PriceRow } from "@/lib/providers";
-import {
-  annualizedVol,
-  fmt,
-  fmtBig,
-  joinWithAnd,
-  macd,
-  maxDrawdown,
-  pctChange,
-  rsi,
-  sign,
-  sma,
-} from "./indicators";
-import { scoreFundamentals, scoreSentiment, scoreTechnicals, type Score } from "./scoring";
+import { annualizedVol, fmt, fmtBig, macd, maxDrawdown, pctChange, rsi, sign, sma } from "./indicators";
 
 export type KeyStat = { label: string; value: string; sub?: string; className?: string };
-export type ScorecardRow = { name: string; score: number | null; signal: string; isComposite?: boolean };
 
 // Raw indicator values, kept separately from the formatted display fields —
 // used by the Time Machine compare view, which needs to do its own math
 // (deltas between a "then" and "now" snapshot) rather than compare strings.
 export type ReportSnapshot = {
   last: number;
-  rating: string;
-  ratingClass: "buy" | "hold" | "sell";
-  composite: number;
   w52high: number;
   w52low: number;
   pctFromHigh: number;
@@ -67,16 +56,11 @@ export type ReportData = {
   lastPrice: number;
   changeText: string;
   changeClassName: "pos" | "neg";
-  rating: string;
-  ratingClass: "buy" | "hold" | "sell";
-  composite: number;
   timestamp: string;
   keyStats: KeyStat[];
-  scorecard: ScorecardRow[];
   proseFundamentalsHtml: string;
   proseTechnicalsHtml: string;
   proseSentimentHtml: string;
-  proseVerdictHtml: string;
   risksHtml: string[];
   catalystHtml: string;
   news: NewsItem[] | null;
@@ -120,32 +104,6 @@ export function buildReport(
   const pctFromHigh = ((last - w52high) / w52high) * 100;
   const pctFromLow = ((last - w52low) / w52low) * 100;
 
-  const fS = scoreFundamentals(fund);
-  const tS = scoreTechnicals({ last, ma50, ma200, rsiVal, d90, d365 });
-  const sS = scoreSentiment(fund);
-  const validScores = [fS.score, tS.score, sS.score].filter((v): v is number => v != null);
-  const composite = validScores.length
-    ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length)
-    : (tS.score as number);
-
-  let rating: string, ratingClass: "buy" | "hold" | "sell";
-  if (composite >= 8) {
-    rating = "Buy";
-    ratingClass = "buy";
-  } else if (composite >= 6.5) {
-    rating = "Accumulate";
-    ratingClass = "buy";
-  } else if (composite >= 4.5) {
-    rating = "Hold";
-    ratingClass = "hold";
-  } else if (composite >= 3) {
-    rating = "Reduce";
-    ratingClass = "sell";
-  } else {
-    rating = "Sell";
-    ratingClass = "sell";
-  }
-
   const keyStats: KeyStat[] = [
     {
       label: "Market Cap",
@@ -170,13 +128,6 @@ export function buildReport(
           : "—",
       className: (mk.revenueGrowthTTMYoy ?? 0) > 0 ? "pos" : "neg",
     },
-  ];
-
-  const scorecard: ScorecardRow[] = [
-    { name: "Fundamentals", score: fS.score, signal: fS.signal },
-    { name: "Technicals", score: tS.score, signal: tS.signal },
-    { name: "Sentiment / News", score: sS.score, signal: sS.signal },
-    { name: "Composite", score: composite, signal: `Rating: ${rating}`, isComposite: true },
   ];
 
   // —— Prose: Fundamentals ——
@@ -254,7 +205,7 @@ export function buildReport(
   if (dd != null) t2 += `Maximum drawdown over the trailing year reached <span class="data-inline neg">${fmt(dd, 1)}%</span>. `;
   if (vol != null) {
     t2 += `Annualized volatility sits at <span class="data-inline">${fmt(vol, 1)}%</span> — `;
-    if (vol > 50) t2 += "<strong>high-vol</strong>; expect meaningful swings and size positions accordingly.";
+    if (vol > 50) t2 += "<strong>high-vol</strong>; expect meaningful swings.";
     else if (vol > 30) t2 += "elevated but not extreme, typical of growth names.";
     else if (vol > 18) t2 += "moderate, in line with broad market averages.";
     else t2 += "<strong>notably low</strong> — this one doesn't move much.";
@@ -303,37 +254,6 @@ export function buildReport(
     sentProse.push(`<p>Analyst consensus and news data are unavailable right now.</p>`);
   }
 
-  // —— Prose: Verdict ——
-  let verdict = "<p>";
-  const strongs: string[] = [];
-  if (fS.score != null && fS.score >= 7) strongs.push("fundamentals");
-  if ((tS.score as number) >= 7) strongs.push("technicals");
-  if (sS.score != null && sS.score >= 7) strongs.push("analyst sentiment");
-  const weaks: string[] = [];
-  if (fS.score != null && fS.score <= 4) weaks.push("fundamentals");
-  if ((tS.score as number) <= 4) weaks.push("technicals");
-  if (sS.score != null && sS.score <= 4) weaks.push("sentiment");
-
-  verdict += `The composite rating of <strong>${rating}</strong> (<span class="data-inline">${composite}/10</span>) reflects `;
-  if (strongs.length && !weaks.length) verdict += `strength across ${joinWithAnd(strongs)}. `;
-  else if (strongs.length && weaks.length)
-    verdict += `tension between strong ${joinWithAnd(strongs)} and weak ${joinWithAnd(weaks)}. `;
-  else if (weaks.length) verdict += `concern across ${joinWithAnd(weaks)}. `;
-  else verdict += "a middling setup without clear conviction signals. ";
-
-  if (rsiVal != null && rsiVal > 70 && (tS.score as number) >= 7) {
-    verdict += `Technically extended — RSI at <span class="data-inline neg">${fmt(rsiVal, 0)}</span> suggests short-term froth. A pullback toward the 50-day (<span class="data-inline">$${fmt(ma50)}</span>) would offer a cleaner entry. `;
-  } else if (rsiVal != null && rsiVal < 35 && fS.score != null && fS.score >= 6) {
-    verdict += `A potentially attractive entry: quality fundamentals meeting a technically oversold tape. `;
-  } else if (ma200 && last < ma200 * 0.9) {
-    verdict += `Price is materially below the 200-day average, indicating a broken trend. Wait for structural repair before adding. `;
-  }
-
-  if (fS.score != null && fS.score <= 4) verdict += `<strong>Thesis breaks</strong> if profitability continues to deteriorate or the balance sheet weakens further.`;
-  else if ((tS.score as number) <= 4) verdict += `<strong>Thesis breaks</strong> if price loses the 200-day average convincingly.`;
-  else verdict += `<strong>Thesis breaks</strong> if analyst revisions turn sharply negative or earnings execution falters.`;
-  verdict += "</p>";
-
   // —— Risks ——
   const risks: string[] = [];
   if (mk.netProfitMarginTTM != null && mk.netProfitMarginTTM < 0)
@@ -365,7 +285,6 @@ export function buildReport(
       `Next quarterly earnings — prior quarter ${fund.earnings[0].actual != null && fund.earnings[0].estimate != null && fund.earnings[0].actual > fund.earnings[0].estimate ? "beat" : "missed"} consensus, so the bar for continuation is set.`,
     );
   }
-  if (rsiVal != null && rsiVal > 70) catPoints.push(`Watch for a pullback toward the 50-day ($${fmt(ma50)}) — likely a more attractive re-entry if the structural bull case holds.`);
   if (ma50 && ma200 && ma50 > ma200 && (ma50 - ma200) / ma200 < 0.02) catPoints.push(`Moving averages are converging — a death cross (50d below 200d) would be a material technical event worth tracking.`);
   if (fund?.profile?.finnhubIndustry) catPoints.push(`Sector-level catalysts for ${fund.profile.finnhubIndustry} — macro data, peer earnings, and regulatory developments.`);
   if (!catPoints.length) catPoints.push(`Track the 50-day moving average ($${fmt(ma50)}) as the near-term line in the sand for trend followers.`);
@@ -384,25 +303,17 @@ export function buildReport(
     lastPrice: last,
     changeText: `${sign(d1abs)}${fmt(d1abs)} (${sign(d1pct)}${fmt(d1pct, 2)}%)`,
     changeClassName: d1abs >= 0 ? "pos" : "neg",
-    rating,
-    ratingClass,
-    composite,
     timestamp: `Generated ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · ${new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`,
     keyStats,
-    scorecard,
     proseFundamentalsHtml: fundProse.join(""),
     proseTechnicalsHtml: techProse.join(""),
     proseSentimentHtml: sentProse.join(""),
-    proseVerdictHtml: verdict,
     risksHtml: risks.slice(0, 3),
     catalystHtml,
     news,
     rows,
     snapshot: {
       last,
-      rating,
-      ratingClass,
-      composite,
       w52high,
       w52low,
       pctFromHigh,
@@ -418,5 +329,3 @@ export function buildReport(
     },
   };
 }
-
-export type { Score };

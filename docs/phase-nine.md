@@ -100,6 +100,20 @@ Each tab is its own URL: `/research/nvda`, `/research/nvda/financials`, `/resear
 - Discussion: the existing `getPostsByTicker` and `PostCard`, unchanged in behaviour.
 - The existing six-stat page must not regress for any ticker during the transition.
 
+### The home page (added 30 October; Eli asked Claude to choose)
+
+Once the memo is gone, `/` becomes the front door to the research files. Built in Stage 2, so the preview has a way in from the day the first company page exists. Top to bottom:
+
+1. **Search first.** One line saying what the site is: a free research file on every U.S. public company, read from its SEC filings. Under it, one search box that takes a ticker or a company name, matched against the SEC ticker file (`company_tickers.json`, already cached 24 hours by `lib/sec`). Picking a result goes to `/research/{ticker}`. The same search component serves `/research` in Stage 8.
+2. **What's in a file.** The six tabs (Overview, Financials, Valuation, Earnings, Insiders, Filings), one plain sentence each, each linking to that tab on one example company. A tab that isn't built yet is listed without a link and marked "coming".
+3. **Start with a company.** Six example companies across sectors, one of them a bank so the honest-gaps handling shows (for example NVDA, AAPL, COST, XOM, KO, JPM). Each card shows name, ticker, sector and one "What stands out" fact from the stored financials. **No live prices on the home page:** six quote calls per visit would spend the Twelve Data budget on a page nobody came to for prices.
+4. **Tools.** Screener and Compare (each shown once built), and the portfolio simulator, which stays (Eli, 30 October).
+5. **How it works, in three short lines.** The numbers come from SEC filings and link back to them. Nothing here rates a stock or sets a price target. It's free.
+
+Removed from today's home page: the ticker tape, the "Dispatch Method" features block, and the Time Machine teaser (phase nine leaves the Time Machine out). New title and description, with nothing about memos or scoring. Square corners, matching the research pages.
+
+Old URLs: `/research/{ticker}` is the same address for the old memo and the new file, so old links land on the new page by construction. A Time Machine link (`?asOf=`) redirects to the plain ticker URL. Verify both with `next start` and curl.
+
 ### Stage 3. Price chart ranges
 
 The eight ranges, sources and caches as per the budget table. Mark earnings dates on 3M and longer ranges from Finnhub's calendar. 1D shows a dotted line at the previous close. The chart redraws in place when a range is clicked, with no full page reload.
