@@ -35,7 +35,6 @@ export function buildMarkdown(report: ReportData): string {
   let md = `# ${report.ticker} — Equity Research Memo\n\n`;
   md += `**${report.name}** · ${report.industry}\n\n`;
   md += `**Price:** ${report.price} ${report.changeText}  \n`;
-  md += `**Rating:** ${report.rating} (Composite ${report.composite}/10)  \n`;
   md += `**Generated:** ${report.timestamp}\n\n`;
   md += `---\n\n`;
 
@@ -45,19 +44,10 @@ export function buildMarkdown(report: ReportData): string {
   }
   md += `\n`;
 
-  md += `## Scorecard\n\n`;
-  md += `| Dimension | Score | Key Signal |\n|---|---|---|\n`;
-  for (const row of report.scorecard) {
-    const score = row.score != null ? `${row.score}/10` : "—";
-    md += `| ${row.name} | ${score} | ${row.signal} |\n`;
-  }
-  md += `\n`;
-
   const sections: Array<[string, string]> = [
     ["Fundamentals", report.proseFundamentalsHtml],
     ["Technicals", report.proseTechnicalsHtml],
     ["Sentiment", report.proseSentimentHtml],
-    ["Verdict", report.proseVerdictHtml],
   ];
   for (const [title, html] of sections) {
     const paras = paragraphs(html);

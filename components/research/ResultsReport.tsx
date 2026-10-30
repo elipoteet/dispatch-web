@@ -4,8 +4,6 @@ import { useState } from "react";
 import type { ReportData } from "@/lib/analysis/report";
 import { buildMarkdown } from "@/lib/analysis/markdown";
 import { usePortfolio } from "@/components/portfolio/PortfolioProvider";
-import { useCompetition } from "@/components/competition/CompetitionProvider";
-import { TradeAccountChooser } from "@/components/trade/TradeAccountChooser";
 import { useIsDarkMode } from "@/lib/useTheme";
 import { ChartSVG } from "./ChartSVG";
 
@@ -29,22 +27,8 @@ export function ResultsReport({
   historicalBanner?: React.ReactNode;
 }) {
   const { openTrade } = usePortfolio();
-  const { optedIn, openTrade: openCompetitionTrade } = useCompetition();
-  const [chooserOpen, setChooserOpen] = useState(false);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const isDark = useIsDarkMode();
-
-  // Not opted into the competition: Trade behaves exactly as it always
-  // has, straight into the regular paper-trading modal. Opted in: the one
-  // universal Trade button has to serve two separate accounts, so ask
-  // first — see components/trade/TradeAccountChooser.tsx.
-  function handleTradeClick() {
-    if (optedIn) {
-      setChooserOpen(true);
-    } else {
-      openTrade(report.ticker, report.lastPrice);
-    }
-  }
 
   async function handleCopyMemo() {
     try {
@@ -67,7 +51,7 @@ export function ResultsReport({
               className="trade-action-btn"
               type="button"
               title="Place a paper trade"
-              onClick={handleTradeClick}
+              onClick={() => openTrade(report.ticker, report.lastPrice)}
             >
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
                 <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
@@ -113,13 +97,6 @@ export function ResultsReport({
             <div className="report-price-val">{report.price}</div>
             <div className={`report-change mono ${report.changeClassName}`}>{report.changeText}</div>
           </div>
-          <div className="report-verdict">
-            <div className="verdict-label">Rating</div>
-            <div>
-              <span className={`verdict-badge ${report.ratingClass}`}>{report.rating}</span>
-            </div>
-            <div className="verdict-score">Composite {report.composite}/10</div>
-          </div>
         </div>
       </div>
 
@@ -131,43 +108,6 @@ export function ResultsReport({
             {s.sub && <div className="stat-sub">{s.sub}</div>}
           </div>
         ))}
-      </div>
-
-      <div className="scorecard-section">
-        <div className="section-title">Scorecard</div>
-        <div style={{ overflowX: "auto" }}>
-          <table className="scorecard-table">
-            <thead>
-              <tr>
-                <th style={{ width: 180 }}>Dimension</th>
-                <th>Score</th>
-                <th>Key Signal</th>
-              </tr>
-            </thead>
-            <tbody>
-              {report.scorecard.map((row) => (
-                <tr key={row.name} className={row.isComposite ? "composite-row" : undefined}>
-                  <td className="dim-name">{row.name}</td>
-                  <td className="score-cell">
-                    {row.score != null ? `${row.score}/10` : "—"}
-                    {row.score != null && (
-                      <span className="score-bar">
-                        <span className="score-bar-fill" style={{ width: row.score * 10 + "%" }} />
-                      </span>
-                    )}
-                  </td>
-                  <td className="signal">
-                    {row.isComposite ? (
-                      <strong style={{ color: "var(--accent)" }}>{row.signal}</strong>
-                    ) : (
-                      row.signal
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
       </div>
 
       <div className="chart-section">
@@ -247,15 +187,6 @@ export function ResultsReport({
         </div>
       </div>
 
-      <div className="report-body">
-        <div className="report-grid">
-          <div>
-            <div className="section-title">Verdict</div>
-          </div>
-          <div className="prose" dangerouslySetInnerHTML={{ __html: report.proseVerdictHtml }} />
-        </div>
-      </div>
-
       <div className="risks-catalyst-row">
         <div className="risks-col">
           <div className="section-title">Top Risks</div>
@@ -296,26 +227,11 @@ export function ResultsReport({
       <div className="disclaimer">
         <strong style={{ color: "var(--navy)", fontStyle: "normal" }}>Disclaimer.</strong> This research memo is
         generated algorithmically from public data and is provided for informational purposes only. It is not
-        investment advice, an offer, or a solicitation to buy or sell any security. Ratings are derived from
-        rule-based scoring across fundamentals, technicals, and sentiment — they are descriptive summaries, not
-        predictions. Investors should conduct their own due diligence and consult a qualified advisor before making
-        investment decisions. Data sourced from Twelve Data and Finnhub.
+        investment advice, an offer, or a solicitation to buy or sell any security. The Dispatch does not rate,
+        score, or recommend securities; this memo describes what the data shows. Investors should conduct their own
+        due diligence and consult a qualified advisor before making investment decisions. Data sourced from Twelve
+        Data and Finnhub.
       </div>
-
-      {chooserOpen && (
-        <TradeAccountChooser
-          ticker={report.ticker}
-          onChoosePortfolio={() => {
-            setChooserOpen(false);
-            openTrade(report.ticker, report.lastPrice);
-          }}
-          onChooseCompetition={() => {
-            setChooserOpen(false);
-            openCompetitionTrade(report.ticker, report.lastPrice);
-          }}
-          onClose={() => setChooserOpen(false)}
-        />
-      )}
     </div>
   );
 }

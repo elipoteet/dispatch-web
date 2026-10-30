@@ -17,6 +17,9 @@ export async function GET() {
   const { data, error } = await supabase
     .from("alert_event")
     .select("id, ticker, type, old_value, new_value, created_at")
+    // Rating-change alerts were retired with the ratings on 30 October 2026.
+    // Their old rows stay in the table but are never shown again.
+    .neq("type", "score_change")
     .order("created_at", { ascending: false })
     .limit(LIMIT);
 

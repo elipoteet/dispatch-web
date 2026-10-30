@@ -18,10 +18,14 @@ function sleep(ms: number): Promise<void> {
 
 type TickerSnapshotRow = {
   ticker: string;
-  rating: string;
   rsi_state: string | null;
   ma_state: string | null;
 };
+
+// ticker_snapshot.rating is NOT NULL (0002_alerts.sql), but ratings were
+// removed on 30 October 2026. Rather than alter a live table, every row gets
+// this fixed value, and nothing reads the column any more.
+const RATING_RETIRED = "retired";
 
 // Vercel Cron sends a GET request with `Authorization: Bearer $CRON_SECRET`
 // when CRON_SECRET is set — verified here so the endpoint can't be
@@ -54,7 +58,6 @@ export async function GET(request: Request) {
       // Step 2 — compute today's state.
       const { report } = await loadReport(ticker, null);
       const current: TickerState = {
-        rating: report.rating,
         rsiState: rsiState(report.snapshot.rsiVal),
         maState: maState(report.snapshot.ma50, report.snapshot.ma200),
       };
@@ -62,12 +65,11 @@ export async function GET(request: Request) {
       // Step 3 — compare against yesterday.
       const { data: prevRow } = await db
         .from("ticker_snapshot")
-        .select("ticker, rating, rsi_state, ma_state")
+        .select("ticker, rsi_state, ma_state")
         .eq("ticker", ticker)
         .maybeSingle<TickerSnapshotRow>();
       const previous: TickerState | null = prevRow
         ? {
-            rating: prevRow.rating,
             rsiState: prevRow.rsi_state as TickerState["rsiState"],
             maState: prevRow.ma_state as TickerState["maState"],
           }
@@ -92,7 +94,7 @@ export async function GET(request: Request) {
       const { error: upsertError } = await db.from("ticker_snapshot").upsert(
         {
           ticker,
-          rating: current.rating,
+          rating: RATING_RETIRED,
           rsi_state: current.rsiState,
           ma_state: current.maState,
           checked_at: new Date().toISOString(),

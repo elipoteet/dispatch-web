@@ -29,8 +29,7 @@ export default async function ResearchPage({
         <p>
           Enter a U.S.-listed symbol. The Dispatch pulls real-time price, fundamentals, analyst
           consensus, and news, and composes a structured research memo. Indicators are calculated
-          live; the verdict is rule-based and shown alongside every underlying data point. Use the
-          Time Machine below to see the memo as it would have read on any past date, then compare
+          live, and every figure is shown with the data behind it. Use the Time Machine below to see the memo as it would have read on any past date, then compare
           it straight to today.
         </p>
       </div>

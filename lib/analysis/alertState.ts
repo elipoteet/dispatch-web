@@ -24,13 +24,16 @@ export function maState(ma50: number | null, ma200: number | null): MaState | nu
   return "none";
 }
 
+// Price facts only. There used to be a `rating` here and a "score_change"
+// alert when it flipped; both went with the ratings on 30 October 2026
+// (docs/direction-2026-10-30.md). Old score_change rows stay in alert_event
+// but are filtered out of /api/alerts, so they are never shown.
 export type TickerState = {
-  rating: string;
   rsiState: RsiState | null;
   maState: MaState | null;
 };
 
-export type AlertType = "score_change" | "rsi" | "ma_cross";
+export type AlertType = "rsi" | "ma_cross";
 export type DetectedAlert = { type: AlertType; oldValue: string; newValue: string };
 
 // Diffs today's computed state against yesterday's stored state. `previous
@@ -42,10 +45,6 @@ export function detectAlerts(previous: TickerState | null, current: TickerState)
   if (!previous) return [];
 
   const alerts: DetectedAlert[] = [];
-
-  if (previous.rating !== current.rating) {
-    alerts.push({ type: "score_change", oldValue: previous.rating, newValue: current.rating });
-  }
 
   // Only fires when RSI *enters* overbought/oversold from something else —
   // "crosses into," per the plan, not "is currently in" or "leaves."

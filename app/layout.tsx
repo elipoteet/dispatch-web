@@ -8,16 +8,13 @@ import { PortfolioProvider } from "@/components/portfolio/PortfolioProvider";
 import { OnboardingModal } from "@/components/portfolio/OnboardingModal";
 import { TradeModal } from "@/components/portfolio/TradeModal";
 import { Toast } from "@/components/portfolio/Toast";
-import { CompetitionProvider } from "@/components/competition/CompetitionProvider";
-import { CompetitionTradeModal } from "@/components/competition/CompetitionTradeModal";
-import { CompetitionToast } from "@/components/competition/CompetitionToast";
 import { Masthead } from "@/components/layout/Masthead";
 import { TopNav } from "@/components/layout/TopNav";
 import { Footer } from "@/components/layout/Footer";
 
 const SITE_NAME = "The Dispatch";
 const SITE_DESCRIPTION =
-  "A full research memo on any U.S. stock in five seconds — scored, sourced, and written to be read.";
+  "A full research memo on any U.S. stock in five seconds — sourced, plainly explained, and written to be read.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.dispatchresearch.com"),
@@ -81,18 +78,14 @@ export default async function RootLayout({
         <AuthProvider initialUser={user}>
           <AuthModalProvider>
             <PortfolioProvider>
-              <CompetitionProvider>
-                <Masthead />
-                <TopNav />
-                <main>{children}</main>
-                <Footer />
-                <AuthModal />
-                <OnboardingModal />
-                <TradeModal />
-                <Toast />
-                <CompetitionTradeModal />
-                <CompetitionToast />
-              </CompetitionProvider>
+              <Masthead />
+              <TopNav />
+              <main>{children}</main>
+              <Footer />
+              <AuthModal />
+              <OnboardingModal />
+              <TradeModal />
+              <Toast />
             </PortfolioProvider>
           </AuthModalProvider>
         </AuthProvider>
