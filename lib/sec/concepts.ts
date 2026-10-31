@@ -25,6 +25,7 @@ export type LineItem =
   | "operating_cash_flow"
   | "capex"
   | "free_cash_flow"
+  | "buybacks"
   | "shares_diluted"
   | "cash_and_equivalents"
   | "total_assets"
@@ -76,6 +77,11 @@ export const CONCEPT_TAGS: Record<Exclude<LineItem, "free_cash_flow">, readonly 
     "PaymentsForCapitalImprovements",
     "PaymentsToAcquireOtherPropertyPlantAndEquipment",
   ],
+  // Cash spent repurchasing the company's own shares, from the cash-flow
+  // statement. Added in phase nine stage 2 for the Overview's key stats and the
+  // "what stands out" buyback rule. A cash-flow line, so 10-Q values are
+  // year-to-date and get unwound like operating cash flow.
+  buybacks: ["PaymentsForRepurchaseOfCommonStock", "PaymentsForRepurchaseOfEquity"],
   shares_diluted: [
     "WeightedAverageNumberOfDilutedSharesOutstanding",
     "WeightedAverageNumberOfDilutedSharesOutstandingAdjusted",

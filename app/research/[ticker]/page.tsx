@@ -1,119 +1,155 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
-import { ResearchDesk } from "@/components/research/ResearchDesk";
-import { loadReport, TICKER_PATTERN, TickerDataError } from "@/lib/analysis/loadReport";
-
-const ASOF_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+import { after } from "next/server";
+import { notFound, permanentRedirect } from "next/navigation";
+import { loadCompanyPage } from "@/lib/research/company";
+import { whatStandsOut } from "@/lib/research/standsOut";
+import { keyStats } from "@/lib/research/keyStats";
+import { descriptionToShow, generateDescription, needsDescription, readDescription } from "@/lib/research/description";
+import { filingDocumentUrl } from "@/lib/sec/client";
+import { toChartPoints } from "@/lib/analysis/tickerChart";
+import { fyShort } from "@/lib/research/format";
+import { PriceChart } from "@/components/company/PriceChart";
 
 type Props = {
   params: Promise<{ ticker: string }>;
   searchParams: Promise<{ asOf?: string }>;
 };
 
-// Validation only — redirect()/notFound() here must always propagate as
-// themselves, so this deliberately has no try/catch around it. Called
-// identically by generateMetadata and the page component below, each of
-// which wraps its own loadReport() call separately instead, since they need
-// different behavior when *that* fails (see comments below).
-async function resolveTicker(props: Props): Promise<{ ticker: string; asOf: string | null }> {
-  const { ticker: raw } = await props.params;
-  const { asOf: asOfParam } = await props.searchParams;
+// Room for the description to be written after the response has gone: a 10-K
+// download plus one short Claude call. The page itself never waits on it.
+export const maxDuration = 60;
 
-  // Canonical URLs are lowercase — redirect case variants rather than
-  // serving the same memo at two addresses.
-  if (raw !== raw.toLowerCase()) {
-    redirect(`/research/${raw.toLowerCase()}`);
-  }
-
-  const ticker = raw.toUpperCase();
-  if (!TICKER_PATTERN.test(ticker)) notFound();
-
-  const asOf = asOfParam && ASOF_PATTERN.test(asOfParam) ? asOfParam : null;
-  return { ticker, asOf };
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { ticker } = await params;
+  const company = await loadCompanyPage(decodeURIComponent(ticker).toUpperCase());
+  // The layout 404s an unknown ticker; this only has to avoid throwing first.
+  if (!company) return { title: "Company not found", robots: { index: false, follow: false } };
+  const path = `/research/${company.slug}`;
+  const description = company.filesReports
+    ? `${company.name} (${company.symbol}): price, ten years of reported financials and what stands out, from its SEC filings. Free, with no ratings or price targets.`
+    : `${company.name} (${company.symbol}): price history. Free, with no ratings or price targets.`;
+  return {
+    title: `${company.name} (${company.symbol}) overview`,
+    description,
+    alternates: { canonical: path },
+    openGraph: { url: path, description },
+    twitter: { description },
+  };
 }
 
-export async function generateMetadata(props: Props): Promise<Metadata> {
-  const { ticker, asOf } = await resolveTicker(props);
+export default async function OverviewPage({ params, searchParams }: Props) {
+  const { ticker } = await params;
+  const { asOf } = await searchParams;
+  const symbol = decodeURIComponent(ticker).toUpperCase();
+  // Old Time Machine links (?asOf=) land on today's file. The Time Machine
+  // isn't part of the research file.
+  if (asOf !== undefined) permanentRedirect(`/research/${encodeURIComponent(symbol.toLowerCase())}`);
 
-  // Degrade to plain metadata on failure rather than throwing — metadata
-  // resolution isn't part of the page's own render tree, so a throw here
-  // can't be handled the same way the page component handles it below.
-  // Thanks to loadReport's caching, this doesn't cost a second provider
-  // fetch when it does succeed.
-  try {
-    const { report } = await loadReport(ticker, asOf);
-    const description = `${report.name} (${ticker}), trading at ${report.price} (${report.changeText}). Fundamentals, technicals, analyst sentiment, risks, and catalysts, drawn from live market data.`;
+  // Already loaded by the layout; cache() makes this free. The layout 404s an
+  // unknown ticker, but the page renders alongside it, so it bows out too.
+  const company = await loadCompanyPage(symbol);
+  if (!company) notFound();
+  const fin = company.financials;
 
-    return {
-      title: `${ticker} Stock Analysis — ${report.name}`,
-      description,
-      alternates: { canonical: `/research/${ticker.toLowerCase()}` },
-      openGraph: { url: `/research/${ticker.toLowerCase()}`, description },
-      twitter: { description },
-    };
-  } catch {
-    // Whether this ends up 404ing (bad ticker) or showing the transient
-    // retry state, neither is worth indexing — a real crawl attempt that
-    // lands here should try again later rather than index a placeholder.
-    // (This is what actually governs the served <meta name="robots">, not
-    // not-found.tsx's own metadata export — verified empirically that the
-    // latter doesn't apply once notFound() diverts the page body.)
-    return { title: `${ticker} Stock Analysis`, robots: { index: false, follow: false } };
+  const read = fin ? await readDescription(fin.cik) : null;
+  const scheduled = Boolean(fin && read && needsDescription(read, fin.latestAnnual));
+  if (fin && scheduled) {
+    const filing = fin.latestAnnual!;
+    after(() => generateDescription(fin.cik, company.name, filing));
   }
-}
+  const described = read ? descriptionToShow(read) : null;
 
-export default async function TickerResearchPage(props: Props) {
-  const { ticker, asOf } = await resolveTicker(props);
+  const standsOut = fin
+    ? whatStandsOut({
+        rows: fin.rows,
+        filerKind: fin.filerKind,
+        fiscalYearEnd: company.fiscalYearEnd,
+        price: company.quote?.price ?? null,
+        range52: company.range52,
+      })
+    : null;
 
-  let report, rows;
-  try {
-    ({ report, rows } = await loadReport(ticker, asOf));
-  } catch (err) {
-    // TickerDataError means the ticker/date genuinely has no usable data —
-    // that's a real 404. Anything else (a rate-limited or momentarily down
-    // provider, a network blip) is transient, not "this page doesn't
-    // exist". Rendered as a normal 200 page with a friendly retry message
-    // rather than thrown to an error.tsx boundary — Next's error boundary
-    // proved unreliable for this route in testing (a caught error would
-    // sometimes still fall through to the framework's generic not-found
-    // fallback on a re-render), so handling it directly here is the more
-    // dependable option.
-    if (err instanceof TickerDataError) notFound();
-    return (
-      <section className="page active" id="page-analyzer">
-        <div className="analyzer-head">
-          <div className="label">Research Desk</div>
-          <h1>Couldn&rsquo;t reach the market data provider.</h1>
-        </div>
-        <div className="status error">
-          Our market data provider is temporarily unavailable — most likely a brief rate limit
-          on our end, not a problem with {ticker} or your connection.{" "}
-          <a href={`/research/${ticker.toLowerCase()}`}>Refresh the page</a> in a few seconds to
-          try again.
-        </div>
-      </section>
-    );
-  }
+  const stats = keyStats({
+    rows: fin?.rows ?? [],
+    filerKind: fin?.filerKind ?? "operating",
+    price: company.quote?.price ?? null,
+    sharesOutstandingMillions: company.profile?.sharesOutstandingMillions ?? null,
+    marketCapMillions: company.profile?.marketCapMillions ?? null,
+    averageVolume: company.avgVolume,
+  });
+
+  const chartPoints = company.daily ? toChartPoints(company.daily) : null;
+  const annualUrl = fin?.latestAnnual?.primaryDocument ? filingDocumentUrl(fin.cik, fin.latestAnnual) : null;
+  // The left column only renders when it has something to say; otherwise
+  // "What stands out" takes the full width instead of sitting beside a gap.
+  // Nothing is promised while a summary is pending: it may be waiting on an
+  // account with no API credit, and "coming shortly" would then be untrue.
+  const hasBrief = Boolean(described || company.financialsUnavailable || !fin);
 
   return (
-    <section className="page active" id="page-analyzer">
-      <div className="analyzer-head">
-        <div className="label">Research Desk</div>
-        <h1>
-          {ticker} <span style={{ color: "var(--muted)", fontWeight: 400 }}>— {report.name}</span>
-        </h1>
-        <p>
-          Trading at {report.price} ({report.changeText}). Fundamentals, technicals, sentiment,
-          risks, and catalysts below — or look up a different ticker.
-        </p>
-      </div>
+    <div className="rf-tab-body">
+      {company.filesReports && (
+        <div className="rf-overview-top">
+          {hasBrief && <div className="rf-brief">
+            {described ? (
+              <>
+                <div className="rf-lbl">In brief</div>
+                <p className="rf-brief-text">{described.description}</p>
+                <p className="rf-ai-label">
+                  AI summary of the business section of its latest {described.sourceForm}.{" "}
+                  {annualUrl && (
+                    <a href={annualUrl} target="_blank" rel="noopener noreferrer">
+                      Check the filing
+                    </a>
+                  )}
+                </p>
+              </>
+            ) : null}
+            {company.financialsUnavailable && <p className="rf-note">{company.financialsUnavailable}</p>}
+            {!fin && !company.financialsUnavailable && (
+              <p className="rf-note">The SEC&rsquo;s figures for this company couldn&rsquo;t be loaded just now. Try again in a minute.</p>
+            )}
+          </div>}
 
-      <ResearchDesk
-        initialTicker={ticker}
-        initialReport={report}
-        initialRows={rows}
-        initialAsOf={asOf ?? ""}
-      />
-    </section>
+          {standsOut && standsOut.facts.length > 0 && (
+            <aside className="rf-standout">
+              <div className="rf-lbl">What stands out</div>
+              {standsOut.facts.map((f) => (
+                <p key={f.id} className="rf-standout-fact">
+                  {f.text}
+                </p>
+              ))}
+              <div className="rf-lbl rf-standout-foot">
+                Facts, not a verdict · from its filings{standsOut.fiscalYear ? ` through ${fyShort(standsOut.fiscalYear)}` : ""}
+              </div>
+            </aside>
+          )}
+        </div>
+      )}
+
+      {!company.filesReports && (
+        <p className="rf-note">
+          {`${company.symbol} doesn’t file company reports with the SEC (it may be a fund or another kind of security), so this page shows its price only.`}
+        </p>
+      )}
+
+      {stats.length > 0 && (
+        <div className="rf-stats">
+          {stats.map((s) => (
+            <div className="rf-stat" key={s.id}>
+              <span className="rf-lbl">{s.label}</span>
+              <span className="rf-stat-value">{s.value}</span>
+              <span className="rf-stat-note">{s.note}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {chartPoints && chartPoints.length >= 2 ? (
+        <PriceChart symbol={company.symbol} daily={chartPoints} />
+      ) : (
+        <div className="rf-chart-pending">The price chart is updating. Try again in a minute.</div>
+      )}
+    </div>
   );
 }

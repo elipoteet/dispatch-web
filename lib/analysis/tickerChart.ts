@@ -20,12 +20,20 @@ import type { ChartPoint } from "@/lib/analysis/chartRanges";
 // the multi-year history the ticker page doesn't show.
 const ONE_YEAR_TRADING_DAYS = 252;
 
-async function getTickerChartRaw(symbol: string): Promise<ChartPoint[]> {
+// —— The daily history behind the research page ——
+// One compact copy of the ~5-year daily series, cached for a day: the chart's
+// daily ranges, the header's 52-week range and the average-volume key stat all
+// read from it, so a whole research page costs at most one Twelve Data request
+// per company per day. Compact on purpose (no open price), so the cached entry
+// stays well inside the data cache's ~2MB limit.
+export type DailyBar = { date: string; close: number; high: number; low: number; volume: number };
+
+async function getDailyHistoryRaw(symbol: string): Promise<DailyBar[]> {
   const rows = await fetchPrices(symbol);
-  return rows.slice(-ONE_YEAR_TRADING_DAYS).map((r) => ({ date: r.date, close: r.close }));
+  return rows.map((r) => ({ date: r.date, close: r.close, high: r.high, low: r.low, volume: r.volume }));
 }
 
-const cachedGetTickerChart = unstable_cache(getTickerChartRaw, ["tickerChart"], {
+const cachedDailyHistory = unstable_cache(getDailyHistoryRaw, ["dailyHistory"], {
   revalidate: 60 * 60 * 24,
 });
 
@@ -35,13 +43,39 @@ const cachedGetTickerChart = unstable_cache(getTickerChartRaw, ["tickerChart"], 
 // than throwing (error.tsx boundaries are unreliable in this Next.js setup).
 // The page establishes that the ticker exists before this is called, so
 // there's no need to distinguish failure reasons here.
-export async function getTickerChart(symbol: string): Promise<ChartPoint[] | null> {
+export async function getDailyHistory(symbol: string): Promise<DailyBar[] | null> {
   try {
-    const points = await cachedGetTickerChart(symbol);
-    return points.length > 0 ? points : null;
+    const bars = await cachedDailyHistory(symbol.toUpperCase());
+    return bars.length > 0 ? bars : null;
   } catch {
     return null;
   }
+}
+
+// The chart's daily line: the last year of closes.
+export function toChartPoints(bars: DailyBar[]): ChartPoint[] {
+  return bars.slice(-ONE_YEAR_TRADING_DAYS).map((b) => ({ date: b.date, close: b.close }));
+}
+
+// Highest high and lowest low over the last year of sessions, stretched to
+// include today's price when it has moved past either end since the close.
+export function range52Week(bars: DailyBar[], price: number | null): { low: number; high: number } | null {
+  const year = bars.slice(-ONE_YEAR_TRADING_DAYS);
+  if (year.length === 0) return null;
+  let low = Math.min(...year.map((b) => b.low || b.close));
+  let high = Math.max(...year.map((b) => b.high || b.close));
+  if (price != null && price > 0) {
+    low = Math.min(low, price);
+    high = Math.max(high, price);
+  }
+  return { low, high };
+}
+
+// Average shares traded a day over the last three months (~63 sessions).
+export function averageVolume(bars: DailyBar[], sessions = 63): number | null {
+  const recent = bars.slice(-sessions).filter((b) => b.volume > 0);
+  if (recent.length < 10) return null;
+  return recent.reduce((sum, b) => sum + b.volume, 0) / recent.length;
 }
 
 // —— The 1D / 1W ranges ——

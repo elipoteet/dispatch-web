@@ -1,118 +1,117 @@
-"use client";
-
-import { useState } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { TickerTape } from "@/components/home/TickerTape";
+import { CompanySearch } from "@/components/company/CompanySearch";
+import { getHomeCards } from "@/lib/research/home";
 
-export default function HomePage() {
-  const router = useRouter();
-  const [ticker, setTicker] = useState("");
+// The front door to the research files (docs/phase-nine.md, "The home page").
+// Search first; then what a file holds; example companies with one fact each
+// from their filings; the tools; and three lines on how the site works.
+// No live prices anywhere on this page.
 
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    const symbol = ticker.trim();
-    router.push(symbol ? `/research/${encodeURIComponent(symbol.toLowerCase())}` : "/research");
-  }
+export const metadata: Metadata = {
+  title: { absolute: "The Dispatch — Free research on every U.S. public company" },
+  description:
+    "A free research file on every U.S. public company, read from its SEC filings: ten years of financials, what stands out, and its price history. No ratings, no price targets.",
+  alternates: { canonical: "/" },
+  openGraph: { url: "/" },
+};
+
+const EXAMPLE = "nvda";
+
+const FILE_SECTIONS: { label: string; text: string; href?: string }[] = [
+  { label: "Overview", text: "What the company does, what stands out in its numbers, and its price.", href: `/research/${EXAMPLE}` },
+  { label: "Financials", text: "Ten years of revenue, profit, margins and cash flow, annual and quarterly.", href: `/research/${EXAMPLE}/financials` },
+  { label: "Valuation", text: "The growth today’s price assumes, worked backward from the market value." },
+  { label: "Earnings", text: "Quarterly results, the next report date, and the company’s own guidance." },
+  { label: "Insiders", text: "Shares bought and sold by executives and directors, from Form 4 filings." },
+  { label: "Filings", text: "Every report, and what changed in the risk factors from one year to the next." },
+];
+
+export default async function HomePage() {
+  const cards = await getHomeCards();
 
   return (
-    <section className="page active" id="page-home">
-      <div className="hero">
-        <div>
-          <div className="hero-label">For Independent Investors</div>
-          <h1>
-            Equity research,
-            <br />
-            written for readers.
-          </h1>
-          <form className="hero-search" role="search" aria-label="Run research on a ticker" onSubmit={handleSearch}>
-            <label htmlFor="heroTickerInput" className="visually-hidden" style={{ position: "absolute", left: "-9999px" }}>
-              Ticker symbol
-            </label>
-            <input
-              id="heroTickerInput"
-              type="text"
-              placeholder="Try a ticker — AAPL, NVDA, SPY…"
-              autoComplete="off"
-              spellCheck={false}
-              value={ticker}
-              onChange={(e) => setTicker(e.target.value)}
-            />
-            <button type="submit">Run Research →</button>
-          </form>
-          <div className="hero-shortcut">
-            Press <span className="kbd">⌘</span> <span className="kbd">K</span> anywhere to search
+    <section className="page active rf" id="page-home">
+      <div className="rf-wrap">
+        <div className="rf-hero">
+          <div className="rf-lbl">Free · from SEC filings · no ratings</div>
+          <h1 className="rf-hero-title">A research file on every U.S. public company.</h1>
+          <p className="rf-hero-lede">
+            Read straight from the reports companies file with the SEC: ten years of financials, what stands out in them, and the
+            price history. Facts to think with, not a verdict to follow.
+          </p>
+          <CompanySearch placeholder="Search a ticker or company name, like NVDA or Costco" />
+        </div>
+
+        <div className="rf-home-section">
+          <div className="rf-lbl">What&rsquo;s in a file</div>
+          <div className="rf-file-grid">
+            {FILE_SECTIONS.map((s) =>
+              s.href ? (
+                <Link key={s.label} href={s.href} className="rf-file-card" prefetch={false}>
+                  <span className="rf-file-name">{s.label}</span>
+                  <span className="rf-file-text">{s.text}</span>
+                  <span className="rf-lbl rf-file-cta">See NVIDIA&rsquo;s →</span>
+                </Link>
+              ) : (
+                <div key={s.label} className="rf-file-card is-coming">
+                  <span className="rf-file-name">{s.label}</span>
+                  <span className="rf-file-text">{s.text}</span>
+                  <span className="rf-lbl rf-file-cta">Coming</span>
+                </div>
+              ),
+            )}
           </div>
         </div>
-        <div className="hero-lede">
-          Enter any U.S.-listed ticker and receive a structured research brief — technicals,
-          fundamentals, sentiment, risks, catalysts — composed from real-time data.
-          No black boxes. No algorithmic trading signals dressed as insight. Just the work a
-          thoughtful analyst would do, delivered in seconds.
-        </div>
-      </div>
 
-      <TickerTape />
-
-      <div className="features-head">
-        <div className="label">The Dispatch Method</div>
-        <h2>Three dimensions. One coherent view.</h2>
-      </div>
-
-      <div className="features">
-        <div className="feature">
-          <div className="feature-num">№ 01 · FUNDAMENTALS</div>
-          <h3>The business underneath the ticker.</h3>
-          <p>
-            Market cap, P/E, profit margin, debt ratios, 52-week structure. Pulled live, labeled
-            honestly. We look at growth, profitability, and balance-sheet durability — not
-            momentum dressed up as quality.
-          </p>
+        <div className="rf-home-section">
+          <div className="rf-lbl">Start with a company</div>
+          <div className="rf-company-grid">
+            {cards.map((c) => (
+              // No prefetch: prefetching a company page loads its data, so six
+              // cards in view would cost up to six Twelve Data requests a day
+              // from visits that never click. Found when a screenshot of this
+              // page fetched and stored Apple and Costco without a click.
+              <Link key={c.symbol} href={`/research/${c.slug}`} className="rf-company-card" prefetch={false}>
+                <span className="rf-company-head">
+                  <span className="rf-company-name">{c.name}</span>
+                  <span className="rf-ticker">{c.symbol}</span>
+                </span>
+                {c.sector && <span className="rf-lbl">{c.sector}</span>}
+                {c.fact && <span className="rf-company-fact">{c.fact}</span>}
+              </Link>
+            ))}
+          </div>
         </div>
-        <div className="feature">
-          <div className="feature-num">№ 02 · TECHNICALS</div>
-          <h3>The tape, read carefully.</h3>
-          <p>
-            Moving-average structure, RSI, momentum, drawdown, volatility. Every indicator shown
-            is one you can verify. We tell you what the chart says, not what we wish it said.
-          </p>
-        </div>
-        <div className="feature">
-          <div className="feature-num">№ 03 · SENTIMENT</div>
-          <h3>The crowd, without the noise.</h3>
-          <p>
-            Analyst recommendations, consensus shifts, news flow, recent catalysts. We synthesize
-            what Wall Street is saying — then remind you they&rsquo;re often wrong together.
-          </p>
-        </div>
-      </div>
 
-      <div className="time-machine-teaser">
-        <div className="label">Not Just a Snapshot</div>
-        <h2>Go back and read yesterday&rsquo;s memo, today.</h2>
-        <p>
-          The Time Machine pulls up any past date and rebuilds the memo as it would have read
-          then — technicals and sentiment recalculated from that day&rsquo;s data, fundamentals
-          held back rather than shown stale. Then compare it straight to the live memo, side by
-          side.
-        </p>
-        <Link href="/research" className="tm-link">
-          Try the Time Machine →
-        </Link>
-      </div>
-
-      <div className="cta-row">
-        <div className="cta-text">
-          <div className="label">Begin Your Research</div>
-          <h2>
-            Look up your first ticker.
-            <br />
-            It takes five seconds.
-          </h2>
+        <div className="rf-home-section">
+          <div className="rf-lbl">Tools</div>
+          <div className="rf-tools">
+            <Link href="/portfolio" className="rf-tool">
+              <span className="rf-file-name">Portfolio simulator</span>
+              <span className="rf-file-text">Practice with paper money, in an amount you choose. Trade from any company&rsquo;s page.</span>
+            </Link>
+            <div className="rf-tool is-coming">
+              <span className="rf-file-name">Screener</span>
+              <span className="rf-file-text">Filter every filer by growth, margins, cash flow and size.</span>
+              <span className="rf-lbl rf-file-cta">Coming</span>
+            </div>
+            <div className="rf-tool is-coming">
+              <span className="rf-file-name">Compare</span>
+              <span className="rf-file-text">Two companies&rsquo; files side by side.</span>
+              <span className="rf-lbl rf-file-cta">Coming</span>
+            </div>
+          </div>
         </div>
-        <button className="cta-btn" onClick={() => router.push("/research")} type="button">
-          Open Research Desk<span className="arrow">→</span>
-        </button>
+
+        <div className="rf-home-section rf-how">
+          <div className="rf-lbl">How it works</div>
+          <ul className="rf-how-list">
+            <li>The numbers come from companies&rsquo; own filings with the SEC, and every page links back to the source.</li>
+            <li>Nothing here rates a stock, scores it or sets a price target. The judgment stays yours.</li>
+            <li>It&rsquo;s free, with no account needed to read anything.</li>
+          </ul>
+        </div>
       </div>
     </section>
   );

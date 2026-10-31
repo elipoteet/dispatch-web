@@ -142,19 +142,34 @@ export async function saveFinancials(cik: string, rows: FinancialRow[]): Promise
   return written;
 }
 
+// PostgREST returns at most 1,000 rows per request and says nothing when it
+// stops there. NVIDIA alone had 887 rows before stage 2 added a line item, so a
+// single unpaged read would soon have dropped its oldest years without a sound.
+// Read in pages until a short page comes back.
+const READ_PAGE = 1000;
+
 export async function getStoredFinancials(
   cik: string,
   options: { lineItems?: LineItem[]; period?: FiscalPeriod } = {},
 ): Promise<FinancialRow[]> {
   const supabase = createPublicClient();
-  let query = supabase.from("sec_financials").select("*").eq("cik", cik);
-  if (options.lineItems?.length) query = query.in("line_item", options.lineItems);
-  if (options.period) query = query.eq("fiscal_period", options.period);
+  const data: FinancialRowDb[] = [];
+  for (let from = 0; ; from += READ_PAGE) {
+    let query = supabase.from("sec_financials").select("*").eq("cik", cik);
+    if (options.lineItems?.length) query = query.in("line_item", options.lineItems);
+    if (options.period) query = query.eq("fiscal_period", options.period);
+    // A stable total order, so pages never overlap or skip a row.
+    const { data: page, error } = await query
+      .order("fiscal_year", { ascending: false })
+      .order("fiscal_period", { ascending: true })
+      .order("line_item", { ascending: true })
+      .range(from, from + READ_PAGE - 1);
+    if (error || !page) return [];
+    data.push(...(page as FinancialRowDb[]));
+    if (page.length < READ_PAGE) break;
+  }
 
-  const { data, error } = await query.order("fiscal_year", { ascending: false });
-  if (error || !data) return [];
-
-  return (data as FinancialRowDb[]).map((r) => ({
+  return data.map((r) => ({
     fiscalYear: r.fiscal_year,
     fiscalPeriod: r.fiscal_period as FiscalPeriod,
     lineItem: r.line_item as LineItem,

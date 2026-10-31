@@ -127,8 +127,8 @@ export function PortfolioDesk() {
               <div className="holdings-empty">
                 <div className="big">No positions yet.</div>
                 <div>
-                  Open a research memo on any ticker and click <strong>Trade</strong> to place your first
-                  paper order.
+                  Open any company&rsquo;s research page and click <strong>Paper trade</strong> to place your
+                  first paper order.
                 </div>
               </div>
             ) : (

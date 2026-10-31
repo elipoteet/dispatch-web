@@ -1,0 +1,320 @@
+/* ============================================================
+   Research file (phase nine, stage 2): /research/[ticker], its tabs, the
+   research search, and the home page. Loaded after globals.css by
+   app/layout.tsx. Prefixed rf- so nothing here can collide with the older
+   styles. Square corners throughout: the brand's rule for research surfaces.
+   Colours come from the theme tokens in globals.css, so light and dark both
+   work without overrides.
+   ============================================================ */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.rf { color: var(--navy); }
+.rf * { border-radius: 0; }
+.rf-wrap { max-width: 1200px; margin: 0 auto; padding: 32px 40px 72px; }
+.rf-narrow { max-width: 760px; padding-top: 72px; }
+.rf-lbl {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.rf-muted { color: var(--muted); }
+.rf-note {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.rf a { color: var(--navy); }
+.rf a:hover { color: var(--gold); }
+.rf .pos { color: var(--green); }
+.rf .neg { color: var(--accent); }
+
+/* —— Header —— */
+.rf-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px 40px; flex-wrap: wrap; }
+.rf-head-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.rf-title-row { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.rf-title { margin: 0; font-size: 40px; line-height: 1.1; font-weight: 700; letter-spacing: -0.02em; color: var(--navy); }
+.rf-ticker { font-family: 'IBM Plex Mono', monospace; font-size: 18px; color: var(--muted); }
+.rf-price-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.rf-price { font-size: 30px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.rf-change { font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-variant-numeric: tabular-nums; }
+.rf-head-side { display: flex; flex-direction: column; gap: 14px; align-items: flex-end; flex: 0 1 380px; min-width: 260px; }
+.rf-range { width: 100%; display: flex; flex-direction: column; gap: 6px; }
+.rf-range-ends { display: flex; justify-content: space-between; gap: 12px; }
+.rf-range-track { position: relative; height: 6px; background: var(--cream-2); }
+.rf-range-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--navy); }
+.rf-range-marker { position: absolute; top: -4px; width: 2px; height: 14px; margin-left: -1px; background: var(--gold); }
+.rf-range-note { text-align: right; }
+.rf-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.rf-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--navy);
+  background: transparent;
+  color: var(--navy);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+}
+.rf-btn-solid { background: var(--navy); color: var(--cream); }
+.rf-btn-solid:hover { background: var(--navy-2); }
+
+/* —— Tabs —— */
+.rf-tabs { margin-top: 28px; border-bottom: 1px solid var(--navy); display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.rf a.rf-tab {
+  font-size: 15px;
+  padding: 12px 16px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  text-decoration: none;
+  color: var(--muted);
+}
+.rf a.rf-tab.is-active { color: var(--navy); font-weight: 600; box-shadow: inset 0 -3px 0 var(--gold); }
+.rf-tab-body { padding-top: 28px; display: flex; flex-direction: column; gap: 32px; }
+.rf-footer-note { margin: 48px 0 0; padding-top: 16px; border-top: 1px solid var(--rule); font-size: 12px; color: var(--muted); }
+
+/* —— Overview —— */
+.rf-overview-top { display: flex; gap: 40px; flex-wrap: wrap; }
+.rf-brief { flex: 999 1 480px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.rf-brief-text { margin: 0; font-size: 19px; line-height: 1.55; max-width: 660px; }
+.rf-ai-label { margin: 0; font-size: 12px; color: var(--muted); }
+.rf-standout { flex: 1 1 300px; border: 1px solid var(--rule); background: var(--paper); padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.rf-standout-fact { margin: 0; font-size: 14px; line-height: 1.5; padding-bottom: 12px; border-bottom: 1px solid var(--rule); }
+.rf-standout-fact:last-of-type { border-bottom: none; padding-bottom: 0; }
+.rf-standout-foot { font-size: 10px; }
+.rf-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); border-top: 1px solid var(--navy); border-left: 1px solid var(--rule); }
+.rf-stat { padding: 16px 18px; border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); background: var(--paper); display: flex; flex-direction: column; gap: 6px; }
+.rf-stat-value { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.rf-stat-note { font-size: 12px; color: var(--muted); }
+
+/* —— Price chart —— */
+.rf-chart { display: flex; flex-direction: column; gap: 10px; }
+.rf-chart-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rf-ranges { display: flex; gap: 2px; flex-wrap: wrap; }
+.rf-range-btn {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  min-width: 44px;
+  height: 32px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--navy);
+  cursor: pointer;
+}
+.rf-range-btn.is-active { background: var(--navy); color: var(--cream); }
+.rf-chart-frame { position: relative; border: 1px solid var(--rule); background: var(--paper); padding: 16px 84px 32px 16px; }
+.rf-chart-svg { display: block; width: 100%; height: 220px; }
+.rf-line-up, .rf-line-down { stroke: var(--navy); }
+.rf-chart-y { position: absolute; right: 12px; top: 16px; bottom: 32px; display: flex; flex-direction: column; justify-content: space-between; }
+.rf-chart-y span, .rf-chart-x span { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.rf-chart-x { position: absolute; left: 16px; right: 84px; bottom: 8px; display: flex; justify-content: space-between; }
+.rf-chart-pending { height: 220px; border: 1px dashed var(--rule); display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 24px; color: var(--muted); font-size: 14px; }
+
+/* —— Financials —— */
+.rf-fin { display: flex; flex-direction: column; gap: 20px; }
+.rf-fin-controls { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.rf-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.rf .rf-chip {
+  font: inherit;
+  font-size: 14px;
+  height: 40px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--navy);
+  background: transparent;
+  color: var(--navy);
+  cursor: pointer;
+  text-decoration: none;
+}
+.rf .rf-chip.is-active { background: var(--navy); color: var(--cream); }
+.rf-toggle { display: flex; gap: 4px; }
+.rf-toggle-btn {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: var(--navy);
+  cursor: pointer;
+}
+.rf-toggle-btn.is-active { background: var(--navy); color: var(--cream); border-color: var(--navy); }
+.rf-toggle-btn:disabled { opacity: 0.4; cursor: default; }
+.rf-panel { border: 1px solid var(--rule); background: var(--paper); padding: 24px 24px 16px; }
+.rf-panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 28px; }
+.rf-panel-title { font-size: 18px; font-weight: 600; }
+.rf-bars-scroll { overflow-x: auto; }
+.rf-bars { display: flex; gap: 10px; min-width: 560px; }
+.rf-bar-col { flex: 1 0 40px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.rf-bar-plot { position: relative; width: 100%; height: 220px; border-bottom: 1px solid var(--navy); }
+.rf-bar { position: absolute; left: 50%; transform: translateX(-50%); width: 100%; max-width: 56px; background: var(--navy); }
+.rf-bar.is-latest { background: var(--gold); }
+.rf-bar.is-negative { background: var(--accent); }
+.rf-bar-val {
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.rf-bar-year { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.08em; color: var(--muted); white-space: nowrap; }
+.rf-table-scroll { overflow-x: auto; border: 1px solid var(--rule); background: var(--paper); }
+.rf-table-scroll:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.rf-table { border-collapse: collapse; width: 100%; min-width: 860px; font-size: 14px; }
+.rf-table th, .rf-table td { padding: 10px 12px; border-bottom: 1px solid var(--rule); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rf-table thead th {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  font-weight: 500;
+  color: var(--muted);
+  border-bottom: 1px solid var(--navy);
+}
+.rf-table th:first-child { text-align: left; position: sticky; left: 0; background: var(--paper); font-weight: 500; box-shadow: 1px 0 0 var(--rule); }
+/* Section headings span the whole row; keep their words in view while the
+   figures scroll sideways underneath. */
+.rf-table .rf-table-section th { position: static; box-shadow: none; }
+.rf-table .rf-table-section th span { position: sticky; left: 12px; }
+.rf-table tr.is-emphasis th, .rf-table tr.is-emphasis td { font-weight: 600; }
+.rf-table tr.is-ratio th, .rf-table tr.is-ratio td { color: var(--muted); font-size: 13px; }
+.rf-table tr.is-ratio td.neg { color: var(--accent); }
+.rf-table td.neg { color: var(--accent); }
+.rf-table .rf-table-section th {
+  text-align: left;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--cream);
+  padding-top: 14px;
+}
+.rf-mark { font-size: 10px; margin-left: 2px; color: var(--gold); cursor: help; }
+.rf-sourceline { display: flex; flex-direction: column; gap: 4px; }
+.rf-sourceline p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+/* —— Search —— */
+.rf-search { position: relative; display: flex; gap: 8px; flex-wrap: wrap; max-width: 640px; }
+.rf-search-box {
+  flex: 1 1 280px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--navy);
+  background: var(--paper);
+  color: var(--muted);
+}
+.rf-search-box input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 16px; color: var(--navy); }
+.rf-search-box:focus-within { outline: 2px solid var(--gold); outline-offset: 1px; }
+.rf-search-go { height: 48px; }
+.rf-search-list {
+  position: absolute;
+  top: 52px;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--navy);
+  background: var(--paper);
+  box-shadow: 0 8px 24px rgba(13, 27, 42, 0.12);
+}
+.rf-search-item {
+  width: 100%;
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+  padding: 12px 14px;
+  min-height: 44px;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  background: transparent;
+  color: var(--navy);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.rf-search-item:hover, .rf-search-item.is-active { background: var(--cream); }
+.rf-search-sym { font-family: 'IBM Plex Mono', monospace; font-weight: 600; min-width: 64px; }
+.rf-search-name { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rf-page-title { margin: 12px 0 0; font-size: 40px; line-height: 1.1; font-weight: 700; letter-spacing: -0.02em; }
+.rf-page-lede { margin: 16px 0 28px; font-size: 17px; line-height: 1.55; color: var(--muted); max-width: 620px; }
+.rf-quick { margin-top: 20px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* —— Home —— */
+.rf-hero { padding: 48px 0 56px; border-bottom: 1px solid var(--navy); display: flex; flex-direction: column; gap: 18px; }
+.rf-hero-title { margin: 0; font-size: 52px; line-height: 1.05; font-weight: 700; letter-spacing: -0.03em; max-width: 820px; }
+.rf-hero-lede { margin: 0 0 8px; font-size: 18px; line-height: 1.6; color: var(--muted); max-width: 680px; }
+.rf-home-section { padding-top: 44px; display: flex; flex-direction: column; gap: 16px; }
+.rf-file-grid, .rf-tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); border-top: 1px solid var(--navy); border-left: 1px solid var(--rule); }
+.rf .rf-file-card, .rf .rf-tool {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px 20px;
+  border-right: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper);
+  text-decoration: none;
+  color: var(--navy);
+}
+.rf a.rf-file-card:hover, .rf a.rf-tool:hover, .rf a.rf-company-card:hover { background: var(--cream-2); color: var(--navy); }
+.rf .rf-file-card.is-coming, .rf .rf-tool.is-coming { background: transparent; }
+.rf-file-card.is-coming .rf-file-name, .rf-tool.is-coming .rf-file-name { color: var(--muted); }
+.rf-file-name { font-size: 16px; font-weight: 600; }
+.rf-file-text { font-size: 14px; line-height: 1.5; color: var(--muted); }
+.rf-file-cta { margin-top: auto; font-size: 10px; }
+.rf-company-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.rf .rf-company-card { display: flex; flex-direction: column; gap: 8px; padding: 18px 20px; border: 1px solid var(--rule); background: var(--paper); text-decoration: none; color: var(--navy); }
+.rf-company-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.rf-company-name { font-size: 17px; font-weight: 600; }
+.rf-company-card .rf-ticker { font-size: 13px; }
+.rf-company-fact { font-size: 14px; line-height: 1.5; padding-top: 8px; border-top: 1px solid var(--rule); }
+.rf-how-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.55; max-width: 720px; }
+
+@media (max-width: 900px) {
+  .rf-wrap { padding: 24px 20px 56px; }
+  .rf-narrow { padding-top: 40px; }
+  .rf-title { font-size: 30px; }
+  .rf-price { font-size: 26px; }
+  .rf-head-side { align-items: stretch; flex-basis: 100%; min-width: 0; }
+  .rf-actions { justify-content: flex-start; }
+  .rf-hero { padding: 24px 0 40px; }
+  .rf-hero-title { font-size: 34px; }
+  .rf-page-title { font-size: 30px; }
+  .rf-chart-frame { padding-right: 16px; padding-bottom: 32px; }
+  .rf-chart-y { position: static; flex-direction: row; justify-content: space-between; margin-top: 8px; }
+  .rf-chart-x { right: 16px; }
+  .rf-chart-svg { height: 180px; }
+  .rf-company-grid { grid-template-columns: 1fr; }
+  .rf-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rf-file-grid, .rf-tools { grid-template-columns: 1fr; }
+}

@@ -153,7 +153,10 @@ export async function getTickerMap(): Promise<Record<string, CompanyRef> | null>
 export async function lookupCik(symbol: string): Promise<CompanyRef | null> {
   const map = await getTickerMap();
   if (!map) return null;
-  return map[symbol.trim().toUpperCase()] ?? null;
+  const s = symbol.trim().toUpperCase();
+  // The SEC writes share classes with a hyphen (BRK-B) where the site and the
+  // price providers use a dot (BRK.B). Checked against company_tickers.json.
+  return map[s] ?? map[s.replace(/\./g, "-")] ?? null;
 }
 
 // —— Submissions ——
@@ -174,13 +177,67 @@ export type Submissions = {
   sic: string;
   sicDescription: string;
   fiscalYearEnd: string;
+  // Parallel arrays: NVIDIA is tickers ["NVDA"], exchanges ["Nasdaq"].
+  tickers?: string[];
+  exchanges?: (string | null)[];
+  // "operating" for companies; "other" for funds like SPY, which are in the
+  // ticker file but file no 10-Ks and have no company facts.
+  entityType?: string;
   category?: string;
   filings: { recent: SubmissionsFilings; files?: unknown[] };
 };
 
+// The filing types any part of the research file reads. Everything else is
+// dropped before caching.
+const KEPT_FORMS = new Set([
+  "10-K",
+  "10-K/A",
+  "10-KT",
+  "10-Q",
+  "10-Q/A",
+  "20-F",
+  "20-F/A",
+  "40-F",
+  "8-K",
+  "8-K/A",
+  "4",
+  "4/A",
+  "DEF 14A",
+]);
+
+// The raw submissions file can be far larger than its useful part: JPMorgan's
+// is 5.3MB, almost all of it hundreds of 424B2 prospectus supplements for
+// structured notes. Over the data cache's 2MB ceiling, unstable_cache silently
+// keeps nothing, so every visit re-downloaded it (found in stage 2's server
+// log). Keeping only the fields and filing types we read makes it a few KB.
+export function compactSubmissions(raw: Submissions): Submissions {
+  const r = raw.filings?.recent;
+  const recent: SubmissionsFilings = { accessionNumber: [], filingDate: [], reportDate: [], form: [], primaryDocument: [] };
+  for (let i = 0; i < (r?.form?.length ?? 0); i++) {
+    if (!KEPT_FORMS.has(r.form[i])) continue;
+    recent.accessionNumber.push(r.accessionNumber[i]);
+    recent.filingDate.push(r.filingDate[i]);
+    recent.reportDate.push(r.reportDate[i]);
+    recent.form.push(r.form[i]);
+    recent.primaryDocument.push(r.primaryDocument?.[i] ?? "");
+  }
+  return {
+    cik: raw.cik,
+    name: raw.name,
+    sic: raw.sic,
+    sicDescription: raw.sicDescription,
+    fiscalYearEnd: raw.fiscalYearEnd,
+    tickers: raw.tickers,
+    exchanges: raw.exchanges,
+    entityType: raw.entityType,
+    category: raw.category,
+    filings: { recent },
+  };
+}
+
 async function fetchSubmissionsRaw(cik: string): Promise<Submissions> {
   console.log(`[cache] MISS fetchSubmissions(${cik}) — calling SEC`);
-  return getJson<Submissions>(`https://data.sec.gov/submissions/CIK${padCik(cik)}.json`, `CIK ${cik}`);
+  return compactSubmissions(await getJson<Submissions>(`https://data.sec.gov/submissions/CIK${padCik(cik)}.json`, `CIK ${cik}`));
 }
 
 // Six hours. Filings appear on their own schedule; this only needs to be fresh
@@ -197,7 +254,14 @@ export async function getSubmissions(cik: string): Promise<Submissions | null> {
 
 // The most recent filing of a given form, used to decide whether stored
 // financials are stale without downloading the multi-megabyte facts file.
-export type FilingRef = { accession: string; filed: string; reportDate: string; form: string };
+export type FilingRef = {
+  accession: string;
+  filed: string;
+  reportDate: string;
+  form: string;
+  // The filing's main document, e.g. "nvda-20260125.htm" — what a reader opens.
+  primaryDocument: string;
+};
 
 export function latestFiling(submissions: Submissions, forms: string[]): FilingRef | null {
   const r = submissions.filings?.recent;
@@ -209,9 +273,35 @@ export function latestFiling(submissions: Submissions, forms: string[]): FilingR
       filed: r.filingDate[i],
       reportDate: r.reportDate[i],
       form: r.form[i],
+      primaryDocument: r.primaryDocument?.[i] ?? "",
     };
   }
   return null;
+}
+
+// The public EDGAR address of a filing's main document — the page every
+// "source" link on the research pages points at.
+export function filingDocumentUrl(cik: string, filing: Pick<FilingRef, "accession" | "primaryDocument">): string {
+  const cikNum = String(Number(padCik(cik)));
+  return `https://www.sec.gov/Archives/edgar/data/${cikNum}/${filing.accession.replace(/-/g, "")}/${filing.primaryDocument}`;
+}
+
+// —— A filing's own document ——
+// Used to read a 10-K's Item 1 for the Overview's two-sentence description.
+// Several megabytes for a large company (NVIDIA's fiscal 2026 10-K is mostly
+// inline XBRL markup), so, like company facts, it is never cached raw: the
+// caller extracts the few kilobytes it needs and stores the result.
+export async function fetchFilingDocument(
+  cik: string,
+  filing: Pick<FilingRef, "accession" | "primaryDocument">,
+): Promise<string> {
+  const ua = userAgent();
+  await waitForSlot();
+  const url = filingDocumentUrl(cik, filing);
+  const res = await fetch(url, { headers: { "User-Agent": ua, Accept: "text/html" }, cache: "no-store" });
+  if (res.status === 404) throw new NoSecDataError(`No document at ${url}.`);
+  if (!res.ok) throw new Error(`SEC HTTP ${res.status} for ${url}`);
+  return res.text();
 }
 
 // —— Company facts ——

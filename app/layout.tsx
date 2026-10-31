@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./research-file.css";
 import { createClient } from "@/lib/supabase/server";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { AuthModalProvider } from "@/components/auth/AuthModalContext";
@@ -14,7 +15,7 @@ import { Footer } from "@/components/layout/Footer";
 
 const SITE_NAME = "The Dispatch";
 const SITE_DESCRIPTION =
-  "A full research memo on any U.S. stock in five seconds — sourced, plainly explained, and written to be read.";
+  "A free research file on every U.S. public company, read from its SEC filings: ten years of financials, what stands out, and its price history. No ratings, no price targets.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.dispatchresearch.com"),

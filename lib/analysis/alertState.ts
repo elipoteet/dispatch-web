@@ -1,7 +1,6 @@
 // Alerts, v1 — free for every signed-in user. Pure decision logic for the nightly cron job
-// (app/api/cron/alerts/route.ts). No I/O here, same split as
-// compare.ts/fundamentalsChange.ts: the cron route does the fetching/DB
-// work and calls into these functions to decide what changed.
+// (app/api/cron/alerts/route.ts). No I/O here: the cron route does the
+// fetching/DB work and calls into these functions to decide what changed.
 
 export type RsiState = "overbought" | "neutral" | "oversold";
 

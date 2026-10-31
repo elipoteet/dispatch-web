@@ -73,8 +73,8 @@ export default async function Image() {
             lineHeight: 1.4,
           }}
         >
-          A full research memo on any U.S. stock in five seconds — sourced, plainly explained, and
-          written to be read.
+          A free research file on every U.S. public company, read from its SEC filings. No ratings,
+          no price targets.
         </div>
       </div>
     ),

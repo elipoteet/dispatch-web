@@ -305,6 +305,96 @@ export async function fetchFinnhubQuote(symbol: string): Promise<number | null> 
   return data.c;
 }
 
+// —— Finnhub: the research page header (phase nine, stage 2) ——
+// Price, day change and company profile for /research/[ticker]. Finnhub, not
+// Twelve Data, for the same reason as fetchLatestQuote: a header loads on every
+// visit, and Twelve Data's 8-per-minute allowance is kept for price history.
+
+export type QuoteSnapshot = {
+  price: number;
+  change: number;
+  changePct: number;
+  previousClose: number;
+  // Unix seconds of the last trade Finnhub saw.
+  asOf: number;
+};
+
+async function fetchQuoteSnapshotRaw(symbol: string): Promise<QuoteSnapshot | null> {
+  const data = await fh<{ c: number; d: number | null; dp: number | null; pc: number; t: number }>("quote", {
+    symbol: symbol.toUpperCase(),
+  });
+  // No answer at all is a failed request: throw, so the cache keeps nothing and
+  // the next visit asks again. Zeros are Finnhub's answer for an unknown
+  // symbol, which is worth remembering.
+  if (!data) throw new Error("Finnhub quote request failed");
+  if (typeof data.c !== "number" || data.c <= 0) return null;
+  const previousClose = typeof data.pc === "number" && data.pc > 0 ? data.pc : data.c;
+  return {
+    price: data.c,
+    change: data.d ?? data.c - previousClose,
+    changePct: data.dp ?? ((data.c - previousClose) / previousClose) * 100,
+    previousClose,
+    asOf: data.t,
+  };
+}
+
+// One minute: fresh enough for a page header, and it keeps a busy ticker page
+// at one Finnhub call a minute however many people have it open.
+const cachedQuoteSnapshot = unstable_cache(fetchQuoteSnapshotRaw, ["quoteSnapshot"], { revalidate: 60 });
+
+export async function fetchQuoteSnapshot(symbol: string): Promise<QuoteSnapshot | null> {
+  if (!process.env.FINNHUB_API_KEY) return null;
+  try {
+    return await cachedQuoteSnapshot(symbol.toUpperCase());
+  } catch {
+    return null;
+  }
+}
+
+export type CompanyProfile = {
+  name: string | null;
+  exchange: string | null;
+  industry: string | null;
+  // Finnhub reports both in millions.
+  marketCapMillions: number | null;
+  sharesOutstandingMillions: number | null;
+};
+
+async function fetchCompanyProfileRaw(symbol: string): Promise<CompanyProfile | null> {
+  const data = await fh<{
+    name?: string;
+    exchange?: string;
+    finnhubIndustry?: string;
+    marketCapitalization?: number;
+    shareOutstanding?: number;
+  }>("stock/profile2", { symbol: symbol.toUpperCase() });
+  // A failed request throws so a day-long cache never remembers an outage as
+  // "no profile". An empty object is Finnhub's real answer for a symbol it has
+  // no profile for (ETFs among them), and that is worth caching.
+  if (!data) throw new Error("Finnhub profile request failed");
+  if (!data.name) return null;
+  return {
+    name: data.name ?? null,
+    exchange: data.exchange ?? null,
+    industry: data.finnhubIndustry || null,
+    marketCapMillions: typeof data.marketCapitalization === "number" ? data.marketCapitalization : null,
+    sharesOutstandingMillions: typeof data.shareOutstanding === "number" ? data.shareOutstanding : null,
+  };
+}
+
+const cachedCompanyProfile = unstable_cache(fetchCompanyProfileRaw, ["companyProfile"], {
+  revalidate: 60 * 60 * 24,
+});
+
+export async function fetchCompanyProfile(symbol: string): Promise<CompanyProfile | null> {
+  if (!process.env.FINNHUB_API_KEY) return null;
+  try {
+    return await cachedCompanyProfile(symbol.toUpperCase());
+  } catch {
+    return null;
+  }
+}
+
 // Day-over-day change for the homepage ticker tape (app/api/tape/route.ts)
 // — deliberately Finnhub, not Twelve Data. The tape only ever needs
 // today's price and yesterday's close, both of which the quote endpoint
