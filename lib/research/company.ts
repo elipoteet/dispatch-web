@@ -8,9 +8,16 @@
 // minute, the profile for a day.
 
 import { cache } from "react";
-import { getSubmissions, latestFiling, lookupCik } from "@/lib/sec/client";
+import { earningsReleaseDates, getSubmissions, latestFiling, lookupCik } from "@/lib/sec/client";
 import { getCompanyFinancials, NoFinancialsError, noFinancialsMessage, type CompanyFinancials } from "@/lib/sec";
-import { fetchCompanyProfile, fetchQuoteSnapshot, type CompanyProfile, type QuoteSnapshot } from "@/lib/providers";
+import {
+  fetchCompanyProfile,
+  fetchNextEarnings,
+  fetchQuoteSnapshot,
+  type CompanyProfile,
+  type NextEarnings,
+  type QuoteSnapshot,
+} from "@/lib/providers";
 import { averageVolume, getDailyHistory, range52Week, type DailyBar } from "@/lib/analysis/tickerChart";
 import { titleCaseName } from "@/lib/research/format";
 
@@ -34,6 +41,10 @@ export type CompanyPage = {
   daily: DailyBar[] | null;
   range52: { low: number; high: number } | null;
   avgVolume: number | null;
+  // Past earnings dates from the company's own 8-K filings, and how far back
+  // that list is complete; the next one from Finnhub's calendar.
+  earnings: { dates: string[]; completeFrom: string | null };
+  nextEarnings: NextEarnings | null;
 };
 
 // Finnhub's exchange names are long ("NASDAQ NMS - GLOBAL MARKET"); the SEC's
@@ -64,7 +75,7 @@ export const loadCompanyPage = cache(async (symbolRaw: string): Promise<CompanyP
 
   let financials: CompanyFinancials | null = null;
   let financialsUnavailable: string | null = null;
-  const [financialsResult, daily] = await Promise.all([
+  const [financialsResult, daily, nextEarnings] = await Promise.all([
     filesReports
       ? getCompanyFinancials(symbol).catch((err: unknown) => {
           if (err instanceof NoFinancialsError) return err;
@@ -75,6 +86,7 @@ export const loadCompanyPage = cache(async (symbolRaw: string): Promise<CompanyP
         })
       : Promise.resolve(null),
     getDailyHistory(symbol),
+    filesReports ? fetchNextEarnings(symbol) : Promise.resolve(null),
   ]);
   const name = profile?.name ?? (submissions?.name ? titleCaseName(submissions.name) : ref ? titleCaseName(ref.name) : symbol);
 
@@ -98,5 +110,7 @@ export const loadCompanyPage = cache(async (symbolRaw: string): Promise<CompanyP
     daily,
     range52: daily ? range52Week(daily, quote?.price ?? null) : null,
     avgVolume: daily ? averageVolume(daily) : null,
+    earnings: submissions && filesReports ? earningsReleaseDates(submissions) : { dates: [], completeFrom: null },
+    nextEarnings,
   };
 });

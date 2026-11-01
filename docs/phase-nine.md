@@ -120,6 +120,11 @@ The eight ranges, sources and caches as per the budget table. Mark earnings date
 
 Done means: in a fresh incognito window, click every range on NVDA and confirm the network log shows no more Twelve Data calls than the table allows. Force the limiter to "used up" and confirm the fallback renders.
 
+**As built (1 November).** Recap in `docs/phase-nine-stage-3-recap.md`.
+- One daily request now covers 1M through 10Y: Twelve Data's `outputsize=5000` returns about twenty years. 1D and 1W share one 5-minute request. MAX is one monthly request. That's three requests at most per company per day, against the table's four.
+- Finnhub's free calendar has no past earnings dates, only upcoming ones. Past dates come from the company's 8-K filings under Item 2.02, and the next date from Finnhub. Markers appear on 3M, 1Y and 5Y, but only where the SEC dates reach back to the range's start. 10Y and MAX get none: too dense, and the SEC's recent-filings index doesn't reach that far for most companies.
+- Not yet confirmed: how delayed the free plan's intraday prices are. That needs a weekday session. Until then the 1D chart states the time its data runs through.
+
 ### Stage 4. Valuation
 
 - What's priced in. Base free cash flow is the trailing four quarters from SEC. Market value is price times shares outstanding (`dei:EntityCommonStockSharesOutstanding`, cross-checked against Finnhub's market cap). Discount the next N years of free cash flow growing at g, plus a terminal value growing at the terminal rate. Solve for g by bisection so the total equals market value. Inputs: required return from 7% to 13% (default 10%), terminal growth from 1% to 4% (default 3%), and 5, 10 or 15 years (default 10). Output a sentence: "To justify today's price, free cash flow has to grow about X% a year for N years," plus the implied year-N free cash flow. If trailing free cash flow is zero or negative, the calculator doesn't render; it explains why in one line. Never output a per-share value, an upside or a downside.

@@ -1,39 +1,42 @@
 import { unstable_cache } from "next/cache";
-import { fetchPrices, fetchIntradayPrices } from "@/lib/providers";
-import { takeRecentSessions } from "@/lib/analysis/chartRanges";
+import {
+  fetchIntradayPrices,
+  fetchLongDailyPrices,
+  fetchMonthlyPrices,
+  NoTickerDataError,
+  TwelveDataBusyError,
+} from "@/lib/providers";
+import { intradayCacheBucket, takeRecentSessions, toWeekly } from "@/lib/analysis/chartRanges";
 import type { ChartPoint } from "@/lib/analysis/chartRanges";
 
-// The ticker page's daily price line (the 1M and 1Y ranges) — expensive
-// because it's backed by Twelve Data, whose free tier allows eight
-// requests a minute across the whole site. fetchPrices itself is already
-// wrapped in unstable_cache, but at a 5-minute TTL (LIVE_TTL_S in
-// lib/providers.ts) — right for quotes, far too short for "one Twelve Data
-// request per ticker per day." Wrapping *this* function in its own,
-// separately-keyed unstable_cache with a 24-hour revalidate means Next's
-// Data Cache only calls fetchPrices (and therefore only calls Twelve Data)
-// once per symbol per day, regardless of how many times this page loads —
-// daily closes don't change more often than that, so a day-old chart is
-// correct, not a compromise.
+// The research page's price history. Everything here is about spending as few
+// of Twelve Data's eight requests a minute as possible (phase nine, stage 3):
+//
+//   daily   ~20 years in one request, cached a day. Serves 1M, 3M, 1Y, 5Y and
+//           10Y, the header's 52-week range and the average-volume stat.
+//   intraday  5-minute bars for five sessions in one request, fetched only when
+//           1D or 1W is clicked, cached per five minutes while the market is
+//           open and per half-day while it's closed.
+//   monthly the whole listed history in one request, fetched only when MAX is
+//           clicked, cached a day.
+//
+// So a visitor who clicks every range on a company nobody has opened today
+// costs three requests, and the next visitor costs none.
 
-// ~252 trading days is one year — fetchPrices returns roughly five years
-// (outputsize=1300), so slice to the most recent year rather than pulling
-// the multi-year history the ticker page doesn't show.
 const ONE_YEAR_TRADING_DAYS = 252;
+const TEN_YEARS_OF_WEEKS = 522;
 
-// —— The daily history behind the research page ——
-// One compact copy of the ~5-year daily series, cached for a day: the chart's
-// daily ranges, the header's 52-week range and the average-volume key stat all
-// read from it, so a whole research page costs at most one Twelve Data request
-// per company per day. Compact on purpose (no open price), so the cached entry
-// stays well inside the data cache's ~2MB limit.
+// —— Daily history ——
+// Compact on purpose (no open price): twenty years of daily bars cached as JSON
+// is ~350KB, well inside the data cache's ~2MB limit.
 export type DailyBar = { date: string; close: number; high: number; low: number; volume: number };
 
 async function getDailyHistoryRaw(symbol: string): Promise<DailyBar[]> {
-  const rows = await fetchPrices(symbol);
+  const rows = await fetchLongDailyPrices(symbol);
   return rows.map((r) => ({ date: r.date, close: r.close, high: r.high, low: r.low, volume: r.volume }));
 }
 
-const cachedDailyHistory = unstable_cache(getDailyHistoryRaw, ["dailyHistory"], {
+const cachedDailyHistory = unstable_cache(getDailyHistoryRaw, ["dailyHistory", "20y"], {
   revalidate: 60 * 60 * 24,
 });
 
@@ -52,9 +55,14 @@ export async function getDailyHistory(symbol: string): Promise<DailyBar[] | null
   }
 }
 
-// The chart's daily line: the last year of closes.
-export function toChartPoints(bars: DailyBar[]): ChartPoint[] {
-  return bars.slice(-ONE_YEAR_TRADING_DAYS).map((b) => ({ date: b.date, close: b.close }));
+// What the page ships to the chart: the last year of daily closes (1M, 3M,
+// 1Y) and up to ten years of weekly closes (5Y, 10Y). About 775 points in all.
+export function chartSeries(bars: DailyBar[]): { daily: ChartPoint[]; weekly: ChartPoint[] } {
+  const closes = bars.map((b) => ({ date: b.date, close: b.close }));
+  return {
+    daily: closes.slice(-ONE_YEAR_TRADING_DAYS),
+    weekly: toWeekly(closes).slice(-TEN_YEARS_OF_WEEKS),
+  };
 }
 
 // Highest high and lowest low over the last year of sessions, stretched to
@@ -78,28 +86,49 @@ export function averageVolume(bars: DailyBar[], sessions = 63): number | null {
   return recent.reduce((sum, b) => sum + b.volume, 0) / recent.length;
 }
 
-// —— The 1D / 1W ranges ——
-// The 1M and 1Y ranges are free: both are slices of the daily series above,
-// which the ticker page already fetches once per symbol per day, so switching
-// between them costs nothing. Intraday is the opposite — it is the one range
-// that needs a request Twelve Data charges against the 8-req/min quota, and it
-// cannot be cached for a day because the bars move all session.
-//
-// So it is never fetched during the page render. The page ships 1Y (and
-// therefore 1M) with the HTML, and the browser asks for intraday only if a
-// visitor actually clicks 1D or 1W — once, since one response covers both.
-// A ticker nobody charts intraday costs exactly what it costs today.
-const ONE_WEEK_SESSIONS = 5;
+// —— On-demand ranges: 1D/1W and MAX ——
+// Both answer the browser with points, or with `busy` when Twelve Data's
+// allowance is used up, so the chart can say "Updating, try again in a minute"
+// instead of "unavailable".
+export type OnDemandSeries = { points: ChartPoint[] | null; busy: boolean };
 
-export async function getTickerIntraday(symbol: string): Promise<ChartPoint[] | null> {
+async function onDemand(load: () => Promise<ChartPoint[]>): Promise<OnDemandSeries> {
   try {
-    const rows = await fetchIntradayPrices(symbol);
-    const points = takeRecentSessions(
-      rows.map((r) => ({ date: r.date, close: r.close })),
-      ONE_WEEK_SESSIONS,
-    );
-    return points.length >= 2 ? points : null;
-  } catch {
-    return null;
+    const points = await load();
+    return { points: points.length >= 2 ? points : null, busy: false };
+  } catch (err) {
+    if (err instanceof TwelveDataBusyError) return { points: null, busy: true };
+    if (!(err instanceof NoTickerDataError)) console.error("[chart]", err instanceof Error ? err.message : err);
+    return { points: null, busy: false };
   }
+}
+
+const FIVE_SESSIONS = 5;
+
+// The bucket is an argument only so it becomes part of the cache key: a new
+// five-minute window while the market is open is a new entry, a closed market
+// reuses one. Entries expire after a day so old windows don't pile up.
+async function getIntradayRaw(_bucket: string, symbol: string): Promise<ChartPoint[]> {
+  const rows = await fetchIntradayPrices(symbol);
+  return takeRecentSessions(
+    rows.map((r) => ({ date: r.date, close: r.close })),
+    FIVE_SESSIONS,
+  );
+}
+
+const cachedIntraday = unstable_cache(getIntradayRaw, ["intraday", "5min"], { revalidate: 60 * 60 * 24 });
+
+export async function getTickerIntraday(symbol: string, now = new Date()): Promise<OnDemandSeries> {
+  return onDemand(() => cachedIntraday(intradayCacheBucket(now), symbol.toUpperCase()));
+}
+
+async function getMonthlyRaw(symbol: string): Promise<ChartPoint[]> {
+  const rows = await fetchMonthlyPrices(symbol);
+  return rows.map((r) => ({ date: r.date, close: r.close }));
+}
+
+const cachedMonthly = unstable_cache(getMonthlyRaw, ["monthly"], { revalidate: 60 * 60 * 24 });
+
+export async function getTickerMonthly(symbol: string): Promise<OnDemandSeries> {
+  return onDemand(() => cachedMonthly(symbol.toUpperCase()));
 }

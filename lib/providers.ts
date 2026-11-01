@@ -92,19 +92,52 @@ export class NoTickerDataError extends Error {}
 const LIVE_TTL_S = 5 * 60; // live quotes/fundamentals/news — short, prices move
 const HISTORICAL_TTL_S = false; // Time Machine news — a past date's news never changes
 
-// —— Twelve Data: price history ——
-// (The original also had a Stooq fallback for visitors without a Twelve Data
-// key, routed through a CORS proxy since it ran in the browser. Stooq now
-// serves a JS proof-of-work challenge instead of raw CSV to non-browser
-// clients, so that path no longer returns usable data. Tiingo now fills
-// that fallback role instead — see fetchPricesTiingo below.)
-// outputsize=1300 is a fixed ~5-year window for every visitor — the site
-// has no paid tier, so there's no reason to make this configurable.
-async function fetchPricesTwelveData(symbol: string): Promise<PriceRow[]> {
+// —— Twelve Data's eight requests a minute (phase nine, stage 3) ——
+// Every Twelve Data request goes through twelveDataSeries, which counts them.
+// The free plan allows 8 a minute for the whole site; past that it answers
+// 429. Two guards:
+//   - a count per calendar minute, stopping at 7 so one is always left for a
+//     visitor whose request is already in flight on another instance;
+//   - a 429 from Twelve Data itself, which stops every further request from
+//     this instance until the minute turns.
+// Either way the caller gets a TwelveDataBusyError: daily history falls back
+// to Tiingo, and the chart's on-demand ranges show "Updating, try again in a
+// minute". Never an error page (gotcha 1).
+//
+// The count is per server instance, so with several instances running at once
+// it can't see the others. Twelve Data's own 429 is the backstop for that.
+//
+// TWELVE_DATA_FORCE_BUSY=1 makes every request behave as if the allowance were
+// used up, so the fallbacks can be checked without spending it.
+export class TwelveDataBusyError extends Error {}
+
+const TWELVE_DATA_PER_MINUTE = 7;
+let tdMinute = -1;
+let tdUsed = 0;
+let tdBlockedMinute = -1;
+
+function twelveDataBusy(message: string): TwelveDataBusyError {
+  return new TwelveDataBusyError(`Twelve Data busy: ${message}`);
+}
+
+export type TwelveDataValue = Record<string, string>;
+
+async function twelveDataSeries(params: Record<string, string>): Promise<TwelveDataValue[]> {
   const key = process.env.TWELVE_DATA_API_KEY;
   if (!key) throw new Error("Twelve Data API key not configured.");
-  const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=1day&outputsize=1300&apikey=${encodeURIComponent(key)}`;
-  const res = await fetch(url, { cache: "no-store" });
+  if (process.env.TWELVE_DATA_FORCE_BUSY === "1") throw twelveDataBusy("forced by TWELVE_DATA_FORCE_BUSY");
+
+  const minute = Math.floor(Date.now() / 60_000);
+  if (minute === tdBlockedMinute) throw twelveDataBusy("Twelve Data said 429 earlier this minute");
+  if (minute !== tdMinute) {
+    tdMinute = minute;
+    tdUsed = 0;
+  }
+  if (tdUsed >= TWELVE_DATA_PER_MINUTE) throw twelveDataBusy(`${tdUsed} requests already this minute`);
+  tdUsed++;
+
+  const qs = new URLSearchParams({ ...params, apikey: key }).toString();
+  const res = await fetch(`https://api.twelvedata.com/time_series?${qs}`, { cache: "no-store" });
   // Twelve Data returns a real HTTP 404 for an unrecognized symbol, not a
   // 200 with an error body — confirmed empirically while testing the
   // Tiingo fallback (a 429 rate-limit response ALSO sets status:"error" in
@@ -113,13 +146,27 @@ async function fetchPricesTwelveData(symbol: string): Promise<PriceRow[]> {
   // Checked before the generic !res.ok branch so a bad ticker correctly
   // short-circuits instead of wasting a Tiingo fallback call on it.
   if (res.status === 404) throw new NoTickerDataError("No data for this symbol.");
+  if (res.status === 429) {
+    tdBlockedMinute = minute;
+    throw twelveDataBusy("HTTP 429");
+  }
   if (!res.ok) throw new Error("Twelve Data HTTP " + res.status);
   const j = await res.json();
+  // Belt and braces: a rate-limit message in a 200 body is a busy signal, not
+  // "this symbol has no data", which would 404 a real company's page.
+  if (j.code === 429) {
+    tdBlockedMinute = minute;
+    throw twelveDataBusy("429 in the response body");
+  }
   if (j.status === "error" || !j.values) throw new NoTickerDataError(j.message || "No data for this symbol.");
-  const rows: PriceRow[] = j.values
+  return j.values as TwelveDataValue[];
+}
+
+function rowsFromTwelveData(values: TwelveDataValue[]): PriceRow[] {
+  return values
     .slice()
     .reverse()
-    .map((v: Record<string, string>) => ({
+    .map((v) => ({
       date: v.datetime,
       open: +v.open,
       high: +v.high,
@@ -127,7 +174,21 @@ async function fetchPricesTwelveData(symbol: string): Promise<PriceRow[]> {
       close: +v.close,
       volume: +v.volume || 0,
     }))
-    .filter((r: PriceRow) => !isNaN(r.close));
+    .filter((r) => !isNaN(r.close));
+}
+
+// —— Twelve Data: price history ——
+// (The original also had a Stooq fallback for visitors without a Twelve Data
+// key, routed through a CORS proxy since it ran in the browser. Stooq now
+// serves a JS proof-of-work challenge instead of raw CSV to non-browser
+// clients, so that path no longer returns usable data. Tiingo now fills
+// that fallback role instead — see fetchPricesTiingo below.)
+// outputsize=1300 is a ~5-year window, used by the alerts cron's indicators.
+// The research pages ask for 5000 (~20 years) through fetchLongDailyPrices.
+async function fetchPricesTwelveData(symbol: string, outputsize = 1300): Promise<PriceRow[]> {
+  const rows = rowsFromTwelveData(
+    await twelveDataSeries({ symbol, interval: "1day", outputsize: String(outputsize) }),
+  );
   if (rows.length < 10) throw new NoTickerDataError("Not enough price history for this symbol.");
   return rows;
 }
@@ -137,38 +198,63 @@ async function fetchPricesTwelveData(symbol: string): Promise<PriceRow[]> {
 // "no data for this symbol" (see fetchPricesRaw below) — a rate limit,
 // outage, or network error. Tiingo uses hyphens for share classes where
 // Twelve Data uses dots (BRK.B -> BRK-B); normalize before requesting.
-// startDate is bounded to ~5 years back to match the existing outputsize
-// window and to keep payloads small (Tiingo's free tier caps at 1 GB/month
-// of bandwidth — no reason to pull decades of history for a fallback path).
-async function fetchPricesTiingo(symbol: string): Promise<PriceRow[]> {
+// startDate matches the Twelve Data window it stands in for: ~5 years for the
+// alerts cron, ~20 for the research pages' history (fetched at most once per
+// company per day, and only when Twelve Data has failed — Tiingo's free tier
+// caps bandwidth at 1 GB/month).
+async function fetchPricesTiingo(symbol: string, years = 5): Promise<PriceRow[]> {
   const key = process.env.TIINGO_API_KEY;
   if (!key) throw new Error("Tiingo API key not configured.");
   const tiingoSymbol = symbol.replace(/\./g, "-");
   const startDate = new Date();
-  startDate.setFullYear(startDate.getFullYear() - 5);
+  startDate.setFullYear(startDate.getFullYear() - years);
   const url = `https://api.tiingo.com/tiingo/daily/${encodeURIComponent(tiingoSymbol)}/prices?startDate=${startDate.toISOString().slice(0, 10)}&token=${encodeURIComponent(key)}`;
   const res = await fetch(url, { cache: "no-store" });
   if (res.status === 404) throw new NoTickerDataError("No data for this symbol.");
   if (!res.ok) throw new Error("Tiingo HTTP " + res.status);
   const j = await res.json();
   if (!Array.isArray(j)) throw new NoTickerDataError("No data for this symbol.");
-  const rows: PriceRow[] = j
-    .map((v: { date: string; open: number; high: number; low: number; close: number; volume: number }) => ({
-      // Raw (unadjusted) OHLCV, not adjClose/adjOpen/etc — matches what
-      // Twelve Data returns, so the rest of the pipeline (which never
-      // adjusts for splits/dividends either) stays consistent regardless
-      // of which provider actually served a given request.
+  const rows = j
+    .map((v: { date: string; open: number; high: number; low: number; close: number; volume: number; splitFactor?: number }) => ({
       date: String(v.date).slice(0, 10),
       open: v.open,
       high: v.high,
       low: v.low,
       close: v.close,
       volume: v.volume || 0,
+      splitFactor: v.splitFactor ?? 1,
     }))
-    .filter((r) => !isNaN(r.close))
-    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    .filter((r: { close: number }) => !isNaN(r.close))
+    .sort((a: { date: string }, b: { date: string }) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   if (rows.length < 10) throw new NoTickerDataError("Not enough price history for this symbol.");
-  return rows;
+  return splitAdjust(rows);
+}
+
+// Tiingo's open/high/low/close are raw, but Twelve Data's are adjusted for
+// stock splits (not dividends) — checked November 2026 on NVIDIA's 10-for-1
+// split: Twelve Data gives $120.89 for 7 June 2024, Tiingo $1,208.88 with a
+// splitFactor of 10 on 10 June. This file used to say the two matched; they
+// didn't, so a day served by the fallback drew a fake 90% crash at every
+// split. Prices before each split are divided by every split since (and
+// volume multiplied), which is exactly Twelve Data's convention.
+export function splitAdjust(rows: (PriceRow & { splitFactor: number })[]): PriceRow[] {
+  let factor = 1;
+  const out: PriceRow[] = new Array(rows.length);
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const r = rows[i];
+    out[i] = {
+      date: r.date,
+      open: r.open / factor,
+      high: r.high / factor,
+      low: r.low / factor,
+      close: r.close / factor,
+      volume: r.volume * factor,
+    };
+    // A split takes effect at the open of its own day, so it applies to every
+    // day before it.
+    if (r.splitFactor && r.splitFactor !== 1) factor *= r.splitFactor;
+  }
+  return out;
 }
 
 async function fetchPricesRaw(symbol: string): Promise<PriceRow[]> {
@@ -188,6 +274,35 @@ export const fetchPrices = unstable_cache(fetchPricesRaw, ["fetchPrices"], {
   revalidate: LIVE_TTL_S,
 });
 
+// —— The research pages' daily history: ~20 years in one request ——
+// Twelve Data's outputsize tops out at 5000 rows, about twenty years of
+// sessions (NVIDIA back to December 2006, checked November 2026). One request
+// per company per day then serves every daily range on the chart (1M, 3M, 1Y,
+// 5Y, 10Y), the 52-week range and the average volume. The stage 3 budget
+// allowed a second daily request for 10Y; this does without it.
+// Not cached here: lib/analysis/tickerChart.ts caches a compact copy for a day.
+export async function fetchLongDailyPrices(symbol: string): Promise<PriceRow[]> {
+  console.log(`[cache] MISS fetchLongDailyPrices(${symbol}) — calling Twelve Data`);
+  try {
+    return await fetchPricesTwelveData(symbol, 5000);
+  } catch (err) {
+    if (err instanceof NoTickerDataError) throw err;
+    console.log(`[fallback] Twelve Data failed for ${symbol} (${err instanceof Error ? err.message : err}), trying Tiingo`);
+    return await fetchPricesTiingo(symbol, 20);
+  }
+}
+
+// —— MAX: monthly closes for the whole listed history ——
+// One small request (Coca-Cola's monthly series runs back to 1970 in 79KB),
+// made only when a visitor clicks MAX. Cached for a day by the caller. No
+// fallback: busy means the chart says "Updating, try again in a minute".
+export async function fetchMonthlyPrices(symbol: string): Promise<PriceRow[]> {
+  console.log(`[cache] MISS fetchMonthlyPrices(${symbol}) — calling Twelve Data`);
+  const rows = rowsFromTwelveData(await twelveDataSeries({ symbol, interval: "1month", outputsize: "5000" }));
+  if (rows.length < 2) throw new NoTickerDataError("Not enough monthly history for this symbol.");
+  return rows;
+}
+
 // —— Twelve Data: intraday price history (the ticker page's 1D and 1W ranges) ——
 // Twelve Data is the only provider configured here that serves intraday bars
 // for the session in progress. Polygon's free tier has the data but refuses
@@ -196,47 +311,21 @@ export const fetchPrices = unstable_cache(fetchPricesRaw, ["fetchPrices"], {
 // tier is end-of-day only, so neither can back a 1D chart and there is no
 // fallback for this path.
 //
-// 15-minute bars at outputsize=200 is one request covering eight regular-hours
-// sessions (26 bars each, 09:30–15:45, no extended hours) — so a single call
-// serves both the 1D range (the newest session) and the 1W range (the newest
-// five), rather than one request per range. Deliberate, given the 8-req/min
-// ceiling: see getTickerIntraday for why this is only ever fetched on demand.
-const INTRADAY_TTL_S = 15 * 60; // one bar interval — a fresher chart isn't worth the quota
-
-async function fetchIntradayPricesRaw(symbol: string): Promise<PriceRow[]> {
+// 5-minute bars at outputsize=400 is one request covering five full
+// regular-hours sessions (78 bars each, 09:30–15:55 bar starts, no extended
+// hours — checked November 2026) — so a single call serves both the 1D range
+// (the newest session, in 5-minute steps) and the 1W range (the newest five),
+// rather than one request per range. Deliberate, given the 8-a-minute ceiling.
+// Not cached here: lib/analysis/tickerChart.ts caches it per five-minute
+// window while the market is open, and once per closed period otherwise.
+export async function fetchIntradayPrices(symbol: string): Promise<PriceRow[]> {
   console.log(`[cache] MISS fetchIntradayPrices(${symbol}) — calling Twelve Data`);
-  const key = process.env.TWELVE_DATA_API_KEY;
-  if (!key) throw new Error("Twelve Data API key not configured.");
-  const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=15min&outputsize=200&apikey=${encodeURIComponent(key)}`;
-  const res = await fetch(url, { cache: "no-store" });
-  // Same 404-before-!ok ordering as fetchPricesTwelveData, and for the same
-  // reason: a 429 rate-limit body also carries status:"error", so only the
-  // HTTP status separates "bad ticker" from "rate limited".
-  if (res.status === 404) throw new NoTickerDataError("No intraday data for this symbol.");
-  if (!res.ok) throw new Error("Twelve Data HTTP " + res.status);
-  const j = await res.json();
-  if (j.status === "error" || !j.values) throw new NoTickerDataError(j.message || "No intraday data for this symbol.");
-  const rows: PriceRow[] = j.values
-    .slice()
-    .reverse()
-    .map((v: Record<string, string>) => ({
-      // Full "YYYY-MM-DD HH:MM:SS" timestamp, unlike the date-only rows from
-      // fetchPricesTwelveData — callers split on the space to group by session.
-      date: v.datetime,
-      open: +v.open,
-      high: +v.high,
-      low: +v.low,
-      close: +v.close,
-      volume: +v.volume || 0,
-    }))
-    .filter((r: PriceRow) => !isNaN(r.close));
+  // Rows keep Twelve Data's full "YYYY-MM-DD HH:MM:SS" timestamp, unlike the
+  // date-only daily rows — callers split on the space to group by session.
+  const rows = rowsFromTwelveData(await twelveDataSeries({ symbol, interval: "5min", outputsize: "400" }));
   if (rows.length < 2) throw new NoTickerDataError("Not enough intraday history for this symbol.");
   return rows;
 }
-
-export const fetchIntradayPrices = unstable_cache(fetchIntradayPricesRaw, ["fetchIntradayPrices"], {
-  revalidate: INTRADAY_TTL_S,
-});
 
 // Tiingo fallback for the live quote. IMPORTANT: Tiingo's free tier is
 // end-of-day only — this returns the previous close, not a live intraday
@@ -390,6 +479,46 @@ export async function fetchCompanyProfile(symbol: string): Promise<CompanyProfil
   if (!process.env.FINNHUB_API_KEY) return null;
   try {
     return await cachedCompanyProfile(symbol.toUpperCase());
+  } catch {
+    return null;
+  }
+}
+
+// —— Finnhub: the next earnings date ——
+// Finnhub's free calendar lists upcoming reports only: asked for NVIDIA's
+// reports from 2016 to now it returned none, and for the months ahead it
+// returned the next two (checked November 2026). So past earnings dates come
+// from the company's own SEC filings (lib/sec/client.ts, earningsReleaseDates)
+// and only the next one comes from here.
+export type NextEarnings = {
+  date: string;
+  // bmo: before the market opens; amc: after it closes; dmh: during hours.
+  hour: "bmo" | "amc" | "dmh" | null;
+};
+
+async function fetchNextEarningsRaw(symbol: string): Promise<NextEarnings | null> {
+  const today = new Date().toISOString().slice(0, 10);
+  const horizon = new Date(Date.now() + 150 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const data = await fh<{ earningsCalendar?: { date: string; hour?: string }[] }>("calendar/earnings", {
+    symbol: symbol.toUpperCase(),
+    from: today,
+    to: horizon,
+  });
+  if (!data) throw new Error("Finnhub earnings calendar request failed");
+  const next = (data.earningsCalendar ?? [])
+    .filter((r) => typeof r.date === "string" && r.date >= today)
+    .sort((a, b) => (a.date < b.date ? -1 : 1))[0];
+  if (!next) return null;
+  const hour = next.hour === "bmo" || next.hour === "amc" || next.hour === "dmh" ? next.hour : null;
+  return { date: next.date, hour };
+}
+
+const cachedNextEarnings = unstable_cache(fetchNextEarningsRaw, ["nextEarnings"], { revalidate: 60 * 60 * 12 });
+
+export async function fetchNextEarnings(symbol: string): Promise<NextEarnings | null> {
+  if (!process.env.FINNHUB_API_KEY) return null;
+  try {
+    return await cachedNextEarnings(symbol.toUpperCase());
   } catch {
     return null;
   }

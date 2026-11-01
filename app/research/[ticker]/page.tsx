@@ -6,7 +6,7 @@ import { whatStandsOut } from "@/lib/research/standsOut";
 import { keyStats } from "@/lib/research/keyStats";
 import { descriptionToShow, generateDescription, needsDescription, readDescription } from "@/lib/research/description";
 import { filingDocumentUrl } from "@/lib/sec/client";
-import { toChartPoints } from "@/lib/analysis/tickerChart";
+import { chartSeries } from "@/lib/analysis/tickerChart";
 import { fyShort } from "@/lib/research/format";
 import { PriceChart } from "@/components/company/PriceChart";
 
@@ -78,7 +78,18 @@ export default async function OverviewPage({ params, searchParams }: Props) {
     averageVolume: company.avgVolume,
   });
 
-  const chartPoints = company.daily ? toChartPoints(company.daily) : null;
+  const series = company.daily ? chartSeries(company.daily) : null;
+  // Finnhub's previous close belongs to the session of its last trade, given
+  // here as that session's New York date so the 1D chart can check it's
+  // drawing the same day.
+  const previousClose =
+    company.quote && company.quote.asOf > 0
+      ? {
+          value: company.quote.previousClose,
+          session: new Date(company.quote.asOf * 1000).toLocaleDateString("en-CA", { timeZone: "America/New_York" }),
+          last: company.quote.price,
+        }
+      : null;
   const annualUrl = fin?.latestAnnual?.primaryDocument ? filingDocumentUrl(fin.cik, fin.latestAnnual) : null;
   // The left column only renders when it has something to say; otherwise
   // "What stands out" takes the full width instead of sitting beside a gap.
@@ -145,8 +156,15 @@ export default async function OverviewPage({ params, searchParams }: Props) {
         </div>
       )}
 
-      {chartPoints && chartPoints.length >= 2 ? (
-        <PriceChart symbol={company.symbol} daily={chartPoints} />
+      {series && series.daily.length >= 2 ? (
+        <PriceChart
+          symbol={company.symbol}
+          daily={series.daily}
+          weekly={series.weekly}
+          earnings={company.earnings}
+          nextEarnings={company.nextEarnings}
+          previousClose={previousClose}
+        />
       ) : (
         <div className="rf-chart-pending">The price chart is updating. Try again in a minute.</div>
       )}

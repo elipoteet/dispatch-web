@@ -169,6 +169,9 @@ export type SubmissionsFilings = {
   reportDate: string[];
   form: string[];
   primaryDocument: string[];
+  // An 8-K's item numbers, comma-separated ("2.02,9.01"). Item 2.02 is
+  // "Results of Operations and Financial Condition": the earnings release.
+  items?: string[];
 };
 
 export type Submissions = {
@@ -212,7 +215,7 @@ const KEPT_FORMS = new Set([
 // log). Keeping only the fields and filing types we read makes it a few KB.
 export function compactSubmissions(raw: Submissions): Submissions {
   const r = raw.filings?.recent;
-  const recent: SubmissionsFilings = { accessionNumber: [], filingDate: [], reportDate: [], form: [], primaryDocument: [] };
+  const recent: SubmissionsFilings = { accessionNumber: [], filingDate: [], reportDate: [], form: [], primaryDocument: [], items: [] };
   for (let i = 0; i < (r?.form?.length ?? 0); i++) {
     if (!KEPT_FORMS.has(r.form[i])) continue;
     recent.accessionNumber.push(r.accessionNumber[i]);
@@ -220,6 +223,8 @@ export function compactSubmissions(raw: Submissions): Submissions {
     recent.reportDate.push(r.reportDate[i]);
     recent.form.push(r.form[i]);
     recent.primaryDocument.push(r.primaryDocument?.[i] ?? "");
+    // Only 8-Ks carry items, and only their item numbers are ever read.
+    recent.items!.push(r.form[i].startsWith("8-K") ? (r.items?.[i] ?? "") : "");
   }
   return {
     cik: raw.cik,
@@ -242,7 +247,12 @@ async function fetchSubmissionsRaw(cik: string): Promise<Submissions> {
 
 // Six hours. Filings appear on their own schedule; this only needs to be fresh
 // enough that a new 10-K is noticed the same day.
-const cachedSubmissions = unstable_cache(fetchSubmissionsRaw, ["secSubmissions"], { revalidate: 60 * 60 * 6 });
+// The key carries a version because unstable_cache keys on the cached
+// function's own source, not on the helpers it calls: when compactSubmissions
+// started keeping 8-K items (stage 3), entries cached without them would
+// otherwise have been served for up to six more hours. Bump it whenever
+// compactSubmissions' output changes.
+const cachedSubmissions = unstable_cache(fetchSubmissionsRaw, ["secSubmissions", "v2"], { revalidate: 60 * 60 * 6 });
 
 export async function getSubmissions(cik: string): Promise<Submissions | null> {
   try {
@@ -277,6 +287,31 @@ export function latestFiling(submissions: Submissions, forms: string[]): FilingR
     };
   }
   return null;
+}
+
+// —— Earnings release dates ——
+// The day a company reports earnings it files an 8-K under Item 2.02
+// ("Results of Operations and Financial Condition"). Those filing dates are
+// the earnings dates the price chart marks: free, and the company's own
+// record, where Finnhub's free calendar has only upcoming dates.
+//
+// They come from the submissions file's recent filings, which reach back as
+// far as the filer's last thousand filings or a year, whichever is longer:
+// NVIDIA to 2020, Coca-Cola to 2018, Apple to 2015, but JPMorgan only to late
+// 2025, because it files tens of thousands of prospectus supplements a year.
+// So the result also says how far back it can be trusted to be complete.
+export function earningsReleaseDates(submissions: Submissions): { dates: string[]; completeFrom: string | null } {
+  const r = submissions.filings?.recent;
+  if (!r?.form?.length) return { dates: [], completeFrom: null };
+  const dates = new Set<string>();
+  let oldestFiling: string | null = null;
+  for (let i = 0; i < r.form.length; i++) {
+    const filed = r.filingDate[i];
+    if (!oldestFiling || filed < oldestFiling) oldestFiling = filed;
+    if (!r.form[i].startsWith("8-K")) continue;
+    if ((r.items?.[i] ?? "").split(",").map((s) => s.trim()).includes("2.02")) dates.add(filed);
+  }
+  return { dates: [...dates].sort(), completeFrom: oldestFiling };
 }
 
 // The public EDGAR address of a filing's main document — the page every

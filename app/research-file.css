@@ -120,12 +120,32 @@
   cursor: pointer;
 }
 .rf-range-btn.is-active { background: var(--navy); color: var(--cream); }
-.rf-chart-frame { position: relative; border: 1px solid var(--rule); background: var(--paper); padding: 16px 84px 32px 16px; }
+.rf-chart-frame { position: relative; border: 1px solid var(--rule); background: var(--paper); padding: 16px 112px 32px 16px; }
 .rf-chart-svg { display: block; width: 100%; height: 220px; }
 .rf-line-up, .rf-line-down { stroke: var(--navy); }
-.rf-chart-y { position: absolute; right: 12px; top: 16px; bottom: 32px; display: flex; flex-direction: column; justify-content: space-between; }
+.rf-chart-y { position: absolute; right: 12px; top: 16px; bottom: 32px; width: 92px; }
+.rf-chart-y span { position: absolute; right: 0; transform: translateY(-50%); white-space: nowrap; }
 .rf-chart-y span, .rf-chart-x span { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.rf-chart-x { position: absolute; left: 16px; right: 84px; bottom: 8px; display: flex; justify-content: space-between; }
+.rf-chart-x { position: absolute; left: 16px; right: 112px; bottom: 8px; display: flex; justify-content: space-between; }
+/* The plot box holds the stretched SVG line and, on top of it in HTML, the
+   pieces that must not stretch: earnings dots and 1D's previous-close line. */
+.rf-chart-plot { position: relative; height: 220px; }
+.rf-chart-plot .rf-chart-svg { position: absolute; inset: 0; height: 100%; }
+.rf-chart-prev { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--muted); pointer-events: none; }
+.rf .rf-chart-dot {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin: -6.5px 0 0 -6.5px;
+  border: 2px solid var(--paper);
+  border-radius: 50%;
+  background: var(--gold);
+  cursor: help;
+}
+.rf-chart-legend { display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 12px; color: var(--muted); }
+.rf-chart-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.rf .rf-legend-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--gold); }
+.rf-legend-dash { display: inline-block; width: 18px; border-top: 1px dashed var(--muted); }
 .rf-chart-pending { height: 220px; border: 1px dashed var(--rule); display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 24px; color: var(--muted); font-size: 14px; }
 
 /* —— Financials —— */
@@ -311,9 +331,12 @@
   .rf-hero-title { font-size: 34px; }
   .rf-page-title { font-size: 30px; }
   .rf-chart-frame { padding-right: 16px; padding-bottom: 32px; }
-  .rf-chart-y { position: static; flex-direction: row; justify-content: space-between; margin-top: 8px; }
+  .rf-chart-y { position: static; width: auto; display: flex; justify-content: space-between; margin-top: 8px; }
+  .rf-chart-y span { position: static; transform: none; }
   .rf-chart-x { right: 16px; }
-  .rf-chart-svg { height: 180px; }
+  .rf-chart-plot { height: 180px; }
+  .rf-ranges { width: 100%; }
+  .rf-range-btn { flex: 1 0 auto; min-width: 40px; }
   .rf-company-grid { grid-template-columns: 1fr; }
   .rf-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .rf-file-grid, .rf-tools { grid-template-columns: 1fr; }

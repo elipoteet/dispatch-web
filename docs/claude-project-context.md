@@ -188,6 +188,19 @@ in this codebase:
    functions against saved fixtures, and verify the wired-up path through a real route
    on a running server. Discovered in phase nine stage 1, which has no UI of its own —
    a throwaway route under `app/api/` hit with `curl` was the only way to exercise it.
+9. **An `unstable_cache` key includes the cached function's own source code, but not
+   the source of the helpers it calls** (read from `next/dist/.../unstable-cache.js`:
+   the key is `cb.toString()` plus the key parts plus the arguments). Change what a
+   helper returns and old entries keep being served until they expire. Put a version
+   in the key parts when a helper's output shape changes (`["secSubmissions", "v2"]`).
+10. **Twelve Data's daily prices are adjusted for stock splits (not dividends); Tiingo's
+    are raw.** Checked on NVIDIA's June 2024 10-for-1 split: Twelve Data $120.89, Tiingo
+    $1,208.88 for the same day. The Tiingo fallback now applies its `splitFactor`
+    (`splitAdjust` in `lib/providers.ts`). Before November 2026 a fallback day drew a fake
+    crash at every split, and a code comment wrongly said the two providers matched.
+    Every Twelve Data request goes through `twelveDataSeries`, which counts them
+    against the 8-a-minute allowance. `TWELVE_DATA_FORCE_BUSY=1` simulates "used up" for
+    testing the fallbacks.
 
 ## Workflow conventions already established
 
