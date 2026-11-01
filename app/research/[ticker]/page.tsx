@@ -15,8 +15,8 @@ type Props = {
   searchParams: Promise<{ asOf?: string }>;
 };
 
-// Room for the description to be written after the response has gone: a 10-K
-// download plus one short Claude call. The page itself never waits on it.
+// Room for the "In its own words" quote to be read after the response has
+// gone: one 10-K download. The page itself never waits on it.
 export const maxDuration = 60;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -55,7 +55,7 @@ export default async function OverviewPage({ params, searchParams }: Props) {
   const scheduled = Boolean(fin && read && needsDescription(read, fin.latestAnnual));
   if (fin && scheduled) {
     const filing = fin.latestAnnual!;
-    after(() => generateDescription(fin.cik, company.name, filing));
+    after(() => generateDescription(fin.cik, filing));
   }
   const described = read ? descriptionToShow(read) : null;
 
@@ -82,8 +82,8 @@ export default async function OverviewPage({ params, searchParams }: Props) {
   const annualUrl = fin?.latestAnnual?.primaryDocument ? filingDocumentUrl(fin.cik, fin.latestAnnual) : null;
   // The left column only renders when it has something to say; otherwise
   // "What stands out" takes the full width instead of sitting beside a gap.
-  // Nothing is promised while a summary is pending: it may be waiting on an
-  // account with no API credit, and "coming shortly" would then be untrue.
+  // The quote appears from the second visit on (it is read after the first
+  // response is sent), so nothing is shown while it's pending.
   const hasBrief = Boolean(described || company.financialsUnavailable || !fin);
 
   return (
@@ -93,13 +93,13 @@ export default async function OverviewPage({ params, searchParams }: Props) {
           {hasBrief && <div className="rf-brief">
             {described ? (
               <>
-                <div className="rf-lbl">In brief</div>
-                <p className="rf-brief-text">{described.description}</p>
+                <div className="rf-lbl">In its own words</div>
+                <blockquote className="rf-brief-text">&ldquo;{described.description}&rdquo;</blockquote>
                 <p className="rf-ai-label">
-                  AI summary of the business section of its latest {described.sourceForm}.{" "}
+                  {`How ${company.name} describes itself at the start of the business section of its latest ${described.sourceForm}, lightly trimmed. The company's words, not The Dispatch's.`}{" "}
                   {annualUrl && (
                     <a href={annualUrl} target="_blank" rel="noopener noreferrer">
-                      Check the filing
+                      Read the filing
                     </a>
                   )}
                 </p>

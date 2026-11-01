@@ -1,10 +1,10 @@
 // Reading a 10-K's own text. Pure functions, no I/O, so they are tested against
 // real filings saved as fixtures.
 //
-// Used for one thing in stage 2: finding Item 1 ("Business"), the company's
-// own description of what it does, which the Overview summarises once into two
-// plain sentences. Stage 7's "what changed" diff will reuse htmlToText for
-// Item 1A.
+// Used for one thing in stage 2: finding Item 1 ("Business") and quoting the
+// opening of the company's own description of what it does, for the
+// Overview's "In its own words" line. Stage 7's "what changed" diff will reuse
+// htmlToText for Item 1A.
 //
 // 10-K documents are inline-XBRL HTML, and large: NVIDIA's fiscal 2026 10-K is
 // 2.0MB, JPMorgan's 2025 one 12.9MB, because the machine-readable tagging rides
@@ -95,4 +95,113 @@ export function extractBusinessSection(text: string): string | null {
 
   const section = text.slice(best.start, best.end).trim();
   return section.length >= MIN_SECTION_CHARS ? section : null;
+}
+
+// —— "In its own words" ——
+// The first sentence or two of Item 1 in which the company says what it does,
+// quoted. Free, and straight from the source: the Overview's description,
+// in place of an AI summary (Eli, 31 October 2026: no paid AI).
+//
+// Item 1 rarely opens with that sentence. Before it, filers put headings
+// ("Our Company", "General"), a paragraph defining "we" and "the Company",
+// or a forward-looking-statements warning. And a page break can land in the
+// middle of the sentence itself, leaving the page footer between its halves
+// (Pfizer: "...distribution of / Pfizer Inc. 2025 Form 10-K / 3 /
+// biopharmaceutical products worldwide."). Each rule below came from one of
+// seventeen real 10-Ks, October 2026.
+
+// Paragraphs that are legal preamble, not description.
+const BOILERPLATE =
+  /forward-looking|unless the context|as used (?:in|herein)|\bthe terms?\b[^.]{0,160}\b(?:refers?|means?|includes?)\b|references to [“"]|when we use the terms|incorporated (?:herein )?by reference|table of contents/i;
+
+const SENTENCE_END = /[.!?]["”’)]?$/;
+
+// A heading is a short line that doesn't end like a sentence.
+function isHeading(line: string): boolean {
+  return line.length < 90 && !/[.!?:;]["”’)]?$/.test(line);
+}
+
+// Page furniture: a bare page number, a running footer naming the form.
+function isPageArtifact(line: string): boolean {
+  return /^\d{1,3}$/.test(line) || (line.length < 80 && /form 10-k/i.test(line)) || /^table of contents$/i.test(line);
+}
+
+// Words whose trailing period doesn't end a sentence.
+const ABBREVIATIONS = new Set(["inc", "corp", "co", "ltd", "llc", "no", "st", "mr", "mrs", "ms", "dr", "jr", "sr", "vs", "etc", "approx", "dept"]);
+
+function splitSentences(text: string): string[] {
+  const sentences: string[] = [];
+  let start = 0;
+  for (const m of text.matchAll(/[.!?]["”’)]?(?=\s+[A-Z“"(])/g)) {
+    const end = (m.index ?? 0) + m[0].length;
+    const before = text.slice(start, (m.index ?? 0) + 1).match(/([A-Za-z.]+)\.$/)?.[1] ?? "";
+    // "Inc.", "U.S.", "N.A.", a single initial: not the end of a sentence.
+    if (ABBREVIATIONS.has(before.toLowerCase()) || before.includes(".") || /^[A-Z]$/.test(before)) continue;
+    sentences.push(text.slice(start, end).trim());
+    start = end;
+  }
+  const rest = text.slice(start).trim();
+  if (rest) sentences.push(rest);
+  return sentences;
+}
+
+// Light trimming, so the quote reads as a sentence: defined-term asides
+// ("(the “Company”)", "(“AI”)", "(Costco or the Company)"), footnote markers
+// glued to a word ("Chevron Corporation1,"), and trademark symbols.
+function trimQuote(text: string): string {
+  return text
+    .replace(/\s*\([^()]*(?:[“”"]|\bthe (?:Company|Firm|Registrant)\b)[^()]*\)/g, "")
+    .replace(/([a-z])\d(?=[,.;\s])/g, "$1")
+    .replace(/[®™℠]/g, "")
+    .replace(/\s+([,.;:])/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const MAX_QUOTE_CHARS = 450;
+
+const HOUSEKEEPING = /fiscal year (?:is|ends|consists)|52- or 53-week|52\/53-week|incorporated (?:in|under)/i;
+
+export function ownWordsExcerpt(section: string): string | null {
+  // Rebuild paragraphs, rejoining a sentence a page break cut in two.
+  const paragraphs: string[] = [];
+  let current = "";
+  for (const raw of section.split("\n").slice(1)) {
+    const line = raw.trim();
+    if (!line || isPageArtifact(line)) continue;
+    if (current && !SENTENCE_END.test(current) && /^[a-z]/.test(line)) {
+      current += ` ${line}`;
+      continue;
+    }
+    if (current) paragraphs.push(current);
+    current = isHeading(line) ? "" : line;
+  }
+  if (current) paragraphs.push(current);
+
+  for (const paragraph of paragraphs) {
+    if (paragraph.length < 60 || BOILERPLATE.test(paragraph)) continue;
+    const sentences = splitSentences(trimQuote(paragraph));
+    if (sentences.length === 0) continue;
+    let quote = sentences[0];
+    // A short opening line ("Pfizer Inc. is a research-based, global
+    // biopharmaceutical company.") reads better with the sentence after it.
+    // Not when that sentence is calendar housekeeping (Apple: "The Company's
+    // fiscal year is the 52- or 53-week period that ends on the last Saturday
+    // of September.").
+    if (
+      quote.length < 160 &&
+      sentences[1] &&
+      !HOUSEKEEPING.test(sentences[1]) &&
+      quote.length + 1 + sentences[1].length <= MAX_QUOTE_CHARS
+    ) {
+      quote += ` ${sentences[1]}`;
+    }
+    if (quote.length > MAX_QUOTE_CHARS) {
+      const cut = quote.slice(0, MAX_QUOTE_CHARS);
+      const at = Math.max(cut.lastIndexOf(", "), cut.lastIndexOf("; "));
+      quote = `${cut.slice(0, at > 200 ? at : cut.lastIndexOf(" "))}…`;
+    }
+    return quote;
+  }
+  return null;
 }

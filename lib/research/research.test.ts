@@ -285,31 +285,31 @@ describe("searchCompanies", () => {
   });
 });
 
-describe("description spending rule", () => {
+describe("description download rule", () => {
   const filing = { accession: "0001-26-000021", filed: "2026-02-25", reportDate: "2026-01-25", form: "10-K", primaryDocument: "x.htm" };
   const stored = (accession: string, status: "ok" | "unavailable" = "ok") => ({
     available: true as const,
-    row: { status, description: status === "ok" ? "Two sentences." : "", sourceAccession: accession, sourceForm: "10-K", model: "m", generatedAt: "" },
+    row: { status, description: status === "ok" ? "Two sentences." : "", sourceAccession: accession, sourceForm: "10-K", generatedAt: "" },
   });
 
-  it("generates nothing until the table exists", () => {
+  it("downloads nothing until the table exists", () => {
     expect(needsDescription({ available: false }, filing)).toBe(false);
   });
 
-  it("generates once for a company with no description", () => {
+  it("reads the 10-K once for a company with no description", () => {
     expect(needsDescription({ available: true, row: null }, filing)).toBe(true);
   });
 
-  it("does not regenerate for the same annual report, even one marked unavailable", () => {
+  it("does not re-read the same annual report, even one marked unavailable", () => {
     expect(needsDescription(stored(filing.accession), filing)).toBe(false);
     expect(needsDescription(stored(filing.accession, "unavailable"), filing)).toBe(false);
   });
 
-  it("regenerates when a newer annual report is filed", () => {
+  it("re-reads when a newer annual report is filed", () => {
     expect(needsDescription(stored("0001-25-000001"), filing)).toBe(true);
   });
 
-  it("shows only a successful summary", () => {
+  it("shows only a successful quote", () => {
     expect(descriptionToShow(stored(filing.accession))?.description).toBe("Two sentences.");
     expect(descriptionToShow(stored(filing.accession, "unavailable"))).toBeNull();
   });

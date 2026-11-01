@@ -1,5 +1,10 @@
--- Phase nine, stage 2 — the Overview's two-sentence description. See
--- docs/phase-nine.md, Stage 2.
+-- Phase nine, stage 2 — the Overview's description. See docs/phase-nine.md,
+-- Stage 2.
+--
+-- PASTED 31 October 2026. Revised the same day: the description is a quote
+-- from the company's own 10-K, not a Claude summary (no paid AI, Eli's call).
+-- The table is unchanged and used as is; the comments below describe the
+-- original plan, and the `model` column is now always null.
 -- Written to be run by hand in the Supabase SQL editor, same as every migration
 -- before this one.
 --

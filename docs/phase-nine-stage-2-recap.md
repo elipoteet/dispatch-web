@@ -9,7 +9,7 @@ Written 31 October 2026. Branch `feat/research-site`. Not on the live site until
 **Every company has a file at `/research/{ticker}`**, with each tab at its own address (`/research/nvda/financials`) so it can be shared:
 
 - **Header:** name, ticker, exchange, sector, when its fiscal year ends, price and the day's change, a 52-week range bar, and a Paper trade button into the simulator.
-- **Overview:** "What stands out", three facts picked by rules from the company's filings. For NVIDIA: revenue is 43 times fiscal 2016's and rose 65% to $215.9B; gross margin fell from 75.0% to 71.1%, the first decline since fiscal 2023; $40.1B spent repurchasing shares, about 41% of free cash flow. Then eight key stats, each with a one-line explanation (market value, P/E, revenue, net margin, gross margin, free cash flow, repurchases, average volume), and the price chart (1D, 1W, 1M, 1Y).
+- **Overview:** "In its own words", the company's description of itself quoted from the opening of its latest 10-K (added 31 October, replacing the planned AI summary). Then "What stands out", three facts picked by rules from the company's filings. For NVIDIA: revenue is 43 times fiscal 2016's and rose 65% to $215.9B; gross margin fell from 75.0% to 71.1%, the first decline since fiscal 2023; $40.1B spent repurchasing shares, about 41% of free cash flow. Then eight key stats, each with a one-line explanation (market value, P/E, revenue, net margin, gross margin, free cash flow, repurchases, average volume), and the price chart (1D, 1W, 1M, 1Y).
 - **Financials:** buttons to chart revenue, net income, free cash flow or a margin; an annual/quarterly switch; and a ten-year table (twelve quarters in quarterly view) of income, cash flow and balance sheet lines, with growth and margin rows. Figures a company later restated are marked, and the notes say what was calculated rather than reported.
 - **Banks** say plainly that gross margin and free cash flow don't apply, and show total assets instead.
 - **Funds** like SPY get the price page only, with a line saying why. Their Financials address is a real 404.
@@ -30,7 +30,7 @@ The old memo addresses (`/research/nvda`) now land on the new file. Uppercase ad
 
 - **No revenue-by-segment bar.** The SEC's free summary data drops everything broken out by segment, so NVIDIA's Data Center/Gaming split isn't in it. Getting it means parsing each 10-K's full XBRL tagging. Per the brief, reported rather than forced.
 - **No share-count row yet.** The SEC's share counts are as filed, not adjusted for stock splits (NVIDIA: 2,535M, then 25,070M after its split). The "share count" fact only appears when there was no split in the window.
-- **The two-sentence description is built but not yet seen working.** The project's Anthropic key has no credit, so every test call failed with "credit balance is too low". It also needs migration 0022 pasted. Until both are done the Overview simply shows no description; it never promises one.
+- **No AI summary: a quote instead.** The brief's two-sentence description was to be written by Claude. Eli decided on 31 October not to pay for an AI API, so the Overview quotes the company's own opening description from its latest 10-K, lightly trimmed, and labels it as the company's words. The extractor was tested on seventeen real 10-Ks (NVIDIA, Apple, Microsoft, Amazon, Tesla, Walmart, Costco, Coca-Cola, Chevron, Pfizer, Home Depot, Berkshire, Goldman Sachs, JPMorgan, UnitedHealth, Disney, Culp) and produced a readable quote for every one. Some companies open with marketing language or a mission statement (NVIDIA "pioneered accelerated computing"; Amazon "seeks to be Earth's most customer-centric company"). That's why the quote is labelled as theirs. Stages 5 and 7 also assumed Claude; the brief now has rule-based plans for both.
 - **Discussion, "From the network" and "Post about"** were dropped, per the 30 October direction note. **Compare and Time Machine buttons** are left out until those features exist.
 - **The chart has four ranges, not eight.** Stage 3 adds 3M, 5Y, 10Y and MAX.
 - The memo's screens and the routes only they used were deleted. The alert job keeps the parts of the memo engine it needs.
@@ -47,8 +47,8 @@ The old memo addresses (`/research/nvda`) now land on the new file. Uppercase ad
 
 ## For Eli before this can launch
 
-1. **Paste `supabase/migrations/0022_company_description.sql`** in the Supabase SQL editor. It creates one new table and touches nothing else.
-2. **Add credit to the Anthropic account** behind `ANTHROPIC_API_KEY` (console.anthropic.com), and make sure that key is also set in Vercel. Each description costs about five cents, once per company per annual report.
+1. ~~Paste migration 0022~~ Done 31 October.
+2. ~~Add Anthropic credit~~ Not needed: no paid AI (31 October). `ANTHROPIC_API_KEY` is no longer read by anything.
 3. **Check Vercel has `SEC_CONTACT_EMAIL`,** for Preview as well as Production, or the preview shows no financials.
 4. **The About page still describes the memo and the Time Machine.** It needs your rewrite before launch.
 5. **Watchlist and alerts:** the old memo added every ticker you viewed to your watchlist, and alerts fire for watchlisted tickers. The new pages don't add to watchlists. Keep alerts (with a "watch" button), or retire them?

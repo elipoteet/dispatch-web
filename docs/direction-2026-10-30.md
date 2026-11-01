@@ -34,6 +34,10 @@ Claude sessions cannot push to the repo until the Claude GitHub App is installed
 - **The portfolio simulator stays, and so does sign-in,** which it needs.
 - **The home page:** Eli asked Claude to choose. The design is in `docs/phase-nine.md`, "The home page": search first, what's in a file, example companies, tools, and three lines on how it works, with no live prices.
 
+## Resolved on 31 October
+
+- **No paid AI anywhere on the site.** Eli won't pay for an Anthropic key. The Overview's description quotes the company's own 10-K instead of an AI summary, and the brief's Stage 5 (guidance) and Stage 7 ("what changed") plans are now rule-based. "Free data only" now covers AI too.
+
 ## Repo notes (added when this was copied into the repo, 30 October)
 
 - This file is a copy of `claude/direction-2026-10-30.md` from the Claude Project. In this repo, `claude/phase-nine-build-brief.md` is `docs/phase-nine.md`.
