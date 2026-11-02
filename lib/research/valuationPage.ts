@@ -48,7 +48,10 @@ export function metricsFor(kind: FilerKind): MetricKey[] {
 }
 
 
-export async function loadValuation(company: CompanyPage): Promise<ValuationData | null> {
+export async function loadValuation(
+  company: CompanyPage,
+  options: { background: boolean } = { background: true },
+): Promise<ValuationData | null> {
   const fin = company.financials;
   if (!fin || fin.rows.length === 0) return null;
   const asOf = new Date().toISOString().slice(0, 10);
@@ -58,7 +61,7 @@ export async function loadValuation(company: CompanyPage): Promise<ValuationData
   const [split, treasury, peers] = await Promise.all([
     loadSplitSteps(company, finnhubShares, asOf),
     getTenYearTreasury(),
-    loadPeers(company.symbol, fin.cik),
+    loadPeers(company.symbol, fin.cik, options),
   ]);
 
   const shares = sharesToday({ rows: fin.rows, steps: split.steps, finnhubShares, asOf });

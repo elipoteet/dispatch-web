@@ -111,10 +111,12 @@ async function save(cik: string, f: Form4Filing, reading: Reading): Promise<bool
 }
 
 // Reads and stores the given filings, four at a time under the SEC's rate
-// limit. Returns how many were stored.
-export async function readInsiderFilings(cik: string, filings: Form4Filing[]): Promise<number> {
+// limit. Returns how many were stored. Given a deadline (a time in ms), stops
+// between batches once it has passed.
+export async function readInsiderFilings(cik: string, filings: Form4Filing[], deadline?: number): Promise<number> {
   let stored = 0;
   for (let i = 0; i < filings.length; i += 4) {
+    if (deadline != null && Date.now() > deadline) break;
     const batch = filings.slice(i, i + 4);
     const results = await Promise.all(
       batch.map(async (f) => {
@@ -215,29 +217,50 @@ export async function storedTrades(cik: string, since: string): Promise<InsiderT
 
 // —— The daily refresh (folded into the existing cron) ——
 // Companies whose insider filings have been read before, the longest-unread
-// first, each brought up to date with its new Form 4s, until the time budget
-// runs out. "Companies someone has opened", per the brief: a company gets
-// here only by someone opening its Insiders tab.
-export async function refreshInsiders(budgetMs: number, perCompany = 40): Promise<{ companies: number; filings: number }> {
-  const started = Date.now();
+// first, each brought up to date with its new Form 4s, until the deadline.
+// "Companies someone has opened", per the brief: a company gets here only by
+// someone opening its Insiders tab.
+
+// When this many pages of insider_filings have been read without the view,
+// the rest waits: by then the view (migration 0025) is overdue.
+const FALLBACK_PAGES = 20;
+
+// The companies, stalest first. From the insider_companies view (one row a
+// company) once migration 0025 is pasted; until then from every row of
+// insider_filings, a page at a time, since the API returns at most 1,000
+// rows a request (an earlier .limit(5000) silently got 1,000, and past about
+// ten busy companies the stalest fell out of view).
+async function companiesStalestFirst(): Promise<string[]> {
   const supabase = createPublicClient();
-  const { data, error } = await supabase.from("insider_filings").select("cik, read_at").order("read_at", { ascending: false }).limit(5000);
-  if (error || !data) return { companies: 0, filings: 0 };
+  const view = await supabase.from("insider_companies").select("cik, last_read").order("last_read", { ascending: true }).limit(PAGE);
+  if (!view.error && view.data) return view.data.map((r) => r.cik as string);
 
   const lastRead = new Map<string, string>();
-  for (const r of data) if (!lastRead.has(r.cik as string)) lastRead.set(r.cik as string, r.read_at as string);
-  const ciks = [...lastRead.entries()].sort((a, b) => (a[1] < b[1] ? -1 : 1)).map(([cik]) => cik);
+  for (let page = 0; page < FALLBACK_PAGES; page++) {
+    const { data, error } = await supabase
+      .from("insider_filings")
+      .select("cik, read_at")
+      .order("read_at", { ascending: false })
+      .order("accession", { ascending: true })
+      .range(page * PAGE, page * PAGE + PAGE - 1);
+    if (error || !data) break;
+    for (const r of data) if (!lastRead.has(r.cik as string)) lastRead.set(r.cik as string, r.read_at as string);
+    if (data.length < PAGE) break;
+  }
+  return [...lastRead.entries()].sort((a, b) => (a[1] < b[1] ? -1 : 1)).map(([cik]) => cik);
+}
 
+export async function refreshInsiders(deadline: number, perCompany = 40): Promise<{ companies: number; filings: number }> {
   const since = insiderWindowStart(new Date().toISOString().slice(0, 10));
   let companies = 0;
   let filings = 0;
-  for (const cik of ciks) {
-    if (Date.now() - started > budgetMs) break;
+  for (const cik of await companiesStalestFirst()) {
+    if (Date.now() > deadline) break;
     const submissions = await getSubmissions(cik);
     const read = submissions ? await readAccessions(cik, since) : null;
     if (!submissions || !read) continue;
     const missing = form4Filings(submissions, since).filter((f) => !read.has(f.accession)).slice(0, perCompany);
-    filings += await readInsiderFilings(cik, missing);
+    filings += await readInsiderFilings(cik, missing, deadline);
     companies++;
   }
   return { companies, filings };

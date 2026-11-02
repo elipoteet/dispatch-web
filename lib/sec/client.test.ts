@@ -4,6 +4,7 @@ import {
   documentOfType,
   earningsReleaseDates,
   earningsReleaseFilings,
+  filesReportsFrom,
   filingIndexUrl,
   latestFiling,
   parseAnnualReportFeed,
@@ -41,6 +42,24 @@ describe("parseAnnualReportFeed", () => {
         indexUrl: "https://www.sec.gov/Archives/edgar/data/19617/000001961725000270/0000019617-25-000270-index.htm",
       },
     ]);
+  });
+});
+
+describe("filesReportsFrom", () => {
+  const subs = (forms: string[]) =>
+    ({ filings: { recent: { form: forms, filingDate: forms.map(() => "2026-01-01"), accessionNumber: forms.map((_, i) => `a${i}`), reportDate: [], primaryDocument: [] } } }) as unknown as Submissions;
+
+  it("says yes for a company with 10-Ks or 10-Qs, no for a fund with none", () => {
+    expect(filesReportsFrom({ status: "ok", submissions: subs(["4", "10-Q"]) })).toBe(true);
+    expect(filesReportsFrom({ status: "ok", submissions: subs(["N-CSR", "497"]) })).toBe(false);
+  });
+
+  it("says no when the SEC has no file, and yes, not no, when it couldn't be reached", () => {
+    // A brief outage once made a real company look like a fund: its tabs
+    // 404'd and were marked noindex.
+    expect(filesReportsFrom({ status: "none" })).toBe(false);
+    expect(filesReportsFrom({ status: "unreachable" })).toBe(true);
+    expect(filesReportsFrom(null)).toBe(false);
   });
 });
 

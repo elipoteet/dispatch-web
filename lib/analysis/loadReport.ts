@@ -18,7 +18,7 @@ export class TickerDataError extends Error {}
 
 // No caching here — fetchPrices/fetchFundamentals/fetchNews(AsOf) are each
 // cached per-symbol (and per-asOf-date) in lib/providers.ts, shared with
-// every other caller (the ticker tape, etc.), so wrapping the composite
+// every other caller (the research pages, etc.), so wrapping the composite
 // result again here would just be a second, redundant cache layer.
 export async function loadTickerData(
   ticker: string,

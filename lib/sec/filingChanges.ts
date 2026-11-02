@@ -80,15 +80,18 @@ async function riskSection(url: string): Promise<string[] | null> {
 // —— The daily refresh (folded into the existing cron) ——
 // Companies whose comparison has been worked out before (so someone opened
 // their Filings tab): if a newer 10-K has been filed since, compare it. One
-// 10-K at a time, until the budget runs out.
-export async function refreshFilingChanges(budgetMs: number): Promise<number> {
-  const started = Date.now();
+// 10-K at a time, each started only with `reserveMs` still left before the
+// deadline (a time in ms), so none is cut off part way.
+//
+// One row per 10-K, so the API's 1,000-row ceiling covers about a thousand
+// companies' worth, the longest-unchecked first.
+export async function refreshFilingChanges(deadline: number, reserveMs: number): Promise<number> {
   const supabase = createPublicClient();
-  const { data, error } = await supabase.from("filing_changes").select("cik").order("computed_at", { ascending: true }).limit(2000);
+  const { data, error } = await supabase.from("filing_changes").select("cik").order("computed_at", { ascending: true }).limit(1000);
   if (error || !data) return 0;
   let done = 0;
   for (const cik of [...new Set(data.map((r) => r.cik as string))]) {
-    if (Date.now() - started > budgetMs) break;
+    if (Date.now() + reserveMs > deadline) break;
     const submissions = await getSubmissions(cik);
     const latest = submissions ? latestFiling(submissions, ["10-K"]) : null;
     if (!latest || (await readFilingChanges(latest.accession)) !== "missing") continue;

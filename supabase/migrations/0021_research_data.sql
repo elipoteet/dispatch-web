@@ -5,10 +5,10 @@
 -- NEW OBJECTS ONLY. Nothing here alters, drops, or touches an existing table.
 --
 -- Everything below is written with `if not exists` so this file can be pasted
--- again safely. That matters because phase nine adds three more tables to THIS
--- SAME FILE in later stages (insider_trades in stage 6, filing_changes in stage
--- 7, screener_metrics in stage 8). Re-pasting the grown file will create only
--- what is missing and leave stage 1's data untouched.
+-- again safely. The plan was for later stages to add their tables to this
+-- same file; they went into files of their own instead (0023 insider trades,
+-- 0024 filing changes, 0025 the insider companies view), so this one is
+-- complete as it stands.
 
 -- ============================================================
 -- sec_company — one row per company we have looked up.

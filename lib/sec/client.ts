@@ -262,6 +262,33 @@ export async function getSubmissions(cik: string): Promise<Submissions | null> {
   }
 }
 
+// The same, but saying why there's nothing: "none" when the SEC has no
+// submissions file for the CIK, "unreachable" when it couldn't be asked (an
+// outage, a rate limit, the contact email unset). The company page needs the
+// difference: taken as "files no reports", a brief outage made NVIDIA look
+// like a fund, its SEC tabs 404 and noindexed (found in the 2 November review).
+export type SubmissionsResult =
+  | { status: "ok"; submissions: Submissions }
+  | { status: "none" }
+  | { status: "unreachable" };
+
+export async function getSubmissionsResult(cik: string): Promise<SubmissionsResult> {
+  try {
+    return { status: "ok", submissions: await cachedSubmissions(padCik(cik)) };
+  } catch (err) {
+    return err instanceof NoSecDataError ? { status: "none" } : { status: "unreachable" };
+  }
+}
+
+// Whether a company files reports, from its submissions. Unreachable is not
+// "no": a company the SEC knows (it has a CIK) is assumed to file, so its tabs
+// show a try-again note instead of disappearing.
+export function filesReportsFrom(result: SubmissionsResult | null): boolean {
+  if (!result || result.status === "none") return false;
+  if (result.status === "unreachable") return true;
+  return Boolean(latestFiling(result.submissions, ["10-K", "10-Q", "10-K/A", "10-Q/A", "20-F", "40-F"]));
+}
+
 // The most recent filing of a given form, used to decide whether stored
 // financials are stale without downloading the multi-megabyte facts file.
 export type FilingRef = {

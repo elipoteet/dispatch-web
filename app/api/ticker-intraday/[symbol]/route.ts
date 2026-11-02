@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { TICKER_PATTERN } from "@/lib/ticker";
-import { getTickerIntraday } from "@/lib/analysis/tickerChart";
+import { getTickerIntraday, isKnownSymbol } from "@/lib/analysis/tickerChart";
 
 // Backs the 1D and 1W ranges on /research/[ticker]. Server-only because the
 // Twelve Data key must never reach the browser, and on demand because intraday
@@ -17,6 +17,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ sym
   const symbol = raw?.trim().toUpperCase();
   if (!symbol || !TICKER_PATTERN.test(symbol)) {
     return NextResponse.json({ error: "Invalid ticker symbol." }, { status: 400 });
+  }
+  // Not a request spent on a symbol nobody lists (see isKnownSymbol).
+  if (!(await isKnownSymbol(symbol))) {
+    return NextResponse.json({ error: "Unknown ticker symbol." }, { status: 404 });
   }
   return NextResponse.json(await getTickerIntraday(symbol));
 }

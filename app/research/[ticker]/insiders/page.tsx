@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { after } from "next/server";
+import { isCrawler } from "@/lib/research/crawler";
 import { notFound } from "next/navigation";
 import { loadCompanyPage } from "@/lib/research/company";
 import { filingIndexUrl, getSubmissions } from "@/lib/sec/client";
@@ -84,9 +86,11 @@ export default async function InsidersPage({ params, searchParams }: Props) {
   }
 
   const missing = filings.filter((f) => !read.has(f.accession));
-  if (missing.length) await readInsiderFilings(cik, missing.slice(0, READ_NOW));
+  // A crawler sees what's stored and reads nothing (lib/research/crawler.ts).
+  const person = !isCrawler((await headers()).get("user-agent"));
+  if (person && missing.length) await readInsiderFilings(cik, missing.slice(0, READ_NOW));
   const later = missing.slice(READ_NOW, READ_NOW + READ_AFTER);
-  if (later.length && !inFlight.has(cik)) {
+  if (person && later.length && !inFlight.has(cik)) {
     inFlight.add(cik);
     after(async () => {
       try {

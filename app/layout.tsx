@@ -14,13 +14,16 @@ import { TopNav } from "@/components/layout/TopNav";
 import { Footer } from "@/components/layout/Footer";
 
 const SITE_NAME = "The Dispatch";
+// The title a page without its own gets (About, Give, Portfolio, the 404), and
+// the one shared links show. Was "Equity Research", from the retired memo.
+const SITE_TITLE = `${SITE_NAME} — Free research on every U.S. public company`;
 const SITE_DESCRIPTION =
   "A free research file on every U.S. public company, read from its SEC filings: ten years of financials, what stands out, and its price history. No ratings, no verdicts.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.dispatchresearch.com"),
   title: {
-    default: `${SITE_NAME} — Equity Research`,
+    default: SITE_TITLE,
     template: `%s — ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
@@ -28,7 +31,7 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   openGraph: {
-    title: `${SITE_NAME} — Equity Research`,
+    title: SITE_TITLE,
     description: SITE_DESCRIPTION,
     siteName: SITE_NAME,
     url: "/",
@@ -36,7 +39,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: `${SITE_NAME} — Equity Research`,
+    title: SITE_TITLE,
     description: SITE_DESCRIPTION,
   },
 };

@@ -8,7 +8,7 @@
 // minute, the profile for a day.
 
 import { cache } from "react";
-import { earningsReleaseDates, getSubmissions, latestFiling, lookupCik } from "@/lib/sec/client";
+import { earningsReleaseDates, filesReportsFrom, getSubmissionsResult, getTickerMap, lookupCik } from "@/lib/sec/client";
 import { getCompanyFinancials, NoFinancialsError, noFinancialsMessage, type CompanyFinancials } from "@/lib/sec";
 import {
   fetchCompanyProfile,
@@ -33,6 +33,9 @@ export type CompanyPage = {
   // file but files no company reports), indexes and anything else with only a
   // price get the price chart and none of the SEC tabs.
   filesReports: boolean;
+  // The SEC couldn't be asked just now. The page then says so, rather than
+  // claiming the company files no reports.
+  secUnreachable: boolean;
   financials: CompanyFinancials | null;
   // Set for a filer whose statements can't be read yet (IFRS / 20-F).
   financialsUnavailable: string | null;
@@ -70,8 +73,15 @@ export const loadCompanyPage = cache(async (symbolRaw: string): Promise<CompanyP
   // its eight requests a minute.
   if (!ref && !quote) return null;
 
-  const submissions = ref ? await getSubmissions(ref.cik) : null;
-  const filesReports = Boolean(submissions && latestFiling(submissions, ["10-K", "10-Q", "10-K/A", "10-Q/A", "20-F", "40-F"]));
+  // "Couldn't reach the SEC" is not "files no reports": a company with a CIK
+  // keeps its tabs during an outage, each saying its figures couldn't be
+  // loaded, rather than 404ing as if it were a fund.
+  const submissionsResult = ref ? await getSubmissionsResult(ref.cik) : null;
+  const submissions = submissionsResult?.status === "ok" ? submissionsResult.submissions : null;
+  const filesReports = filesReportsFrom(submissionsResult);
+  // No CIK can also mean the SEC's ticker list couldn't be fetched (it's kept
+  // a day, so rarely). Then the page can't know whether the company files.
+  const secUnreachable = submissionsResult?.status === "unreachable" || (!ref && (await getTickerMap()) == null);
 
   let financials: CompanyFinancials | null = null;
   let financialsUnavailable: string | null = null;
@@ -104,6 +114,7 @@ export const loadCompanyPage = cache(async (symbolRaw: string): Promise<CompanyP
       (financials ? fiscalYearEndFromRows(financials.rows) : null) ?? submissions?.fiscalYearEnd ?? financials?.fiscalYearEnd ?? null,
     cik: ref?.cik ?? null,
     filesReports,
+    secUnreachable,
     financials,
     financialsUnavailable,
     quote,

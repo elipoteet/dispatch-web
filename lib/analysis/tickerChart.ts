@@ -3,9 +3,11 @@ import {
   fetchIntradayPrices,
   fetchLongDailyPrices,
   fetchMonthlyPrices,
+  fetchQuoteSnapshot,
   NoTickerDataError,
   TwelveDataBusyError,
 } from "@/lib/providers";
+import { lookupCik } from "@/lib/sec/client";
 import { intradayCacheBucket, takeRecentSessions, toWeekly } from "@/lib/analysis/chartRanges";
 import type { ChartPoint } from "@/lib/analysis/chartRanges";
 
@@ -101,6 +103,17 @@ async function onDemand(load: () => Promise<ChartPoint[]>): Promise<OnDemandSeri
     if (!(err instanceof NoTickerDataError)) console.error("[chart]", err instanceof Error ? err.message : err);
     return { points: null, busy: false };
   }
+}
+
+// Whether a symbol is worth one of Twelve Data's eight requests a minute: the
+// same test the company page uses for existing at all, the SEC's ticker list
+// or a price from Finnhub, both kept in caches. Without it, the chart's data
+// routes spent a request on any string shaped like a ticker (found in the 2
+// November review).
+export async function isKnownSymbol(symbol: string): Promise<boolean> {
+  const s = symbol.toUpperCase();
+  if (await lookupCik(s)) return true;
+  return (await fetchQuoteSnapshot(s)) != null;
 }
 
 const FIVE_SESSIONS = 5;

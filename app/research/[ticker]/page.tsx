@@ -140,7 +140,9 @@ export default async function OverviewPage({ params, searchParams }: Props) {
 
       {!company.filesReports && (
         <p className="rf-note">
-          {`${company.symbol} doesn’t file company reports with the SEC (it may be a fund or another kind of security), so this page shows its price only.`}
+          {company.secUnreachable
+            ? `The SEC couldn’t be reached just now, so this page shows ${company.symbol}’s price only. Try again in a minute.`
+            : `${company.symbol} doesn’t file company reports with the SEC (it may be a fund or another kind of security), so this page shows its price only.`}
         </p>
       )}
 

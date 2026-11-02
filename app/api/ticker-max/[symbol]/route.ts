@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { TICKER_PATTERN } from "@/lib/ticker";
-import { getTickerMonthly } from "@/lib/analysis/tickerChart";
+import { getTickerMonthly, isKnownSymbol } from "@/lib/analysis/tickerChart";
 
 // Backs the MAX range on /research/[ticker]: monthly closes for the whole
 // listed history. Fetched only when MAX is clicked, and cached for a day, so
@@ -11,6 +11,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ sym
   const symbol = raw?.trim().toUpperCase();
   if (!symbol || !TICKER_PATTERN.test(symbol)) {
     return NextResponse.json({ error: "Invalid ticker symbol." }, { status: 400 });
+  }
+  if (!(await isKnownSymbol(symbol))) {
+    return NextResponse.json({ error: "Unknown ticker symbol." }, { status: 404 });
   }
   return NextResponse.json(await getTickerMonthly(symbol));
 }

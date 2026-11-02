@@ -61,7 +61,9 @@ function loadInBackground(symbols: string[]) {
   });
 }
 
-export async function loadPeers(symbol: string, cik: string): Promise<PeerRow[] | null> {
+// `background`: whether to load missing peers after the response. Off for a
+// crawler's visit (lib/research/crawler.ts), which sees stored peers only.
+export async function loadPeers(symbol: string, cik: string, options: { background: boolean } = { background: true }): Promise<PeerRow[] | null> {
   const listed = await fetchPeers(symbol);
   if (!listed) return null;
   const candidates = [...new Set(listed)].filter((s) => s !== symbol && TICKER_PATTERN.test(s)).slice(0, CANDIDATES);
@@ -114,6 +116,6 @@ export async function loadPeers(symbol: string, cik: string): Promise<PeerRow[] 
     }),
   );
 
-  loadInBackground(toLoad);
+  if (options.background) loadInBackground(toLoad);
   return rows;
 }

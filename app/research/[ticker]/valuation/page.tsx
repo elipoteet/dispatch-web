@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { loadCompanyPage } from "@/lib/research/company";
+import { isCrawler } from "@/lib/research/crawler";
 import { loadValuation, metricsFor, type MetricKey, type ValuationData } from "@/lib/research/valuationPage";
 import { historyWindowStart } from "@/lib/research/valuation";
 import { formatMoney, formatPct } from "@/lib/research/format";
@@ -165,7 +167,8 @@ export default async function ValuationPage({ params }: Props) {
       </div>
     );
   }
-  const data = await loadValuation(company);
+  // A crawler sees stored peers only, and loads none (lib/research/crawler.ts).
+  const data = await loadValuation(company, { background: !isCrawler((await headers()).get("user-agent")) });
   if (!data) {
     return (
       <div className="rf-tab-body">

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { after } from "next/server";
+import { isCrawler } from "@/lib/research/crawler";
 import { notFound } from "next/navigation";
 import { loadCompanyPage } from "@/lib/research/company";
 import { filingDocumentUrl, getSubmissions, latestFiling, padCik } from "@/lib/sec/client";
@@ -180,7 +182,9 @@ export default async function FilingsPage({ params, searchParams }: Props) {
     if (row === null) {
       risk = <p className="rf-next-line rf-muted">The comparison isn&rsquo;t available just now. Try again later.</p>;
     } else if (row === "missing") {
-      if (!inFlight.has(latest10K.accession)) {
+      // A crawler's visit doesn't start the comparison (lib/research/crawler.ts).
+      const person = !isCrawler((await headers()).get("user-agent"));
+      if (person && !inFlight.has(latest10K.accession)) {
         inFlight.add(latest10K.accession);
         after(async () => {
           try {

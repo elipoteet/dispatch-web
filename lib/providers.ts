@@ -73,9 +73,9 @@ export class NoTickerDataError extends Error {}
 
 // —— Caching ——
 // Wrapped here (the provider-fetch layer) rather than at each call site, so
-// every caller — the analyze API route, the SSR /research/[ticker] page,
-// and the homepage ticker tape — shares one cache entry per symbol instead
-// of each re-spending Twelve Data/Finnhub credits independently. Backed by
+// every caller — the research pages, the alerts cron, the portfolio —
+// shares one cache entry per symbol instead of each re-spending Twelve
+// Data/Finnhub credits independently. Backed by
 // Next's built-in Data Cache (`unstable_cache`), which — unlike a plain
 // in-memory Map — Vercel backs with a store that survives across separate
 // serverless invocations, not just within one warm instance.
@@ -371,8 +371,7 @@ async function fetchQuotePriceTiingo(symbol: string): Promise<number> {
 // lib/portfolio.ts's getLatestPrice). Deliberately Finnhub, not
 // Twelve Data: this fires far more often than a ticker search does, and
 // sharing Twelve Data's tight 8-req/min quota with it caused real,
-// intermittent ticker-search failures (the tape had the same problem —
-// see fetchFinnhubDayChange above). Falls back to Tiingo (end-of-day) if
+// intermittent ticker-search failures. Falls back to Tiingo (end-of-day) if
 // Finnhub is down, never to Twelve Data, so this path can never compete
 // for that quota. Not wrapped in unstable_cache here — getLatestPrice
 // already has its own short-TTL cache, deliberately separate and shorter
@@ -623,23 +622,6 @@ export async function fetchPeers(symbol: string): Promise<string[] | null> {
   } catch {
     return null;
   }
-}
-
-// Day-over-day change for the homepage ticker tape (app/api/tape/route.ts)
-// — deliberately Finnhub, not Twelve Data. The tape only ever needs
-// today's price and yesterday's close, both of which the quote endpoint
-// returns in one call (`c`/`pc`), and Twelve Data's 8-req/min quota is the
-// same one actual ticker searches depend on — every tape load used to
-// spend 5 of those 8 requests just to render a scrolling banner, so a
-// search made right after a homepage load could get rate-limited. Finnhub
-// has its own, far more generous quota (60 req/min, confirmed empirically
-// July 2026), so this can't compete with a real search anymore.
-export async function fetchFinnhubDayChange(symbol: string): Promise<{ last: number; pct: number } | null> {
-  const data = await fh<{ c: number; pc: number }>("quote", { symbol: symbol.toUpperCase() });
-  if (!data || typeof data.c !== "number" || data.c <= 0 || typeof data.pc !== "number" || data.pc <= 0) {
-    return null;
-  }
-  return { last: data.c, pct: ((data.c - data.pc) / data.pc) * 100 };
 }
 
 // fh() swallows per-endpoint failures to null so one flaky sub-request (of
