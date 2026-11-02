@@ -171,6 +171,13 @@ Parse Form 4 XML found through the submissions file. Store purchases (code P) an
 - 10-Qs can follow the same pattern later. Start with 10-Ks only.
 - **Revised 31 October (no paid AI):** no one-sentence summaries. Show the changes themselves: each added or removed risk paragraph's first sentence, and for a changed paragraph the sentences that differ, old and new side by side, each linked to its place in the filing. Matching and sorting stay rule-based, as planned. Less polished than a summary, but nothing on the page is anyone's paraphrase.
 
+**As built (2 November).** Recap in `docs/phase-nine-stage-7-recap.md`.
+- Migration 0024 (`filing_changes`) was pasted.
+- Paragraphs are matched by rarity-weighted word overlap and sorted into added, taken out, changed (sentences added or removed) and reworded.
+- Each sentence links to its place in the filing with a text fragment.
+- Each comparison is worked out on the first view of a company's Filings tab (after the response) and by the cron for new 10-Ks, once per filing.
+- 10-Ks are found through EDGAR's company feed, because the submissions list can stop short of them.
+
 ### Stage 8. Research desk and screener
 
 - `/research`: search by ticker or company name from the SEC ticker file, the existing "what people are posting about" grid, and a way into the screener.

@@ -1,13 +1,48 @@
 import { describe, expect, it } from "vitest";
 import {
   compactSubmissions,
+  documentOfType,
   earningsReleaseDates,
   earningsReleaseFilings,
   filingIndexUrl,
   latestFiling,
+  parseAnnualReportFeed,
   pressReleaseUrl,
   type Submissions,
 } from "@/lib/sec/client";
+
+// EDGAR's company feed, as served for JPMorgan (November 2026), shortened.
+describe("parseAnnualReportFeed", () => {
+  const entry = (type: string, date: string, acc: string) => `<entry>
+<category label="form type" scheme="https://www.sec.gov/" term="${type}"/>
+<content type="text/xml">
+<accession-number>${acc}</accession-number>
+<filing-date>${date}</filing-date>
+<filing-href>https://www.sec.gov/Archives/edgar/data/19617/${acc.replace(/-/g, "")}/${acc}-index.htm</filing-href>
+<filing-type>${type}</filing-type>
+</content>
+</entry>`;
+  const atom = `<?xml version="1.0" encoding="ISO-8859-1" ?><feed>${[
+    entry("10-K", "2025-02-14", "0000019617-25-000270"),
+    entry("10-K/A", "2025-06-01", "0000019617-25-000999"),
+    entry("10-K", "2026-02-13", "0001628280-26-008131"),
+  ].join("")}</feed>`;
+
+  it("lists the original 10-Ks newest first, leaving amendments out", () => {
+    expect(parseAnnualReportFeed(atom)).toEqual([
+      {
+        accession: "0001628280-26-008131",
+        filed: "2026-02-13",
+        indexUrl: "https://www.sec.gov/Archives/edgar/data/19617/000162828026008131/0001628280-26-008131-index.htm",
+      },
+      {
+        accession: "0000019617-25-000270",
+        filed: "2025-02-14",
+        indexUrl: "https://www.sec.gov/Archives/edgar/data/19617/000001961725000270/0000019617-25-000270-index.htm",
+      },
+    ]);
+  });
+});
 
 describe("earningsReleaseFilings", () => {
   const s = {
@@ -55,6 +90,14 @@ describe("pressReleaseUrl", () => {
 
   it("returns nothing when there is no press release", () => {
     expect(pressReleaseUrl(index(row("8-K", "/Archives/edgar/data/1/2/a.htm"), row("EX-10.1", "/Archives/edgar/data/1/2/b.htm")))).toBeNull();
+  });
+
+  it("finds a 10-K's main document the same way", () => {
+    const html = index(
+      row("10-K", "/ix?doc=/Archives/edgar/data/19617/000162828026008131/jpm-20251231.htm"),
+      row("EX-21", "/Archives/edgar/data/19617/000162828026008131/ex21.htm"),
+    );
+    expect(documentOfType(html, [/^10-K$/i])).toBe("https://www.sec.gov/Archives/edgar/data/19617/000162828026008131/jpm-20251231.htm");
   });
 
   it("builds the index address from the CIK and accession number", () => {

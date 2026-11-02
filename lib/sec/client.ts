@@ -345,17 +345,56 @@ export function filingIndexUrl(cik: string, accession: string): string {
 // links sometimes go through the inline-XBRL viewer ("/ix?doc=/Archives/...");
 // the document's own address is what's returned.
 export function pressReleaseUrl(indexHtml: string): string | null {
+  return documentOfType(indexHtml, [/^EX-99\.0?1$/i, /^EX-99$/i]);
+}
+
+// The address of the first document in a filing's index whose type matches,
+// trying each pattern in turn.
+export function documentOfType(indexHtml: string, types: RegExp[]): string | null {
   const rows = [...indexHtml.matchAll(/<tr[\s\S]*?<\/tr>/gi)].map((m) => m[0]);
   const typed = (re: RegExp) =>
     rows.find((row) => {
       const cells = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map((c) => c[1].replace(/<[^>]+>/g, "").trim());
       return cells.some((c) => re.test(c));
     });
-  const row = typed(/^EX-99\.0?1$/i) ?? typed(/^EX-99$/i);
+  let row: string | undefined;
+  for (const re of types) {
+    row = typed(re);
+    if (row) break;
+  }
   const href = row?.match(/href="([^"]+)"/i)?.[1];
   if (!href) return null;
   const path = href.replace(/^\/ix\?doc=/, "").replace(/^https:\/\/www\.sec\.gov/, "");
   return path.startsWith("/") ? `https://www.sec.gov${path}` : null;
+}
+
+// —— A company's annual reports, newest first ——
+// The submissions file's recent list can stop short of last year's 10-K: for
+// JPMorgan it reaches back only about a year, behind thousands of prospectus
+// supplements, and the older pages run to some two thousand filings a month.
+// EDGAR's company feed lists the 10-Ks alone, in one small request (17KB).
+export type AnnualReport = { accession: string; filed: string; indexUrl: string };
+
+export function parseAnnualReportFeed(atom: string): AnnualReport[] {
+  const out: AnnualReport[] = [];
+  for (const m of atom.matchAll(/<entry>([\s\S]*?)<\/entry>/g)) {
+    const e = m[1];
+    const type = e.match(/<filing-type>([^<]+)<\/filing-type>/)?.[1]?.trim();
+    const accession = e.match(/<accession-number>([^<]+)<\/accession-number>/)?.[1]?.trim();
+    const filed = e.match(/<filing-date>([^<]+)<\/filing-date>/)?.[1]?.trim();
+    const indexUrl = e.match(/<filing-href>([^<]+)<\/filing-href>/)?.[1]?.trim();
+    // Original annual reports only: an amendment (10-K/A) often carries just
+    // a part of the report.
+    if (type === "10-K" && accession && filed && indexUrl) out.push({ accession, filed, indexUrl });
+  }
+  return out.sort((a, b) => (a.filed < b.filed ? 1 : -1));
+}
+
+export async function fetchAnnualReports(cik: string): Promise<AnnualReport[]> {
+  const atom = await fetchSecText(
+    `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${padCik(cik)}&type=10-K&dateb=&owner=include&count=10&output=atom`,
+  );
+  return parseAnnualReportFeed(atom);
 }
 
 // Any EDGAR page as text, through the same rate limit and User-Agent as

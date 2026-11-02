@@ -121,15 +121,21 @@ function isHeading(line: string): boolean {
   return line.length < 90 && !/[.!?:;]["”’)]?$/.test(line);
 }
 
-// Page furniture: a bare page number, a running footer naming the form.
-function isPageArtifact(line: string): boolean {
-  return /^\d{1,3}$/.test(line) || (line.length < 80 && /form 10-k/i.test(line)) || /^table of contents$/i.test(line);
+// Page furniture: a bare page number, a running footer naming the form, or a
+// running header naming the part (JPMorgan's "Part I", "Parts I and II").
+export function isPageArtifact(line: string): boolean {
+  return (
+    /^\d{1,3}$/.test(line) ||
+    (line.length < 80 && /form 10-k/i.test(line)) ||
+    /^table of contents$/i.test(line) ||
+    /^parts? [ivx]+(?: and [ivx]+)?$/i.test(line)
+  );
 }
 
 // Words whose trailing period doesn't end a sentence.
 const ABBREVIATIONS = new Set(["inc", "corp", "co", "ltd", "llc", "no", "st", "mr", "mrs", "ms", "dr", "jr", "sr", "vs", "etc", "approx", "dept"]);
 
-function splitSentences(text: string): string[] {
+export function splitSentences(text: string): string[] {
   const sentences: string[] = [];
   let start = 0;
   for (const m of text.matchAll(/[.!?]["”’)]?(?=\s+[A-Z“"(])/g)) {

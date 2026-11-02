@@ -232,6 +232,12 @@ in this codebase:
     (`lib/sec/form4.ts`). Filings from before April 2023 have no box at all.
     The submissions file names the XSL rendering ("xslF345X06/form4.xml"); the
     raw XML is the same name without the folder.
+16. **sec.gov refuses headless browsers.** Playwright gets the SEC's "efficiently
+    downloading information" notice, not the filing. Check anything rendered from
+    a filing (text-fragment links included) against a saved copy opened locally.
+    For lists of a company's 10-Ks, EDGAR's company feed
+    (`browse-edgar?action=getcompany&type=10-K&output=atom`) is one small request;
+    the submissions file's recent list can stop short of them.
 
 ## Workflow conventions already established
 
