@@ -37,7 +37,10 @@ export default async function TickerLayout({
   const fiscalYearEnd = company.filesReports ? company.fiscalYearEnd : null;
   const base = `/research/${company.slug}`;
   const tabs = [{ href: base, label: "Overview" }];
-  if (company.filesReports) tabs.push({ href: `${base}/financials`, label: "Financials" });
+  if (company.filesReports) {
+    tabs.push({ href: `${base}/financials`, label: "Financials" });
+    tabs.push({ href: `${base}/valuation`, label: "Valuation" });
+  }
 
   return (
     <section className="page active rf" id="page-research">
@@ -54,8 +57,8 @@ export default async function TickerLayout({
         <ResearchTabs tabs={tabs} />
         {children}
         <p className="rf-footer-note">
-          Data: SEC EDGAR · Twelve Data · Finnhub. Facts and figures, not investment advice. The Dispatch does not rate stocks or set
-          price targets.
+          Data: SEC EDGAR · Twelve Data · Finnhub. Facts and figures, not investment advice. The Dispatch doesn&rsquo;t rate stocks
+          or put a price on them.
         </p>
       </div>
     </section>

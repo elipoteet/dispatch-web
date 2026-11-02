@@ -29,7 +29,9 @@ export type LineItem =
   | "shares_diluted"
   | "cash_and_equivalents"
   | "total_assets"
-  | "total_equity";
+  | "total_equity"
+  | "total_debt"
+  | "shares_outstanding";
 
 // Balance-sheet items are instants (a value on one date) and are never summed
 // across quarters; everything else is a duration (a value over a span) and is
@@ -38,13 +40,27 @@ export const INSTANT_ITEMS: ReadonlySet<LineItem> = new Set<LineItem>([
   "cash_and_equivalents",
   "total_assets",
   "total_equity",
+  "total_debt",
+  "shares_outstanding",
 ]);
+
+// Durations that are averages, not totals, so they can't be added or
+// subtracted. A weighted-average share count for the year is not the sum of its
+// quarters' counts: deriving NVIDIA's Q4 by subtraction gave about minus 49
+// billion shares. These keep the full year and any genuinely filed quarter,
+// and skip Q4 derivation and year-to-date unwinding. Found in stage 4.
+export const NON_ADDITIVE_ITEMS: ReadonlySet<LineItem> = new Set<LineItem>(["shares_diluted"]);
 
 // free_cash_flow is absent here because no company reports it — it is operating
 // cash flow minus capex, computed by us, and labelled as ours wherever shown.
 export const DERIVED_ITEMS: ReadonlySet<LineItem> = new Set<LineItem>(["free_cash_flow"]);
 
-export const CONCEPT_TAGS: Record<Exclude<LineItem, "free_cash_flow">, readonly string[]> = {
+// Line items that don't come from the us-gaap tag lists below: free cash flow
+// is calculated, and shares outstanding is read from the filing's cover page
+// (the dei taxonomy) by extractCoverShares in normalize.ts.
+export type TaggedLineItem = Exclude<LineItem, "free_cash_flow" | "shares_outstanding">;
+
+export const CONCEPT_TAGS: Record<TaggedLineItem, readonly string[]> = {
   revenue: [
     "RevenueFromContractWithCustomerExcludingAssessedTax",
     "RevenueFromContractWithCustomerIncludingAssessedTax",
@@ -92,11 +108,22 @@ export const CONCEPT_TAGS: Record<Exclude<LineItem, "free_cash_flow">, readonly 
   ],
   total_assets: ["Assets"],
   total_equity: ["StockholdersEquity", "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"],
+  // Borrowings, for enterprise value (Stage 4) and net debt (Stage 8).
+  // LongTermDebt includes the current portion where it's filed (NVIDIA, Apple,
+  // JPMorgan all file it); the fallbacks are what Alphabet files instead.
+  // LongTermDebtNoncurrent comes last because it leaves out debt due within a
+  // year, so it understates slightly. Checked against companyfacts, November 2026.
+  total_debt: [
+    "LongTermDebt",
+    "DebtLongtermAndShorttermCombinedAmount",
+    "LongTermDebtAndCapitalLeaseObligations",
+    "LongTermDebtNoncurrent",
+  ],
 };
 
 // Shares are filed in the "shares" unit, everything else in USD.
 export function unitFor(item: LineItem): "USD" | "shares" {
-  return item === "shares_diluted" ? "shares" : "USD";
+  return item === "shares_diluted" || item === "shares_outstanding" ? "shares" : "USD";
 }
 
 // —— Business models where a line item is meaningless, not merely missing ——

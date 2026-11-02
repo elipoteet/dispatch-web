@@ -53,7 +53,13 @@ export type CompanyFinancials = {
 // Kept in the existing latest_accession column rather than a new one: adding a
 // column means altering a table that is already live, which this project does
 // only with Eli's sign-off. Bump this whenever the normaliser's output changes.
-export const NORMALIZER_VERSION = 2;
+// 2: buybacks (stage 2). 3: total_debt and cover-page shares_outstanding, and
+// no more quarterly share counts derived by subtraction (stage 4). 4: a year's
+// quarters taken from a second tag when its full-year total matches (stage 4).
+// 5: Q2 and Q4 of cash-flow items unwound correctly from year-to-date totals
+// (stage 4; wrong since stage 1). 6: debt taken per balance-sheet date, and any
+// missing quarter from a second tag whose full year matches (stage 4).
+export const NORMALIZER_VERSION = 6;
 
 export function accessionStamp(accession: string): string {
   return `${accession}#n${NORMALIZER_VERSION}`;

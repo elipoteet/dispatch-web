@@ -74,7 +74,7 @@ export default async function Image() {
           }}
         >
           A free research file on every U.S. public company, read from its SEC filings. No ratings,
-          no price targets.
+          no verdicts.
         </div>
       </div>
     ),

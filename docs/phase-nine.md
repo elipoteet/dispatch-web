@@ -134,6 +134,13 @@ Done means: in a fresh incognito window, click every range on NVDA and confirm t
 
 Done means: the solver is unit-tested against a hand-built spreadsheet case. At NVDA's mockup inputs (market value $5.77T, free cash flow $96.7B, 10%, 3%, 10 years) it lands near 22%. Search the rendered HTML for "fair value", "target", "undervalued", "overvalued", "buy", "sell" and "hold". There must be no matches outside post bodies.
 
+**As built (1 November).** Recap in `docs/phase-nine-stage-4-recap.md`.
+- Split factors come from Twelve Data's unadjusted prices against its adjusted ones, because both providers' split feeds are paid. That's one request, spent only when a company's share counts jump.
+- Market value is cross-checked against Finnhub's market value, not its share count (Berkshire's classes).
+- Companies with several share classes have a shorter history, or none, and the page says why.
+- Banks get P/E and price to book, with no calculator.
+- Stage 4 found and fixed a Stage 1 bug: quarterly cash flow had Q2 and Q4 wrong (`NORMALIZER_VERSION` 6).
+
 ### Stage 5. Earnings
 
 Next report date from Finnhub's calendar. Quarterly revenue and EPS bars from SEC. Reported versus estimated EPS for the last four quarters from Finnhub, with plain wording ("came in $0.05 above the average estimate"). The company's own guidance is taken from the earnings press release (8-K exhibit 99.1), ~~extracted by Claude~~, stored per filing, and shown as a hatched bar labelled as guidance. If extraction isn't confident, it shows nothing rather than a guess.

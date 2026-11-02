@@ -15,7 +15,7 @@ import { Footer } from "@/components/layout/Footer";
 
 const SITE_NAME = "The Dispatch";
 const SITE_DESCRIPTION =
-  "A free research file on every U.S. public company, read from its SEC filings: ten years of financials, what stands out, and its price history. No ratings, no price targets.";
+  "A free research file on every U.S. public company, read from its SEC filings: ten years of financials, what stands out, and its price history. No ratings, no verdicts.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.dispatchresearch.com"),

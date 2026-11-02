@@ -201,6 +201,18 @@ in this codebase:
     Every Twelve Data request goes through `twelveDataSeries`, which counts them
     against the 8-a-minute allowance. `TWELVE_DATA_FORCE_BUSY=1` simulates "used up" for
     testing the fallbacks.
+11. **`next dev` doesn't apply the theme colour tokens; `next build` + `next start` does.**
+    Under Turbopack dev, `--navy`, `--gold` and the rest resolve to nothing: the page
+    background is white, SVG strokes are `none`, bars are transparent. It looks like a
+    styling bug and isn't. Do visual checks and screenshots on a production build
+    (found in Stage 4, November 2026).
+12. **Quarterly cash-flow figures are unwound from year-to-date totals in
+    `normalize.ts`.** The total through the previous quarter includes Q1's own
+    three-month figure, which sits among the quarters, not the year-to-date spans.
+    Stages 1 to 3 missed that, so Q2 showed six months and Q4 came out short. Yearly
+    totals were unaffected, so arithmetic checks that only compare quarters with the
+    year can't catch this kind of bug. `normalize.test.ts` now checks Q1+Q2 and
+    Q1+Q2+Q3 against the filed six- and nine-month totals.
 
 ## Workflow conventions already established
 

@@ -26,8 +26,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!company) return { title: "Company not found", robots: { index: false, follow: false } };
   const path = `/research/${company.slug}`;
   const description = company.filesReports
-    ? `${company.name} (${company.symbol}): price, ten years of reported financials and what stands out, from its SEC filings. Free, with no ratings or price targets.`
-    : `${company.name} (${company.symbol}): price history. Free, with no ratings or price targets.`;
+    ? `${company.name} (${company.symbol}): price, ten years of reported financials and what stands out, from its SEC filings. Free, with no ratings.`
+    : `${company.name} (${company.symbol}): price history. Free, with no ratings.`;
   return {
     title: `${company.name} (${company.symbol}) overview`,
     description,

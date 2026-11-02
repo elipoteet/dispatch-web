@@ -86,8 +86,9 @@ const KEEP_UPPER = new Set(["LLC", "LP", "PLC", "NV", "SA", "AG", "ETF", "REIT",
 
 export function titleCaseName(rawName: string): string {
   // The SEC appends filing suffixes to some names: a state of incorporation
-  // ("/DE/") or a re-registration marker ("/NEW"). Not part of the name.
-  const name = rawName.replace(/\s*\/[A-Za-z]{2,4}\/?\s*$/, "").trim();
+  // ("/DE/", or "\DE\" as US Bancorp has it) or a re-registration marker
+  // ("/NEW"). Not part of the name.
+  const name = rawName.replace(/\s*[/\\][A-Za-z]{2,4}[/\\]?\s*$/, "").trim();
   if (name !== name.toUpperCase()) return name;
   return name
     .toLowerCase()

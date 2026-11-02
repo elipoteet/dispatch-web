@@ -8,11 +8,13 @@
 import {
   CONCEPT_TAGS,
   INSTANT_ITEMS,
+  NON_ADDITIVE_ITEMS,
   filerKindFromSic,
   suppressedItems,
   unitFor,
   type FilerKind,
   type LineItem,
+  type TaggedLineItem,
 } from "@/lib/sec/concepts";
 
 // One fact as the SEC serves it, inside facts[taxonomy][tag].units[unit].
@@ -208,6 +210,10 @@ function resolvePeriod(facts: SecFact[]): { fact: SecFact; restated: boolean } |
 
 type Candidate = { fact: SecFact; restated: boolean; tag: string };
 
+// Balance-sheet items whose quarter-ends each take the first tag that has them,
+// instead of one tag for the year. See the note where it's applied.
+const PER_DATE_ITEMS: ReadonlySet<LineItem> = new Set<LineItem>(["total_debt"]);
+
 // Which tag to believe when a company files more than one that could answer for
 // the same line item.
 //
@@ -226,7 +232,7 @@ type Candidate = { fact: SecFact; restated: boolean; tag: string };
 // because the two cover different years and neither can fill the other's gap.
 function rankTags(
   companyFacts: CompanyFacts,
-  item: Exclude<LineItem, "free_cash_flow">,
+  item: TaggedLineItem,
   unit: string,
 ): string[] {
   const taxonomy = companyFacts.facts["us-gaap"] ?? {};
@@ -340,7 +346,7 @@ export function normalizeCompanyFacts(
   const calendar = buildFiscalCalendar(companyFacts);
   const rows: FinancialRow[] = [];
 
-  const items = Object.keys(CONCEPT_TAGS) as Exclude<LineItem, "free_cash_flow">[];
+  const items = Object.keys(CONCEPT_TAGS) as TaggedLineItem[];
 
   // Which fiscal years exist at all, including the one in progress whose 10-K
   // has not been filed yet.
@@ -394,17 +400,70 @@ export function normalizeCompanyFacts(
       let chosen: { tag: string; slice: YearSlice } | null = null;
       let fallback: { tag: string; slice: YearSlice } | null = null;
 
-      for (const tag of ranked) {
-        const periods = perTag.get(tag);
-        if (!periods) continue;
-        const slice = sliceYear(periods, year, isInstant);
-        if (isEmptySlice(slice)) continue;
-        if (isInstant || slice.annual) {
-          chosen = { tag, slice };
-          break;
+      if (PER_DATE_ITEMS.has(item)) {
+        // —— Debt: each balance-sheet date stands alone ——
+        // One tag for the whole year lost three quarters of debt at most large
+        // filers, and with them enterprise value for three quarters in four:
+        // Alphabet, Meta and Procter & Gamble file LongTermDebt (which includes
+        // the part due within a year) in their 10-Ks and LongTermDebtNoncurrent
+        // (which doesn't) in their 10-Qs. So each date takes the first tag that
+        // has it, and keeps its own tag. The cost, stated on the page: a
+        // quarter's debt can leave out the part due within the year, a few
+        // percent of enterprise value at most. Cash, assets and equity keep one
+        // tag a year; mixing there bought little and mixed definitions.
+        const merged: YearSlice = { annual: null, quarters: new Map(), ytd: [] };
+        for (const tag of ranked) {
+          const periods = perTag.get(tag);
+          if (!periods) continue;
+          for (const [period, candidate] of sliceYear(periods, year, true).quarters) {
+            if (!merged.quarters.has(period)) merged.quarters.set(period, candidate);
+          }
         }
-        fallback ??= { tag, slice };
+        if (merged.quarters.size > 0) chosen = { tag: ranked[0], slice: merged };
+      } else {
+        for (const tag of ranked) {
+          const periods = perTag.get(tag);
+          if (!periods) continue;
+          const slice = sliceYear(periods, year, isInstant);
+          if (isEmptySlice(slice)) continue;
+          if (isInstant || slice.annual) {
+            chosen = { tag, slice };
+            break;
+          }
+          fallback ??= { tag, slice };
+        }
       }
+      // —— Same year, same total: quarters from either tag ——
+      // JPMorgan files its full year under Revenues and its quarters only under
+      // RevenuesNetOfInterestExpense, with the same total either way ($182.45B
+      // for 2025); Alphabet filed its first quarter of 2024 under a different
+      // revenue tag from the other three. Taking one tag left those quarters
+      // blank, and with them the trailing-year revenue the Valuation tab
+      // needs. A missing quarter is taken from another tag only if that tag's
+      // full year matches to within 0.1%: then both describe the same number
+      // and nothing is mixed.
+      if (chosen && !isInstant && chosen.slice.annual) {
+        const total = chosen.slice.annual.fact.val;
+        const merged: YearSlice = {
+          annual: chosen.slice.annual,
+          quarters: new Map(chosen.slice.quarters),
+          ytd: [...chosen.slice.ytd],
+        };
+        for (const tag of ranked) {
+          const periods = tag === chosen.tag ? null : perTag.get(tag);
+          if (!periods) continue;
+          const slice = sliceYear(periods, year, false);
+          if (!slice.annual || Math.abs(slice.annual.fact.val - total) > Math.abs(total) * 0.001) continue;
+          for (const [period, candidate] of slice.quarters) {
+            if (!merged.quarters.has(period)) merged.quarters.set(period, candidate);
+          }
+          for (const y of slice.ytd) {
+            if (!merged.ytd.some((m) => m.period === y.period)) merged.ytd.push(y);
+          }
+        }
+        chosen = { tag: chosen.tag, slice: merged };
+      }
+
       const picked = chosen ?? fallback;
       if (!picked) continue;
 
@@ -418,24 +477,37 @@ export function normalizeCompanyFacts(
       if (slice.annual) put(rowFrom(item, slice.annual, fiscalYear, "FY", unit));
       for (const [period, candidate] of slice.quarters) put(rowFrom(item, candidate, fiscalYear, period, unit));
 
-      if (!isInstant) {
+      if (!isInstant && !NON_ADDITIVE_ITEMS.has(item)) {
         // —— Unwind year-to-date quarters ——
         // Cash-flow statements in a 10-Q are cumulative from the year's start, and
         // for most filers that is the ONLY form the quarter appears in. NVDA's
         // fiscal 2026 operating cash flow exists as 90, 181, 272 and 363-day
         // spans and never as a standalone Q2 or Q3. Revenue, by contrast, is
         // filed both ways — so only subtract where a real quarter is missing.
-        const ordered = slice.ytd.slice().sort((a, b) => a.days - b.days);
-        for (let i = 0; i < ordered.length; i++) {
-          const current = ordered[i];
-          if (slots.has(current.period)) continue;
-          const previous = i === 0 ? null : ordered[i - 1];
-          const base = previous ? previous.candidate.fact.val : 0;
-          put({
-            ...rowFrom(item, current.candidate, fiscalYear, current.period, unit),
-            value: current.candidate.fact.val - base,
-            derived: Boolean(previous),
-          });
+        //
+        // A quarter is its year-to-date total minus the year-to-date total
+        // through the quarter before. For Q2 that earlier total is Q1's own
+        // three months, which sits among the quarters, not the year-to-date
+        // spans. Stages 1 to 3 subtracted only between year-to-date spans, so
+        // Q2 kept the whole six months and Q4 (the year minus the rest) came
+        // out short by Q1, below zero for Alphabet's buybacks in 2020, 2024 and
+        // 2025. The years were always right, which is why no check caught it.
+        const ytdByPeriod = new Map<FiscalPeriod, number>();
+        for (const y of slice.ytd) {
+          if (!ytdByPeriod.has(y.period)) ytdByPeriod.set(y.period, y.candidate.fact.val);
+        }
+        let throughPrevious: number | null = 0;
+        for (const period of ["Q1", "Q2", "Q3"] as const) {
+          const ytd = slice.ytd.find((y) => y.period === period);
+          if (!slots.has(period) && ytd && throughPrevious != null) {
+            put({
+              ...rowFrom(item, ytd.candidate, fiscalYear, period, unit),
+              value: ytd.candidate.fact.val - throughPrevious,
+              derived: period !== "Q1",
+            });
+          }
+          const own = slots.get(period);
+          throughPrevious = ytdByPeriod.get(period) ?? (own && throughPrevious != null ? throughPrevious + own.value : null);
         }
 
         // —— Derive Q4 ——
@@ -509,6 +581,8 @@ export function normalizeCompanyFacts(
     }
   }
 
+  rows.push(...extractCoverShares(companyFacts));
+
   rows.sort(
     (a, b) =>
       b.fiscalYear - a.fiscalYear ||
@@ -517,6 +591,49 @@ export function normalizeCompanyFacts(
   );
 
   return { rows, filerKind, suppression };
+}
+
+// —— Shares outstanding, from each filing's cover page ——
+// The front page of every 10-K and 10-Q states how many shares were
+// outstanding on a date a few weeks after the period ended
+// (dei:EntityCommonStockSharesOutstanding). Stage 4 needs them for market
+// value over time.
+//
+// Unlike the income statement's share counts, these are never restated: each
+// cover reports shares on its own date, in the units of that date. So a stock
+// split shows up as a jump between covers (NVIDIA: 2,460M on 24 May 2024,
+// 24,530M on 23 August 2024), and the valuation code converts each count to
+// today's basis with the split factors it reads from prices.
+//
+// Stored with the filing's own fiscal year and period (fy/fp on a cover fact
+// describe the filing, which is right here) and the cover date as period_end.
+// Companies with several share classes file one count per class, which the
+// SEC's company facts leave out; for those (Alphabet) there's nothing here and
+// market value falls back to Finnhub's share count.
+export function extractCoverShares(companyFacts: CompanyFacts): FinancialRow[] {
+  const facts = companyFacts.facts.dei?.EntityCommonStockSharesOutstanding?.units?.shares ?? [];
+  const byPeriod = new Map<string, SecFact>();
+  for (const fact of facts) {
+    if (!isPeriodicReport(fact.form) || !fact.fy || !/^(FY|Q[1-4])$/.test(fact.fp) || !(fact.val > 0)) continue;
+    const key = `${fact.fy}|${fact.fp}`;
+    const seen = byPeriod.get(key);
+    // An amendment repeats the cover: keep the original filing's count.
+    if (!seen || fact.filed < seen.filed) byPeriod.set(key, fact);
+  }
+  return [...byPeriod.values()].map((fact) => ({
+    fiscalYear: fact.fy,
+    fiscalPeriod: fact.fp as FiscalPeriod,
+    periodEnd: fact.end,
+    lineItem: "shares_outstanding" as const,
+    value: fact.val,
+    unit: "shares",
+    sourceTag: "dei:EntityCommonStockSharesOutstanding",
+    accession: fact.accn,
+    filedAt: fact.filed,
+    restated: false,
+    derived: false,
+    source: "sec" as const,
+  }));
 }
 
 // Convenience for the checks and for any caller that wants one figure.

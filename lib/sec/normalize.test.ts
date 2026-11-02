@@ -127,6 +127,16 @@ describe("JPMorgan — a bank, where some lines mean nothing", () => {
     expect(income.length).toBeGreaterThanOrEqual(10);
   });
 
+  it("keeps quarterly revenue where the year and the quarters are filed under different tags", () => {
+    // Full year under Revenues, quarters under RevenuesNetOfInterestExpense,
+    // the same $182.45B total either way.
+    const year = pick(rows, "revenue", 2025)!.value;
+    expect(billions(year)).toBe(182.4);
+    for (const q of ["Q1", "Q2", "Q3", "Q4"] as const) expect(pick(rows, "revenue", 2025, q)).not.toBeNull();
+    const quarters = (["Q1", "Q2", "Q3", "Q4"] as const).reduce((s, q) => s + pick(rows, "revenue", 2025, q)!.value, 0);
+    expect(quarters).toBeCloseTo(year, -3);
+  });
+
   it("would have produced a meaningless negative free cash flow if unsuppressed", () => {
     // The guard is doing real work: JPMorgan's operating cash flow is negative,
     // which is normal for a bank and would read as alarming on a page that
@@ -205,6 +215,101 @@ describe("rules that apply to every filer", () => {
       for (const r of rows) expect(r.sourceTag.length).toBeGreaterThan(0);
     });
   }
+});
+
+describe("quarters unwound from year-to-date cash flow", () => {
+  // Cash-flow statements in 10-Qs are running totals. The quarters we derive
+  // must add back up to the six- and nine-month totals each company filed.
+  // Checked against the filings themselves, so this can't pass by repeating
+  // the normaliser's own arithmetic.
+  const spanDays = (f: { start?: string; end: string }) =>
+    f.start ? (Date.parse(f.end) - Date.parse(f.start)) / 86_400_000 : 0;
+
+  for (const [name, fixture, tag] of [
+    ["NVDA", nvda, "NetCashProvidedByUsedInOperatingActivities"],
+    ["AAPL", aapl, "NetCashProvidedByUsedInOperatingActivities"],
+    ["AAPL", aapl, "PaymentsForRepurchaseOfCommonStock"],
+  ] as const) {
+    it(`${name} ${tag}: Q1+Q2 and Q1+Q2+Q3 match the filed running totals`, () => {
+      const { rows } = normalizeCompanyFacts(fixture, { sic: fixture.meta.sic });
+      const item = tag.startsWith("Payments") ? "buybacks" : "operating_cash_flow";
+      const filed = fixture.facts["us-gaap"][tag].units.USD.filter((f) => f.form === "10-Q");
+      let checked = 0;
+      for (const [quarters, lo, hi] of [
+        [["Q1", "Q2"], 170, 190],
+        [["Q1", "Q2", "Q3"], 260, 280],
+      ] as const) {
+        for (const f of filed.filter((x) => spanDays(x) >= lo && spanDays(x) <= hi)) {
+          const last = rows.find((r) => r.lineItem === item && r.fiscalPeriod === quarters.at(-1) && r.periodEnd === f.end);
+          if (!last || last.sourceTag !== tag) continue;
+          const parts = quarters.map((q) => pick(rows, item, last.fiscalYear, q));
+          if (parts.some((p) => !p)) continue;
+          // The newest filing of a period wins when it was restated.
+          const latest = filed
+            .filter((x) => x.start === f.start && x.end === f.end)
+            .sort((a, b) => (a.filed < b.filed ? 1 : -1))[0];
+          expect(parts.reduce((s, p) => s + p!.value, 0)).toBeCloseTo(latest.val, -6);
+          checked++;
+        }
+      }
+      expect(checked).toBeGreaterThanOrEqual(10);
+    });
+  }
+
+  it("never gives a negative quarter for money spent", () => {
+    for (const fx of [nvda, aapl]) {
+      const { rows } = normalizeCompanyFacts(fx, { sic: fx.meta.sic });
+      const negative = rows.filter((r) => (r.lineItem === "capex" || r.lineItem === "buybacks") && r.value < 0);
+      expect(negative).toEqual([]);
+    }
+  });
+});
+
+describe("stage 4: debt and shares outstanding", () => {
+  const n = normalizeCompanyFacts(nvda, { sic: nvda.meta.sic }).rows;
+  const a = normalizeCompanyFacts(aapl, { sic: aapl.meta.sic }).rows;
+  const j = normalizeCompanyFacts(jpm, { sic: jpm.meta.sic }).rows;
+
+  it("reads total debt as of the balance-sheet date", () => {
+    // NVIDIA's 10-K for fiscal 2026: $8.5B of long-term debt, current portion
+    // included. Apple's fiscal 2025 10-K: $90.7B of term debt.
+    const nv = pick(n, "total_debt", 2026, "Q4")!;
+    expect(billions(nv.value)).toBe(8.5);
+    expect(nv.periodEnd).toBe("2026-01-25");
+    expect(billions(pick(a, "total_debt", 2025, "Q4")!.value)).toBe(90.7);
+  });
+
+  it("reads shares outstanding from each filing's cover page, dated on the cover", () => {
+    const nv = pick(n, "shares_outstanding", 2026, "FY")!;
+    expect(billions(nv.value)).toBe(24.3);
+    expect(nv.periodEnd).toBe("2026-02-20");
+    expect(nv.sourceTag).toBe("dei:EntityCommonStockSharesOutstanding");
+    expect(billions(pick(a, "shares_outstanding", 2026, "Q3")!.value)).toBe(14.6);
+    expect(billions(pick(j, "shares_outstanding", 2026, "Q2")!.value)).toBe(2.7);
+  });
+
+  it("keeps each cover in the units of its own date, so a split shows as a jump", () => {
+    // NVIDIA's 10-for-1 split took effect on 10 June 2024, between these covers.
+    // The valuation code converts both to today's basis; the normaliser doesn't.
+    const before = pick(n, "shares_outstanding", 2025, "Q1")!;
+    const after = pick(n, "shares_outstanding", 2025, "Q2")!;
+    expect(after.value / before.value).toBeGreaterThan(9.5);
+    expect(after.value / before.value).toBeLessThan(10.5);
+  });
+
+  it("leaves debt blank where the bank stopped using the standard tag", () => {
+    // JPMorgan's LongTermDebt stops in 2014. The newest debt row is old, and
+    // nothing carries it forward into later years.
+    const newest = j.filter((r) => r.lineItem === "total_debt").map((r) => r.periodEnd).sort().pop()!;
+    expect(newest < "2015-01-01").toBe(true);
+  });
+
+  it("never derives a quarterly share count by subtraction", () => {
+    for (const rows of [n, a, j]) {
+      expect(rows.filter((r) => r.lineItem === "shares_diluted" && r.derived)).toHaveLength(0);
+      for (const r of rows.filter((x) => x.lineItem === "shares_diluted")) expect(r.value).toBeGreaterThan(0);
+    }
+  });
 });
 
 describe("suppression rules", () => {

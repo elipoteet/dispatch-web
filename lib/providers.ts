@@ -303,6 +303,25 @@ export async function fetchMonthlyPrices(symbol: string): Promise<PriceRow[]> {
   return rows;
 }
 
+// —— Unadjusted daily closes, for finding stock splits (phase nine, stage 4) ——
+// Twelve Data's and Finnhub's split lists are paid (both answer 403 on the free
+// plans), but Twelve Data's adjust=none is free and returns the prices as they
+// traded: NVIDIA $1,208.88 on 7 June 2024 and $121.79 on 10 June, against
+// $120.89 and $121.79 adjusted (checked November 2026). Dividing one series
+// by the other gives the split factor on every date; lib/research/splits.ts
+// does that. 3000 sessions is about twelve years, enough for ten years of
+// valuation history. Only requested for companies whose share counts jumped
+// (see needsSplitCheck), through the same eight-a-minute gate as everything
+// else. Not cached here; the caller caches it for a day.
+export async function fetchUnadjustedDailyCloses(symbol: string): Promise<{ date: string; close: number }[]> {
+  console.log(`[cache] MISS fetchUnadjustedDailyCloses(${symbol}) — calling Twelve Data`);
+  const rows = rowsFromTwelveData(
+    await twelveDataSeries({ symbol, interval: "1day", outputsize: "3000", adjust: "none" }),
+  );
+  if (rows.length < 10) throw new NoTickerDataError("Not enough unadjusted history for this symbol.");
+  return rows.map((r) => ({ date: r.date, close: r.close }));
+}
+
 // —— Twelve Data: intraday price history (the ticker page's 1D and 1W ranges) ——
 // Twelve Data is the only provider configured here that serves intraday bars
 // for the session in progress. Polygon's free tier has the data but refuses
@@ -519,6 +538,26 @@ export async function fetchNextEarnings(symbol: string): Promise<NextEarnings | 
   if (!process.env.FINNHUB_API_KEY) return null;
   try {
     return await cachedNextEarnings(symbol.toUpperCase());
+  } catch {
+    return null;
+  }
+}
+
+// —— Finnhub: a company's peers (phase nine, stage 4) ——
+// Free, and a list of tickers in the same industry, the company itself first.
+// Cached a day: peer groups don't change from one hour to the next.
+async function fetchPeersRaw(symbol: string): Promise<string[]> {
+  const data = await fh<string[]>("stock/peers", { symbol: symbol.toUpperCase() });
+  if (!Array.isArray(data)) throw new Error("Finnhub peers request failed");
+  return data.filter((s): s is string => typeof s === "string").map((s) => s.toUpperCase());
+}
+
+const cachedPeers = unstable_cache(fetchPeersRaw, ["peers"], { revalidate: 60 * 60 * 24 });
+
+export async function fetchPeers(symbol: string): Promise<string[] | null> {
+  if (!process.env.FINNHUB_API_KEY) return null;
+  try {
+    return await cachedPeers(symbol.toUpperCase());
   } catch {
     return null;
   }

@@ -11,7 +11,7 @@ import { getHomeCards } from "@/lib/research/home";
 export const metadata: Metadata = {
   title: { absolute: "The Dispatch — Free research on every U.S. public company" },
   description:
-    "A free research file on every U.S. public company, read from its SEC filings: ten years of financials, what stands out, and its price history. No ratings, no price targets.",
+    "A free research file on every U.S. public company, read from its SEC filings: ten years of financials, what stands out, and its price history. No ratings, no verdicts.",
   alternates: { canonical: "/" },
   openGraph: { url: "/" },
 };
@@ -21,7 +21,7 @@ const EXAMPLE = "nvda";
 const FILE_SECTIONS: { label: string; text: string; href?: string }[] = [
   { label: "Overview", text: "What the company does, what stands out in its numbers, and its price.", href: `/research/${EXAMPLE}` },
   { label: "Financials", text: "Ten years of revenue, profit, margins and cash flow, annual and quarterly.", href: `/research/${EXAMPLE}/financials` },
-  { label: "Valuation", text: "The growth today’s price assumes, worked backward from the market value." },
+  { label: "Valuation", text: "The growth today’s price assumes, its yields, and its multiples against ten years of its own history.", href: `/research/${EXAMPLE}/valuation` },
   { label: "Earnings", text: "Quarterly results, the next report date, and the company’s own guidance." },
   { label: "Insiders", text: "Shares bought and sold by executives and directors, from Form 4 filings." },
   { label: "Filings", text: "Every report, and what changed in the risk factors from one year to the next." },
@@ -108,7 +108,7 @@ export default async function HomePage() {
           <div className="rf-lbl">How it works</div>
           <ul className="rf-how-list">
             <li>The numbers come from companies&rsquo; own filings with the SEC, and every page links back to the source.</li>
-            <li>Nothing here rates a stock, scores it or sets a price target. The judgment stays yours.</li>
+            <li>Nothing here rates a stock, scores it or puts a price on it. The judgment stays yours.</li>
             <li>It&rsquo;s free, with no account needed to read anything.</li>
           </ul>
         </div>

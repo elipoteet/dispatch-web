@@ -26,7 +26,7 @@ const COMPANIES: [string, string][] = [
   ["PG", "0000080424"],   ["KO", "0000021344"],   ["CAT", "0000018230"],  ["VZ", "0000732712"],
 ];
 
-type Loaded = { symbol: string; rows: FinancialRow[] };
+type Loaded = { symbol: string; rows: FinancialRow[]; facts: CompanyFacts };
 
 async function get<T>(url: string): Promise<T | null> {
   await sleep(180);
@@ -48,7 +48,7 @@ async function loadAll(): Promise<void> {
     const subs = await get<{ sic: string }>(`https://data.sec.gov/submissions/CIK${cik}.json`);
     const facts = await get<CompanyFacts>(`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`);
     if (!facts) continue;
-    loaded.push({ symbol, rows: normalizeCompanyFacts(facts, { sic: subs?.sic }).rows });
+    loaded.push({ symbol, rows: normalizeCompanyFacts(facts, { sic: subs?.sic }).rows, facts });
   }
   // Nothing came back at all — treat as unreachable rather than as twenty failures.
   if (loaded.length === 0) reachable = false;
@@ -72,13 +72,35 @@ describe("twenty large companies, against the live SEC API", () => {
       // Deliberately about the TAG, not the arithmetic: quarters need not sum to
       // the year once a year has been restated, but every cell in one year's row
       // must still have come from the same place.
+      //
+      // Stage 4 allows exactly one kind of second tag in a year: one whose own
+      // full-year total, as filed in the 10-K, matches the row's year to within
+      // 0.1%. Then both tags describe the same number (JPMorgan's Revenues and
+      // RevenuesNetOfInterestExpense, both $182.45B for 2025), which is not the
+      // Walmart case. This checks that against the filings, so the exception
+      // can't hide a real mix.
+      const DAY = 86_400_000;
+      const filedYearTotal = (facts: CompanyFacts, tag: string, end: string): number[] =>
+        Object.values(facts.facts["us-gaap"]?.[tag]?.units ?? {})
+          .flat()
+          .filter((f) => f.form.startsWith("10-K") && f.end === end && f.start)
+          .filter((f) => {
+            const days = (Date.parse(f.end) - Date.parse(f.start!)) / DAY;
+            return days >= 340 && days <= 380;
+          })
+          .map((f) => f.val);
+
       const offenders: string[] = [];
-      for (const { symbol, rows } of loaded) {
+      for (const { symbol, rows, facts } of loaded) {
         const byYearItem = new Map<string, Map<string, string[]>>();
         for (const row of rows) {
           // Composites name both of their inputs, and free cash flow legitimately
           // crosses providers when capex came from the filing instead.
           if (row.lineItem === "free_cash_flow" || row.sourceTag.includes(" - ")) continue;
+          // Debt takes each balance-sheet date's first available tag by design
+          // (normalize.ts, PER_DATE_ITEMS); share counts on the cover aren't
+          // us-gaap tags at all.
+          if (row.lineItem === "total_debt" || row.lineItem === "shares_outstanding") continue;
           const key = `${symbol} FY${row.fiscalYear} ${row.lineItem}`;
           if (!byYearItem.has(key)) byYearItem.set(key, new Map());
           const tags = byYearItem.get(key)!;
@@ -87,6 +109,16 @@ describe("twenty large companies, against the live SEC API", () => {
         }
         for (const [key, tags] of byYearItem) {
           if (tags.size <= 1) continue;
+          const [, fy, item] = key.split(" ");
+          const year = rows.find((r) => `FY${r.fiscalYear}` === fy && r.lineItem === item && r.fiscalPeriod === "FY");
+          const sameTotal =
+            year != null &&
+            [...tags.keys()].every(
+              (tag) =>
+                tag === year.sourceTag ||
+                filedYearTotal(facts, tag, year.periodEnd).some((v) => Math.abs(v - year.value) <= Math.abs(year.value) * 0.001),
+            );
+          if (sameTotal) continue;
           const detail = [...tags].map(([tag, periods]) => `${tag}[${periods.sort().join(",")}]`).join(" vs ");
           offenders.push(`${key}: ${detail}`);
         }
