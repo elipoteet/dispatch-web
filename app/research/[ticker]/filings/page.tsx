@@ -224,14 +224,24 @@ export default async function FilingsPage({ params, searchParams }: Props) {
 
   return (
     <div className="rf-tab-body">
-      <section className="rf-panel rf-next">
-        <div className="rf-lbl">What changed in the risk factors · latest annual report against the year before</div>
+      <section className="rf-sec rf-next" aria-labelledby="rf-risk">
+        <div>
+          <div className="rf-lbl rf-kicker">What changed</div>
+          <h2 className="rf-h2" id="rf-risk">
+            The risk factors in the latest annual report, against the year before
+          </h2>
+        </div>
         {risk}
       </section>
 
-      <section className="rf-vsec">
+      <section className="rf-sec" aria-labelledby="rf-filings">
         <div className="rf-fin-controls">
-          <div className="rf-lbl">Filings with the SEC</div>
+          <div>
+            <div className="rf-lbl rf-kicker">Filings with the SEC</div>
+            <h2 className="rf-h2" id="rf-filings">
+              Every recent report
+            </h2>
+          </div>
           <div className="rf-chips" role="group" aria-label="Which filings">
             <Link href={base} className={`rf-chip${category ? "" : " is-active"}`} aria-current={category ? undefined : "page"}>
               All

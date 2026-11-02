@@ -64,6 +64,8 @@ describe("whatStandsOut — real companies", () => {
       // $40.1B of repurchases against $96.7B of free cash flow.
       "It spent $40.1B repurchasing its own shares in fiscal 2026, about 41% of its free cash flow.",
     ]);
+    // The figure set large above each sentence on the Overview.
+    expect(facts.map((f) => f.figure)).toEqual(["43×", "71.1%", "$40.1B"]);
   });
 
   it("NVIDIA: never states a share-count change across its stock splits", () => {
@@ -76,16 +78,33 @@ describe("whatStandsOut — real companies", () => {
     const texts = facts.map((f) => f.text);
     expect(texts).toContain("It spent $31.6B repurchasing its own shares in 2025, about 55% of its net income.");
     expect(texts.some((t) => /gross margin/i.test(t))).toBe(false);
+    expect(facts.find((f) => f.id === "repurchases")?.figure).toBe("$31.6B");
   });
 
   it("Apple: reports a share count that fell with no split in the window", () => {
     const { facts } = whatStandsOut({ ...aapl }, 10);
     expect(facts.map((f) => f.text)).toContain("Its diluted share count is 14% lower than in fiscal 2020.");
+    expect(facts.find((f) => f.id === "share-count")?.figure).toBe("-14%");
   });
 
   it("Culp: leads with the run of losses", () => {
     const { facts } = whatStandsOut({ ...culp });
     expect(facts[0].text).toBe("It has reported a net loss in each of the last 5 years, $10.2M in 2026.");
+    expect(facts[0].figure).toBe("-$10.2M");
+  });
+
+  it("gives every figure from its own sentence's numbers", () => {
+    for (const company of [nvda, jpm, aapl, culp]) {
+      for (const fact of whatStandsOut({ ...company, price: 100, range52: { low: 99, high: 101 } }, 10).facts) {
+        if (fact.id === "range") {
+          expect(fact.figure).toBeUndefined();
+          continue;
+        }
+        expect(fact.figure).toBeTruthy();
+        // "43×" is "43 times" in the sentence; a signed figure's number is there unsigned.
+        expect(fact.text).toContain(fact.figure!.replace(/^[-+]/, "").replace(/×$/, ""));
+      }
+    }
   });
 
   it("never uses verdict language, for any company", () => {
@@ -103,11 +122,22 @@ describe("whatStandsOut — rules on constructed figures", () => {
   it("states a swing from loss to profit", () => {
     const { facts } = whatStandsOut(base([row("revenue", 2024, 100e6), row("revenue", 2025, 120e6), row("net_income", 2024, -5e6), row("net_income", 2025, 8e6)]));
     expect(facts[0].text).toBe("It earned a $8.0M profit in 2025 after a $5.0M loss in 2024.");
+    expect(facts[0].figure).toBe("$8.0M");
   });
 
   it("states a swing from profit to loss", () => {
     const { facts } = whatStandsOut(base([row("revenue", 2025, 1e9), row("net_income", 2024, 2e9), row("net_income", 2025, -1.5e9)]));
     expect(facts[0].text).toBe("It lost $1.5B in 2025 after a $2.0B profit in 2024.");
+    expect(facts[0].figure).toBe("-$1.5B");
+  });
+
+  it("figures a revenue change under twofold as a signed percentage, and no change as the amount", () => {
+    const growth = (from: number, to: number) =>
+      whatStandsOut(base([row("revenue", 2020, from), row("revenue", 2024, to), row("revenue", 2025, to)]), 10).facts.find((f) => f.id === "growth");
+    expect(growth(100e6, 138e6)).toMatchObject({ figure: "+38%", text: "Revenue is 38% higher than in 2020, and rose 0% in 2025 to $138.0M." });
+    expect(growth(100e6, 86e6)).toMatchObject({ figure: "-14%", text: "Revenue is 14% lower than in 2020, and rose 0% in 2025 to $86.0M." });
+    expect(growth(100e6, 101e6)?.figure).toBe("$101.0M");
+    expect(growth(100e6, 340e6)?.figure).toBe("3.4×");
   });
 
   it("calls a widening margin the highest shown only when it is", () => {
@@ -118,6 +148,7 @@ describe("whatStandsOut — rules on constructed figures", () => {
     });
     const { facts } = whatStandsOut(base(rows), 10);
     expect(facts.find((f) => f.id === "margin")?.text).toBe("Gross margin rose from 33.0% to 36.0% in 2025, the highest in the 5 years shown.");
+    expect(facts.find((f) => f.id === "margin")?.figure).toBe("36.0%");
   });
 
   it("ignores a margin move under two points", () => {
@@ -129,6 +160,7 @@ describe("whatStandsOut — rules on constructed figures", () => {
     const rows = [row("revenue", 2025, 100)];
     const near = whatStandsOut({ ...base(rows), price: 99.4, range52: { low: 50, high: 100 } }, 10);
     expect(near.facts.find((f) => f.id === "range")?.text).toBe("The stock is within 1% of its 52-week high.");
+    expect(near.facts.find((f) => f.id === "range")?.figure).toBeUndefined();
     const middle = whatStandsOut({ ...base(rows), price: 75, range52: { low: 50, high: 100 } }, 10);
     expect(middle.facts.find((f) => f.id === "range")).toBeUndefined();
   });

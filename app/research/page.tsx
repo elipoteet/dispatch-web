@@ -22,7 +22,7 @@ export default async function ResearchPage({ searchParams }: { searchParams: Pro
   return (
     <section className="page active rf" id="page-research">
       <div className="rf-wrap rf-narrow">
-        <div className="rf-lbl">Research</div>
+        <div className="rf-lbl rf-kicker">Research</div>
         <h1 className="rf-page-title">Open a company&rsquo;s file.</h1>
         <p className="rf-page-lede">
           Search by ticker or company name. Every company that files with the SEC has a file: what it does, what stands out, ten

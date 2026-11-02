@@ -78,16 +78,21 @@ export default async function EarningsPage({ params }: Props) {
 
   return (
     <div className="rf-tab-body">
-      <section className="rf-panel rf-next">
-        <div className="rf-lbl">Next report{nextLabel ? ` · ${nextLabel}` : ""}</div>
-        {next ? (
-          <p className="rf-next-date">
-            {LONG_DATE.format(new Date(next.date))}
-            {next.hour ? `, ${WHEN[next.hour]}` : ""}
-          </p>
-        ) : (
-          <p className="rf-next-line rf-muted">The next report date isn&rsquo;t on Finnhub&rsquo;s calendar yet.</p>
-        )}
+      <section className="rf-sec rf-next" aria-labelledby="rf-next-report">
+        <div>
+          <div className="rf-lbl rf-kicker">Next report{nextLabel ? ` · ${nextLabel}` : ""}</div>
+          <h2 className="rf-h2 rf-next-date" id="rf-next-report">
+            {next ? (
+              <>
+                {LONG_DATE.format(new Date(next.date))}
+                {next.hour ? `, ${WHEN[next.hour]}` : ""}
+              </>
+            ) : (
+              "No date yet"
+            )}
+          </h2>
+        </div>
+        {!next && <p className="rf-next-line rf-muted">The next report date isn&rsquo;t on Finnhub&rsquo;s calendar yet.</p>}
         {next && (next.epsEstimate != null || next.revenueEstimate != null) && (
           <p className="rf-next-line">
             {"The average analyst estimate, as compiled by Finnhub: "}
@@ -129,9 +134,11 @@ export default async function EarningsPage({ params }: Props) {
         )}
       </section>
 
-      <section className="rf-panel">
+      <section className="rf-panel" aria-labelledby="rf-rev-q">
         <div className="rf-panel-head">
-          <span className="rf-panel-title">Revenue by quarter</span>
+          <h2 className="rf-panel-title" id="rf-rev-q">
+            Revenue by quarter
+          </h2>
           <span className="rf-lbl">{scaleIsBillions ? "$ billions" : "$ millions"}</span>
         </div>
         <QuarterBars columns={revenueColumns} format={revenueFormat} label={`${name} revenue by quarter`} />
@@ -148,8 +155,13 @@ export default async function EarningsPage({ params }: Props) {
       </section>
 
       {pastOutlooks.length > 0 && (
-        <section className="rf-vsec">
-          <div className="rf-lbl">The company&rsquo;s outlook against what it reported</div>
+        <section className="rf-sec" aria-labelledby="rf-outlooks">
+          <div>
+            <div className="rf-lbl rf-kicker">Outlook against reported</div>
+            <h2 className="rf-h2" id="rf-outlooks">
+              The company&rsquo;s own outlook against what it then reported
+            </h2>
+          </div>
           <div className="rf-table-scroll" tabIndex={0} role="region" aria-label="Outlook against reported revenue">
             <table className="rf-table rf-est">
               <thead>
@@ -183,9 +195,11 @@ export default async function EarningsPage({ params }: Props) {
         </section>
       )}
 
-      <section className="rf-panel">
+      <section className="rf-panel" aria-labelledby="rf-eps-q">
         <div className="rf-panel-head">
-          <span className="rf-panel-title">Diluted EPS by quarter</span>
+          <h2 className="rf-panel-title" id="rf-eps-q">
+            Diluted EPS by quarter
+          </h2>
           <span className="rf-lbl">$ per share, as reported</span>
         </div>
         {data.epsStatus === "ok" ? (
@@ -207,8 +221,16 @@ export default async function EarningsPage({ params }: Props) {
         )}
       </section>
 
-      <section className="rf-vsec">
-        <div className="rf-lbl">EPS against the average estimate · last four quarters</div>
+      <section className="rf-sec" aria-labelledby="rf-estimates">
+        <div className="rf-sechead">
+          <div>
+            <div className="rf-lbl rf-kicker">Estimates</div>
+            <h2 className="rf-h2" id="rf-estimates">
+              EPS against the average estimate
+            </h2>
+          </div>
+          <span className="rf-lbl">Last four quarters</span>
+        </div>
         {data.estimates && data.estimates.length > 0 ? (
           <>
             <div className="rf-table-scroll" tabIndex={0} role="region" aria-label="EPS against the average estimate">

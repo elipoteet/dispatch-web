@@ -55,6 +55,15 @@ export function yearPhrase(fiscalYear: number, fiscalYearEnd: string | null | un
   return isCalendarYear(fiscalYearEnd) ? String(fiscalYear) : `fiscal ${fiscalYear}`;
 }
 
+const COUNT_WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
+
+// A small count in words for a heading ("Three facts", "eight figures");
+// digits past twelve.
+export function countWord(n: number, capitalized = false): string {
+  const word = COUNT_WORDS[n] ?? String(n);
+  return capitalized ? word.charAt(0).toUpperCase() + word.slice(1) : word;
+}
+
 // Column and chip labels: "FY26".
 export function fyShort(fiscalYear: number): string {
   return `FY${String(fiscalYear).slice(-2)}`;

@@ -60,6 +60,7 @@ export default async function TickerLayout({
           fiscalYearEnd={fiscalYearEnd}
           quote={company.quote}
           range52={company.range52}
+          nextEarnings={company.filesReports ? company.nextEarnings : null}
         />
         <ResearchTabs tabs={tabs} />
         <RecordVisit symbol={company.symbol} name={company.name} tabs={recentTabs} />

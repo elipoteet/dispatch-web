@@ -7,7 +7,7 @@ import { keyStats } from "@/lib/research/keyStats";
 import { descriptionToShow, generateDescription, needsDescription, readDescription } from "@/lib/research/description";
 import { filingDocumentUrl } from "@/lib/sec/client";
 import { chartSeries } from "@/lib/analysis/tickerChart";
-import { fyShort } from "@/lib/research/format";
+import { countWord, fyShort } from "@/lib/research/format";
 import { PriceChart } from "@/components/company/PriceChart";
 
 type Props = {
@@ -91,53 +91,40 @@ export default async function OverviewPage({ params, searchParams }: Props) {
         }
       : null;
   const annualUrl = fin?.latestAnnual?.primaryDocument ? filingDocumentUrl(fin.cik, fin.latestAnnual) : null;
-  // The left column only renders when it has something to say; otherwise
-  // "What stands out" takes the full width instead of sitting beside a gap.
-  // The quote appears from the second visit on (it is read after the first
-  // response is sent), so nothing is shown while it's pending.
-  const hasBrief = Boolean(described || company.financialsUnavailable || !fin);
+  const facts = standsOut?.facts ?? [];
 
+  // In the board's order (docs/design/phase-ten/Main.dc.html): the company's
+  // own words, what stands out, the price, then the key numbers. The quote
+  // appears from the second visit on (it is read after the first response is
+  // sent), so nothing is shown while it's pending.
   return (
     <div className="rf-tab-body">
-      {company.filesReports && (
-        <div className="rf-overview-top">
-          {hasBrief && <div className="rf-brief">
-            {described ? (
-              <>
-                <div className="rf-lbl">In its own words</div>
-                <blockquote className="rf-brief-text">&ldquo;{described.description}&rdquo;</blockquote>
-                <p className="rf-ai-label">
-                  {`How ${company.name} describes itself at the start of the business section of its latest ${described.sourceForm}, lightly trimmed. The company's words, not The Dispatch's.`}{" "}
-                  {annualUrl && (
-                    <a href={annualUrl} target="_blank" rel="noopener noreferrer">
-                      Read the filing
-                    </a>
-                  )}
-                </p>
-              </>
-            ) : null}
-            {company.financialsUnavailable && <p className="rf-note">{company.financialsUnavailable}</p>}
-            {!fin && !company.financialsUnavailable && (
-              <p className="rf-note">The SEC&rsquo;s figures for this company couldn&rsquo;t be loaded just now. Try again in a minute.</p>
-            )}
-          </div>}
-
-          {standsOut && standsOut.facts.length > 0 && (
-            <aside className="rf-standout">
-              <div className="rf-lbl">What stands out</div>
-              {standsOut.facts.map((f) => (
-                <p key={f.id} className="rf-standout-fact">
-                  {f.text}
-                </p>
-              ))}
-              <div className="rf-lbl rf-standout-foot">
-                Facts, not a verdict · from its filings{standsOut.fiscalYear ? ` through ${fyShort(standsOut.fiscalYear)}` : ""}
-              </div>
-            </aside>
-          )}
-        </div>
+      {company.filesReports && described && (
+        <section className="rf-sec" aria-label="In its own words">
+          <div className="rf-lbl rf-kicker">In its own words</div>
+          <figure className="rf-words">
+            <span className="rf-words-mark" aria-hidden="true">
+              &ldquo;
+            </span>
+            <blockquote>
+              <p className="rf-words-text">{described.description}</p>
+            </blockquote>
+            <figcaption className="rf-words-attr">
+              <span>{`How ${company.name} describes itself at the start of the business section of its latest ${described.sourceForm}, lightly trimmed. The company's words, not The Dispatch's.`}</span>
+              {annualUrl && (
+                <a href={annualUrl} target="_blank" rel="noopener noreferrer">
+                  Read the filing ↗
+                </a>
+              )}
+            </figcaption>
+          </figure>
+        </section>
       )}
 
+      {company.filesReports && company.financialsUnavailable && <p className="rf-note">{company.financialsUnavailable}</p>}
+      {company.filesReports && !fin && !company.financialsUnavailable && (
+        <p className="rf-note">The SEC&rsquo;s figures for this company couldn&rsquo;t be loaded just now. Try again in a minute.</p>
+      )}
       {!company.filesReports && (
         <p className="rf-note">
           {company.secUnreachable
@@ -146,16 +133,26 @@ export default async function OverviewPage({ params, searchParams }: Props) {
         </p>
       )}
 
-      {stats.length > 0 && (
-        <div className="rf-stats">
-          {stats.map((s) => (
-            <div className="rf-stat" key={s.id}>
-              <span className="rf-lbl">{s.label}</span>
-              <span className="rf-stat-value">{s.value}</span>
-              <span className="rf-stat-note">{s.note}</span>
+      {facts.length > 0 && (
+        <section className="rf-sec" aria-labelledby="rf-stands">
+          <div className="rf-sechead">
+            <div>
+              <div className="rf-lbl rf-kicker">What stands out</div>
+              <h2 className="rf-h2" id="rf-stands">
+                {`${countWord(facts.length, true)} ${facts.length === 1 ? "fact" : "facts"} from its filings`}
+              </h2>
             </div>
-          ))}
-        </div>
+            <span className="rf-lbl">Facts, not a verdict{standsOut?.fiscalYear ? ` · through ${fyShort(standsOut.fiscalYear)}` : ""}</span>
+          </div>
+          <div className="rf-facts">
+            {facts.map((f) => (
+              <div className="rf-fact" key={f.id}>
+                {f.figure && <div className="rf-fact-fig">{f.figure}</div>}
+                <p className="rf-fact-text">{f.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       {series && series.daily.length >= 2 ? (
@@ -169,6 +166,26 @@ export default async function OverviewPage({ params, searchParams }: Props) {
         />
       ) : (
         <div className="rf-chart-pending">The price chart is updating. Try again in a minute.</div>
+      )}
+
+      {stats.length > 0 && (
+        <section className="rf-sec" aria-labelledby="rf-numbers">
+          <div>
+            <div className="rf-lbl rf-kicker">Key numbers</div>
+            <h2 className="rf-h2" id="rf-numbers">
+              {company.filesReports ? `The business in ${countWord(stats.length)} figures` : `${countWord(stats.length, true)} figures at today's price`}
+            </h2>
+          </div>
+          <div className="rf-stats">
+            {stats.map((s) => (
+              <div className="rf-stat" key={s.id}>
+                <span className="rf-lbl">{s.label}</span>
+                <span className="rf-stat-value">{s.value}</span>
+                <span className="rf-stat-note">{s.note}</span>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
     </div>
   );

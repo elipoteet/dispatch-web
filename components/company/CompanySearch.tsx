@@ -15,7 +15,16 @@ type Result = { symbol: string; name: string };
 //
 // Focused and empty, the box offers the visitor's recently viewed companies
 // instead (phase ten, Stage B), with the same arrow keys, Enter and Escape.
-export function CompanySearch({ autoFocus = false, placeholder = "Search a ticker or company name" }: { autoFocus?: boolean; placeholder?: string }) {
+// compact is the nav's version on company pages: a 44px box, no button.
+export function CompanySearch({
+  autoFocus = false,
+  compact = false,
+  placeholder = "Search a ticker or company name",
+}: {
+  autoFocus?: boolean;
+  compact?: boolean;
+  placeholder?: string;
+}) {
   const router = useRouter();
   const listId = useId();
   const recentTitleId = useId();
@@ -112,7 +121,7 @@ export function CompanySearch({ autoFocus = false, placeholder = "Search a ticke
 
   return (
     <form
-      className="rf-search"
+      className={`rf-search${compact ? " is-compact" : ""}${showList || showRecent ? " is-open" : ""}`}
       role="search"
       onSubmit={onSubmit}
       ref={rootRef}
@@ -122,9 +131,9 @@ export function CompanySearch({ autoFocus = false, placeholder = "Search a ticke
       }}
     >
       <label className="rf-search-box">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <svg width={compact ? 16 : 20} height={compact ? 16 : 20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
           <circle cx="11" cy="11" r="7" />
-          <line x1="21" y1="21" x2="16" y2="16" />
+          <path d="M20 20l-3.5-3.5" />
         </svg>
         <span className="visually-hidden">Ticker or company name</span>
         <input
@@ -155,9 +164,11 @@ export function CompanySearch({ autoFocus = false, placeholder = "Search a ticke
           onKeyDown={onKeyDown}
         />
       </label>
-      <button type="submit" className="rf-btn rf-btn-solid rf-search-go">
-        Open file
-      </button>
+      {!compact && (
+        <button type="submit" className="rf-btn rf-btn-solid rf-search-go">
+          Open file
+        </button>
+      )}
       {showList && (
         <ul className="rf-search-list" id={listId} role="listbox">
           {results.map((r, i) => (

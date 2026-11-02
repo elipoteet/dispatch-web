@@ -119,8 +119,13 @@ export default async function InsidersPage({ params, searchParams }: Props) {
 
   return (
     <div className="rf-tab-body">
-      <section className="rf-panel rf-next">
-        <div className="rf-lbl">Past 12 months · purchases and sales on the open market</div>
+      <section className="rf-sec rf-next" aria-labelledby="rf-insider-year">
+        <div>
+          <div className="rf-lbl rf-kicker">Past 12 months</div>
+          <h2 className="rf-h2" id="rf-insider-year">
+            Purchases and sales on the open market
+          </h2>
+        </div>
         {summarySentences(summary).map((s) => (
           <p key={s} className="rf-next-line">
             {s}
@@ -162,14 +167,20 @@ export default async function InsidersPage({ params, searchParams }: Props) {
         </div>
       )}
 
-      <section className="rf-vsec">
-        <div className="rf-fin-controls">
-          <div className="rf-lbl">Trades reported since {LONG_DATE.format(new Date(coveredFrom))}</div>
-          <div className="rf-toggle" role="group" aria-label="Which transactions">
-            <Link href={base} className={`rf-toggle-btn${showAll ? "" : " is-active"}`} aria-current={showAll ? undefined : "page"}>
+      <section className="rf-sec" aria-labelledby="rf-insider-trades">
+        <div className="rf-sechead">
+          <div>
+            <div className="rf-lbl rf-kicker">Trades reported since {LONG_DATE.format(new Date(coveredFrom))}</div>
+            <h2 className="rf-h2" id="rf-insider-trades">
+              {showAll ? "Every transaction, as filed" : "Each purchase and sale, as filed"}
+            </h2>
+          </div>
+          <div className="rf-seg" role="group" aria-label="Which transactions">
+            {/* No prefetch: each would render this page again before anyone clicks. */}
+            <Link href={base} prefetch={false} className={`rf-seg-btn${showAll ? "" : " is-active"}`} aria-current={showAll ? undefined : "page"}>
               Purchases and sales
             </Link>
-            <Link href={`${base}?show=all`} className={`rf-toggle-btn${showAll ? " is-active" : ""}`} aria-current={showAll ? "page" : undefined}>
+            <Link href={`${base}?show=all`} prefetch={false} className={`rf-seg-btn${showAll ? " is-active" : ""}`} aria-current={showAll ? "page" : undefined}>
               All transactions
             </Link>
           </div>

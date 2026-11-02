@@ -5,7 +5,7 @@ export function Footer() {
         © The Dispatch <span className="fgold">·</span> 2026
       </div>
       <div>
-        Data: Twelve Data <span className="fgold">·</span> Finnhub{" "}
+        Data: SEC EDGAR <span className="fgold">·</span> Twelve Data <span className="fgold">·</span> Finnhub{" "}
         <span className="fgold">·</span> Not Investment Advice
       </div>
       <div>Set in Inter &amp; IBM Plex Mono</div>

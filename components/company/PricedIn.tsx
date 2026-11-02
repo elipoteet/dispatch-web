@@ -51,8 +51,11 @@ export function PricedIn({
 
   return (
     <section className="rf-panel rf-pi" aria-labelledby={`${ids.r}-title`}>
-      <div className="rf-lbl" id={`${ids.r}-title`}>
-        What&rsquo;s priced in
+      <div>
+        <div className="rf-lbl rf-kicker">What&rsquo;s priced in</div>
+        <h2 className="rf-h2" id={`${ids.r}-title`}>
+          The growth today&rsquo;s price assumes
+        </h2>
       </div>
       <p className="rf-pi-sentence" aria-live="polite">
         {sentence}

@@ -25,8 +25,8 @@ export function RecentlyViewed() {
     <section className="rf-home-section rf-recent" aria-labelledby={titleId}>
       <div className="rf-recent-head">
         <div>
-          <div className="rf-lbl">Recently viewed</div>
-          <h2 className="rf-recent-title" id={titleId}>
+          <div className="rf-lbl rf-kicker">Recently viewed</div>
+          <h2 className="rf-h2" id={titleId}>
             Pick up where you left off
           </h2>
         </div>

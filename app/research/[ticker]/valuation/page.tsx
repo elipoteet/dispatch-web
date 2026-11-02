@@ -239,13 +239,29 @@ export default async function ValuationPage({ params }: Props) {
     <div className="rf-tab-body">
       {pricedIn}
 
-      <section className="rf-vsec">
-        <div className="rf-lbl">Yields{through ? ` · trailing four quarters to ${through}` : ""}</div>
+      <section className="rf-sec" aria-labelledby="rf-yields">
+        <div className="rf-sechead">
+          <div>
+            <div className="rf-lbl rf-kicker">Yields</div>
+            <h2 className="rf-h2" id="rf-yields">
+              Cash, earnings and repurchases against market value
+            </h2>
+          </div>
+          {through && <span className="rf-lbl">Trailing four quarters to {through}</span>}
+        </div>
         <Yields data={data} name={name} />
       </section>
 
-      <section className="rf-vsec">
-        <div className="rf-lbl">Against its own history · each quarter-end since {MONTH_YEAR.format(new Date(since))}</div>
+      <section className="rf-sec" aria-labelledby="rf-history">
+        <div className="rf-sechead">
+          <div>
+            <div className="rf-lbl rf-kicker">Against its own history</div>
+            <h2 className="rf-h2" id="rf-history">
+              Today&rsquo;s multiples against past quarter-ends
+            </h2>
+          </div>
+          <span className="rf-lbl">Each quarter-end since {MONTH_YEAR.format(new Date(since))}</span>
+        </div>
         {data.historyStatus === "busy" ? (
           <div className="rf-chart-pending">The price history behind this section is updating. Try again in a minute.</div>
         ) : data.historyStatus === "no-shares" || data.historyStatus === "mismatch" ? (
@@ -268,8 +284,16 @@ export default async function ValuationPage({ params }: Props) {
         )}
       </section>
 
-      <section className="rf-vsec">
-        <div className="rf-lbl">Peers · today</div>
+      <section className="rf-sec" aria-labelledby="rf-peers">
+        <div className="rf-sechead">
+          <div>
+            <div className="rf-lbl rf-kicker">Peers</div>
+            <h2 className="rf-h2" id="rf-peers">
+              The same figures for similar companies
+            </h2>
+          </div>
+          <span className="rf-lbl">Today</span>
+        </div>
         <Peers data={data} symbol={company.symbol} name={name} metrics={metrics} />
       </section>
 

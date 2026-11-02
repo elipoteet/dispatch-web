@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   earningsMarkers,
   RANGES,
@@ -74,12 +74,29 @@ function xyOf(i: number, count: number, close: number, min: number, max: number)
 
 const HOUR_WORDS = { bmo: "before the open", amc: "after the close", dmh: "during market hours" } as const;
 
-// A long range's move as a multiple once it's tenfold or more: "121x" reads,
+// A long range's move as a multiple once it's tenfold or more: "121×" reads,
 // "+12014.3%" doesn't. Smaller moves stay as a percentage.
 function moveLabel(pct: number): string {
   const ratio = 1 + pct / 100;
-  if (ratio >= 10) return `${Math.round(ratio).toLocaleString("en-US")}x`;
+  if (ratio >= 10) return `${Math.round(ratio).toLocaleString("en-US")}×`;
   return formatSignedPct(pct, 1);
+}
+
+// Up to five dates along the bottom, worded for the range: times of day for
+// 1D, days for 1W to 3M, months for 1Y, years beyond. A phone shows the ends.
+function xTicks(points: ChartPoint[], range: RangeId): string[] {
+  const n = points.length;
+  const at = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(f * (n - 1)));
+  const unique = at.filter((v, i) => at.indexOf(v) === i);
+  return unique.map((i, k) => {
+    const date = points[i].date;
+    const d = parseDate(date);
+    const last = k === unique.length - 1;
+    if (range === "1D") return throughTime(date, last ? 5 : 0);
+    if (range === "1W" || range === "1M" || range === "3M") return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`;
+    if (range === "1Y") return k === 0 || last ? monthLabel(date) : MONTHS[d.getUTCMonth()];
+    return String(d.getUTCFullYear());
+  });
 }
 
 // Fetches an on-demand range (1D/1W or MAX) once. Outside the component: it
@@ -119,6 +136,7 @@ export function PriceChart({
   // that session's latest official price: the numbers the page header shows.
   previousClose: { value: number; session: string; last: number } | null;
 }) {
+  const titleId = useId();
   const [range, setRange] = useState<RangeId>("1Y");
   const [intraday, setIntraday] = useState<Fetched>(IDLE);
   const [monthly, setMonthly] = useState<Fetched>(IDLE);
@@ -183,21 +201,30 @@ export function PriceChart({
   const indexOf = new Map(points.map((p, i) => [p, i]));
 
   // The words above the chart: the move over the range, said honestly when
-  // the history is shorter than the range ("since Mar 2019").
+  // the history is shorter than the range ("since Mar 2019"). The kind of
+  // prices drawn goes in the legend.
   let caption = "";
+  let source = "";
   if (ok) {
     const firstDate = points[0].date;
     const lastDate = points[points.length - 1].date;
-    if (range === "1D") caption = `${formatSignedPct(change, 2)} on the day · 5-minute steps through ${throughTime(lastDate, 5)} ET, ${dayLabel(lastDate)}`;
-    else if (range === "1W") caption = `${formatSignedPct(change, 1)} over five sessions · 30-minute steps`;
-    else if (range === "MAX") caption = `${moveLabel(change)} since ${monthLabel(firstDate)} · monthly closes`;
-    else {
+    if (range === "1D") {
+      caption = `${formatSignedPct(change, 2)} on the day`;
+      source = `5-minute prices through ${throughTime(lastDate, 5)} ET, ${dayLabel(lastDate)}`;
+    } else if (range === "1W") {
+      caption = `${formatSignedPct(change, 1)} over five sessions`;
+      source = "30-minute prices";
+    } else if (range === "MAX") {
+      caption = `${moveLabel(change)} since ${monthLabel(firstDate)}`;
+      source = "Monthly closes";
+    } else {
       const reach = (parseDate(lastDate).getTime() - parseDate(firstDate).getTime()) / 86_400_000;
       const short = spec.spanDays != null && reach < spec.spanDays * 0.9;
-      const steps = spec.source === "weekly" ? " · weekly closes" : "";
-      caption = short ? `${moveLabel(change)} since ${monthLabel(firstDate)}${steps}` : `${moveLabel(change)} over ${range}${steps}`;
+      caption = short ? `${moveLabel(change)} since ${monthLabel(firstDate)}` : `${moveLabel(change)} over ${range}`;
+      source = spec.source === "weekly" ? "Weekly closes" : "Daily closes";
     }
   }
+  const direction = change > 0 ? "pos" : change < 0 ? "neg" : "";
 
   const pending =
     fetched?.status === "loading" || (fetched?.status === "idle" && !ok)
@@ -207,19 +234,30 @@ export function PriceChart({
         : "No price data for this range.";
 
   const nextLine = nextEarnings
-    ? `Next earnings: ${dayLabel(nextEarnings.date)}${nextEarnings.hour ? `, ${HOUR_WORDS[nextEarnings.hour]}` : ""}`
+    ? `Next earnings ${dayLabel(nextEarnings.date)}${nextEarnings.hour ? `, ${HOUR_WORDS[nextEarnings.hour]}` : ""}`
     : null;
 
+  // Gridlines at the line's own high, middle and low. Not the scale's ends:
+  // on 1D the scale stretches to fit the previous close.
+  const at = (v: number) => `${(xyOf(0, 2, v, min, max).y / H) * 100}%`;
+  const grid = ok ? [dataHigh, (dataHigh + dataLow) / 2, dataLow] : [];
+  const last = ok ? xyOf(points.length - 1, points.length, closes[closes.length - 1], min, max) : null;
+
   return (
-    <div className="rf-chart">
+    <section className="rf-panel rf-chart" aria-labelledby={titleId}>
       <div className="rf-chart-top">
-        <div className="rf-lbl">Price{caption ? ` · ${caption}` : ""}</div>
-        <div className="rf-ranges" role="group" aria-label="Chart range">
+        <div>
+          <div className="rf-lbl" id={titleId}>
+            Price
+          </div>
+          <div className={`rf-chart-cap ${direction}`}>{caption || "\u00a0"}</div>
+        </div>
+        <div className="rf-seg rf-ranges" role="group" aria-label="Chart range">
           {RANGES.map((r) => (
             <button
               key={r.id}
               type="button"
-              className={`rf-range-btn${range === r.id ? " is-active" : ""}`}
+              className={`rf-seg-btn${range === r.id ? " is-active" : ""}`}
               aria-pressed={range === r.id}
               onClick={() => select(r.id)}
             >
@@ -231,21 +269,25 @@ export function PriceChart({
       {ok ? (
         <div className="rf-chart-frame">
           <div className="rf-chart-plot">
+            {grid.map((v, i) => (
+              <div key={i} className="rf-chart-grid" style={{ top: at(v) }} aria-hidden="true">
+                <span className="rf-chart-ylab">{formatPrice(v)}</span>
+              </div>
+            ))}
             <svg
               viewBox={`0 0 ${W} ${H}`}
               preserveAspectRatio="none"
               className="rf-chart-svg"
               role="img"
-              aria-label={`${symbol} price, ${range}: from ${formatPrice(closes[0])} to ${formatPrice(closes[closes.length - 1])}`}
+              aria-label={`${symbol} price, ${range}: from ${formatPrice(closes[0])} to ${formatPrice(closes[closes.length - 1])}, ${caption}`}
             >
-              <path d={path} className={change >= 0 ? "rf-line-up" : "rf-line-down"} fill="none" strokeWidth={2} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+              <path d={`${path} L${W} ${H} L0 ${H} Z`} className="rf-chart-area" />
+              <path d={path} className="rf-chart-line" fill="none" strokeWidth={1.8} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
             </svg>
             {/* Drawn in HTML over the SVG rather than inside it: the SVG
                 stretches to the frame's width, which would squash a circle
                 into an oval and stretch a dashed line's dashes. */}
-            {prevClose != null && (
-              <div className="rf-chart-prev" style={{ top: `${(xyOf(0, 2, prevClose, min, max).y / H) * 100}%` }} aria-hidden="true" />
-            )}
+            {prevClose != null && <div className="rf-chart-prev" style={{ top: at(prevClose) }} aria-hidden="true" />}
             {marks.map((p) => {
               const { x, y } = xyOf(indexOf.get(p) ?? 0, points.length, p.close, min, max);
               return (
@@ -258,17 +300,12 @@ export function PriceChart({
                 />
               );
             })}
+            {last && <span className="rf-chart-now" style={{ left: "100%", top: `${(last.y / H) * 100}%` }} title="Latest" aria-hidden="true" />}
           </div>
-          {/* The line's own high and low, set at their heights. Not the
-              scale's ends: on 1D the scale stretches to fit the previous
-              close, which isn't the day's high or low. */}
-          <div className="rf-chart-y">
-            <span style={{ top: `${(xyOf(0, 2, dataHigh, min, max).y / H) * 100}%` }}>High {formatPrice(dataHigh)}</span>
-            <span style={{ top: `${(xyOf(0, 2, dataLow, min, max).y / H) * 100}%` }}>Low {formatPrice(dataLow)}</span>
-          </div>
-          <div className="rf-chart-x">
-            <span>{range === "1D" ? `${throughTime(points[0].date, 0)} ET` : dayLabel(points[0].date)}</span>
-            <span>{range === "1D" ? `${throughTime(points[points.length - 1].date, 5)} ET` : dayLabel(points[points.length - 1].date)}</span>
+          <div className="rf-chart-x" aria-hidden="true">
+            {xTicks(points, range).map((t, i) => (
+              <span key={i}>{t}</span>
+            ))}
           </div>
         </div>
       ) : (
@@ -276,21 +313,20 @@ export function PriceChart({
         // work, so say which part is missing and leave the selector up.
         <div className="rf-chart-pending">{pending}</div>
       )}
-      {(marks.length > 0 || prevClose != null || nextLine) && (
-        <div className="rf-chart-legend">
-          {marks.length > 0 && (
-            <span>
-              <span className="rf-legend-dot" aria-hidden="true" /> Earnings release ({marks.length} in this range, from its SEC filings)
-            </span>
-          )}
-          {prevClose != null && (
-            <span>
-              <span className="rf-legend-dash" aria-hidden="true" /> Previous close {formatPrice(prevClose)}
-            </span>
-          )}
-          {nextLine && <span>{nextLine}</span>}
-        </div>
-      )}
-    </div>
+      <div className="rf-chart-legend">
+        {marks.length > 0 && (
+          <span>
+            <span className="rf-legend-dot" aria-hidden="true" /> Earnings releases ({marks.length} in this range, from its SEC filings)
+          </span>
+        )}
+        {prevClose != null && (
+          <span>
+            <span className="rf-legend-dash" aria-hidden="true" /> Previous close {formatPrice(prevClose)}
+          </span>
+        )}
+        {nextLine && <span>{nextLine}</span>}
+        {source && <span className="rf-chart-source">{source}</span>}
+      </div>
+    </section>
   );
 }

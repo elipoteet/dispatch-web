@@ -14,7 +14,10 @@ import type { FinancialRow } from "@/lib/sec/normalize";
 import { FinancialSeries } from "@/lib/research/series";
 import { formatMoney, formatPct, yearPhrase } from "@/lib/research/format";
 
-export type StandOutFact = { id: string; text: string };
+// figure: the one number the sentence turns on, set large above it on the
+// Overview ("43×", "71.1%", "$40.1B"). Taken from the rule, never parsed back
+// out of the sentence, and left off where a fact has no natural figure.
+export type StandOutFact = { id: string; text: string; figure?: string };
 
 export type StandsOutInput = {
   rows: FinancialRow[];
@@ -26,7 +29,18 @@ export type StandsOutInput = {
 
 // "31 times", "3.4 times".
 function times(ratio: number): string {
-  return ratio >= 10 ? `${Math.round(ratio)} times` : `${ratio.toFixed(1)} times`;
+  return `${multiple(ratio)} times`;
+}
+
+// "31", "3.4": the same rounding for the sentence and its figure.
+function multiple(ratio: number): string {
+  return ratio >= 10 ? String(Math.round(ratio)) : ratio.toFixed(1);
+}
+
+// "+38%", "-14%", signed the way the rest of the site signs a change.
+function signedWhole(pct: number): string {
+  const r = Math.round(pct);
+  return `${r > 0 ? "+" : r < 0 ? "-" : ""}${Math.abs(r)}%`;
 }
 
 function pctChange(from: number, to: number): number {
@@ -42,15 +56,15 @@ const profitTurn: Rule = (s, input, year) => {
   if (now == null || before == null) return null;
   const y = (fy: number) => yearPhrase(fy, input.fiscalYearEnd);
   if (now > 0 && before < 0) {
-    return { id: "profit-turn", text: `It earned a ${formatMoney(now)} profit in ${y(year)} after a ${formatMoney(Math.abs(before))} loss in ${y(year - 1)}.` };
+    return { id: "profit-turn", figure: formatMoney(now), text: `It earned a ${formatMoney(now)} profit in ${y(year)} after a ${formatMoney(Math.abs(before))} loss in ${y(year - 1)}.` };
   }
   if (now < 0 && before > 0) {
-    return { id: "profit-turn", text: `It lost ${formatMoney(Math.abs(now))} in ${y(year)} after a ${formatMoney(before)} profit in ${y(year - 1)}.` };
+    return { id: "profit-turn", figure: formatMoney(now), text: `It lost ${formatMoney(Math.abs(now))} in ${y(year)} after a ${formatMoney(before)} profit in ${y(year - 1)}.` };
   }
   if (now < 0 && before < 0) {
     let streak = 0;
     for (let fy = year; (s.annual("net_income", fy) ?? 0) < 0; fy--) streak++;
-    return { id: "profit-turn", text: `It has reported a net loss in each of the last ${streak} years, ${formatMoney(Math.abs(now))} in ${y(year)}.` };
+    return { id: "profit-turn", figure: formatMoney(now), text: `It has reported a net loss in each of the last ${streak} years, ${formatMoney(Math.abs(now))} in ${y(year)}.` };
   }
   return null;
 };
@@ -67,18 +81,28 @@ const growthMultiple: Rule = (s, input, year) => {
   const y = (fy: number) => yearPhrase(fy, input.fiscalYearEnd);
 
   let lead: string;
-  if (ratio >= 2) lead = `Revenue is ${times(ratio)} what it was in ${y(base)}`;
-  else if (ratio >= 1.05) lead = `Revenue is ${Math.round((ratio - 1) * 100)}% higher than in ${y(base)}`;
-  else if (ratio <= 0.95) lead = `Revenue is ${Math.round((1 - ratio) * 100)}% lower than in ${y(base)}`;
-  else lead = `Revenue is about where it was in ${y(base)}`;
+  let figure: string;
+  if (ratio >= 2) {
+    lead = `Revenue is ${times(ratio)} what it was in ${y(base)}`;
+    figure = `${multiple(ratio)}×`;
+  } else if (ratio >= 1.05) {
+    lead = `Revenue is ${Math.round((ratio - 1) * 100)}% higher than in ${y(base)}`;
+    figure = signedWhole((ratio - 1) * 100);
+  } else if (ratio <= 0.95) {
+    lead = `Revenue is ${Math.round((1 - ratio) * 100)}% lower than in ${y(base)}`;
+    figure = signedWhole((ratio - 1) * 100);
+  } else {
+    lead = `Revenue is about where it was in ${y(base)}`;
+    figure = formatMoney(latest);
+  }
 
   const prior = s.annual("revenue", year - 1);
   if (prior && prior > 0) {
     const change = pctChange(prior, latest);
     const verb = change >= 0 ? "rose" : "fell";
-    return { id: "growth", text: `${lead}, and ${verb} ${Math.abs(Math.round(change))}% in ${y(year)} to ${formatMoney(latest)}.` };
+    return { id: "growth", figure, text: `${lead}, and ${verb} ${Math.abs(Math.round(change))}% in ${y(year)} to ${formatMoney(latest)}.` };
   }
-  return { id: "growth", text: `${lead}, at ${formatMoney(latest)} in ${y(year)}.` };
+  return { id: "growth", figure, text: `${lead}, at ${formatMoney(latest)} in ${y(year)}.` };
 };
 
 // A margin that moved two points or more in the latest year. Gross margin where
@@ -114,7 +138,7 @@ const marginMove: Rule = (s, input, year) => {
     const all = [...history, year].map((fy) => at(fy) as number);
     if (all.length >= 5 && now >= Math.max(...all)) text += `, the highest in the ${all.length} years shown`;
   }
-  return { id: "margin", text: `${text}.` };
+  return { id: "margin", figure: formatPct(now * 100), text: `${text}.` };
 };
 
 // Cash spent repurchasing shares, against what the business generated.
@@ -129,17 +153,19 @@ const repurchases: Rule = (s, input, year) => {
   const income = s.annual("net_income", year);
   const against = base ?? (income != null ? { value: income, name: "net income" } : null);
   if (!against || against.value <= 0) {
-    return { id: "repurchases", text: `It spent ${formatMoney(spent)} repurchasing its own shares in ${y}.` };
+    return { id: "repurchases", figure: formatMoney(spent), text: `It spent ${formatMoney(spent)} repurchasing its own shares in ${y}.` };
   }
   const share = (spent / against.value) * 100;
   if (share > 100) {
     return {
       id: "repurchases",
+      figure: formatMoney(spent),
       text: `It spent ${formatMoney(spent)} repurchasing its own shares in ${y}, more than its ${formatMoney(against.value)} of ${against.name}.`,
     };
   }
   return {
     id: "repurchases",
+    figure: formatMoney(spent),
     text: `It spent ${formatMoney(spent)} repurchasing its own shares in ${y}, about ${Math.round(share)}% of its ${against.name}.`,
   };
 };
@@ -168,11 +194,13 @@ const shareCount: Rule = (s, input, year) => {
   const direction = change < 0 ? "lower" : "higher";
   return {
     id: "share-count",
+    figure: signedWhole(change),
     text: `Its diluted share count is ${Math.abs(Math.round(change))}% ${direction} than in ${yearPhrase(year - 5, input.fiscalYearEnd)}.`,
   };
 };
 
-// Where the price sits in its 52-week range, when it's at either end.
+// Where the price sits in its 52-week range, when it's at either end. No
+// figure: "1%" on its own would say nothing.
 const nearRangeEdge: Rule = (_s, input) => {
   const { price, range52 } = input;
   if (!price || !range52 || range52.high <= range52.low) return null;

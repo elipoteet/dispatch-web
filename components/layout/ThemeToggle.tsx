@@ -30,8 +30,8 @@ export function ThemeToggle() {
     >
       <svg
         className="theme-icon-sun"
-        width="14"
-        height="14"
+        width="18"
+        height="18"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -43,8 +43,8 @@ export function ThemeToggle() {
       </svg>
       <svg
         className="theme-icon-moon"
-        width="14"
-        height="14"
+        width="18"
+        height="18"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
