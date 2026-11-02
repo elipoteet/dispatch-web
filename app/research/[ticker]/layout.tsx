@@ -3,6 +3,8 @@ import { TICKER_PATTERN } from "@/lib/ticker";
 import { loadCompanyPage } from "@/lib/research/company";
 import { CompanyHeader } from "@/components/company/CompanyHeader";
 import { ResearchTabs } from "@/components/company/ResearchTabs";
+import { RecordVisit } from "@/components/company/RecordVisit";
+import type { RecentTab } from "@/lib/recent";
 
 // The research file for one company: header and tabs, shared by every tab.
 //
@@ -37,12 +39,14 @@ export default async function TickerLayout({
   const fiscalYearEnd = company.filesReports ? company.fiscalYearEnd : null;
   const base = `/research/${company.slug}`;
   const tabs = [{ href: base, label: "Overview" }];
+  const recentTabs: RecentTab[] = ["overview"];
   if (company.filesReports) {
     tabs.push({ href: `${base}/financials`, label: "Financials" });
     tabs.push({ href: `${base}/valuation`, label: "Valuation" });
     tabs.push({ href: `${base}/earnings`, label: "Earnings" });
     tabs.push({ href: `${base}/insiders`, label: "Insiders" });
     tabs.push({ href: `${base}/filings`, label: "Filings" });
+    recentTabs.push("financials", "valuation", "earnings", "insiders", "filings");
   }
 
   return (
@@ -58,6 +62,7 @@ export default async function TickerLayout({
           range52={company.range52}
         />
         <ResearchTabs tabs={tabs} />
+        <RecordVisit symbol={company.symbol} name={company.name} tabs={recentTabs} />
         {children}
         <p className="rf-footer-note">
           Data: SEC EDGAR · Twelve Data · Finnhub. Facts and figures, not investment advice. The Dispatch doesn&rsquo;t rate stocks

@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CompanySearch } from "@/components/company/CompanySearch";
+import { RecentlyViewed } from "@/components/company/RecentlyViewed";
 import { HOME_EXAMPLES } from "@/lib/research/home";
 
-// The research desk: search for now. Stage 8 adds the screener's way in.
+// The research desk: search, and the visitor's recently viewed companies.
+// Stage 8 adds the screener's way in.
 export const metadata: Metadata = {
   title: "Research",
   description: "Search any U.S. public company by ticker or name and open its free research file, built from its SEC filings.",
@@ -35,6 +37,7 @@ export default async function ResearchPage({ searchParams }: { searchParams: Pro
             </Link>
           ))}
         </div>
+        <RecentlyViewed />
       </div>
     </section>
   );

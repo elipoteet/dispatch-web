@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CompanySearch } from "@/components/company/CompanySearch";
+import { RecentlyViewed } from "@/components/company/RecentlyViewed";
 import { getHomeCards } from "@/lib/research/home";
 
 // The front door to the research files (docs/phase-nine.md, "The home page").
-// Search first; then what a file holds; example companies with one fact each
-// from their filings; the tools; and three lines on how the site works.
-// No live prices anywhere on this page.
+// Search first; then the visitor's recently viewed companies, from their own
+// browser after the page loads; what a file holds; example companies with one
+// fact each from their filings; the tools; and three lines on how the site
+// works. No live prices anywhere on this page.
 
 export const metadata: Metadata = {
   title: { absolute: "The Dispatch — Free research on every U.S. public company" },
@@ -42,6 +44,8 @@ export default async function HomePage() {
           </p>
           <CompanySearch placeholder="Search a ticker or company name, like NVDA or Costco" />
         </div>
+
+        <RecentlyViewed />
 
         <div className="rf-home-section">
           <div className="rf-lbl">What&rsquo;s in a file</div>
