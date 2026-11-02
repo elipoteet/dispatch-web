@@ -15,8 +15,10 @@ fresh Claude conversation can pick up this project with no prior history.
 **The Dispatch** is an equity-research web app. A visitor types a U.S. stock ticker and
 gets back a structured research memo in a few seconds — fundamentals, technicals,
 sentiment, risks, catalysts — built fresh from real market data every time, not
-templated boilerplate. It also has a paper-trading portfolio feature and a "Time
-Machine" that rebuilds any past memo as it would have read on a prior date.
+templated boilerplate. It also has a "Time Machine" that rebuilds any past memo as it
+would have read on a prior date. The paper-trading portfolio was retired on 2 November
+2026 (`docs/phase-ten.md`): old `/portfolio` links redirect to `/research`, and its
+`paper_*` and `equity_snapshot` tables stay in the database untouched.
 
 **No ratings, scores or leaderboard (30 October 2026).** The memo's 1–10 scorecard,
 composite score, Buy/Sell rating and Verdict section, the rating-change alerts, the
@@ -50,17 +52,15 @@ New Hampshire. Not a company, no team — see the "Who's behind this" section on
 ## Where things live (see `ARCHITECTURE.md` for the full map)
 
 - `app/` — pages: home, `about/`, `research/` (search desk + `research/[ticker]/` for
-  server-rendered memo pages), `portfolio/` (paper trading), `give/` (charity donation —
-  the site has no paid tier)
+  server-rendered memo pages), `give/` (charity donation — the site has no paid tier)
 - `app/api/` — `analyze/[ticker]` (client-side memo fetch), `watchlist`,
-  `tape` (homepage ticker strip), `portfolio/*`, `alerts` (free for every signed-in
+  `tape` (homepage ticker strip), `alerts` (free for every signed-in
   user), `cron/alerts` (daily Vercel Cron job — RSI/MA-cross detection)
 - `lib/analysis/` — the memo engine: `indicators.ts`, `report.ts`,
   `loadReport.ts` (shared fetch/build logic), `historical.ts` (Time Machine)
 - `lib/providers.ts` — Twelve Data / Finnhub fetch wrappers, server-only
-- `lib/portfolio.ts` — paper-trading math
 - `lib/supabase/`, `lib/db.ts` — Supabase clients
-- `components/` — `research/`, `portfolio/`, `layout/`, `auth/`
+- `components/` — `research/`, `layout/`, `auth/`
 - `proxy.ts` — session-refresh middleware (Next 16 renamed `middleware.ts` → `proxy.ts`)
 
 ## Environment variables required
@@ -136,10 +136,11 @@ in this codebase:
    instead (its quote endpoint, empirically 60 req/min, is a completely separate
    quota): the homepage ticker tape (`app/api/tape/route.ts`, via
    `fetchFinnhubDayChange`) used to fire 5 Twelve Data calls on every cold load; and
-   `getLatestPrice` (`lib/portfolio.ts`, via `fetchLatestQuote`) — mark-to-market
-   pricing for every held position — used to fire on *every page load site-wide*
-   once `PortfolioProvider` (and the since-removed `CompetitionProvider`) were mounted globally, which
-   was the actual dominant cause of intermittent search failures, not the tape.
+   the portfolio's mark-to-market pricing for every held position (`getLatestPrice`,
+   via `fetchLatestQuote`) used to fire on *every page load site-wide* once
+   `PortfolioProvider` (and the since-removed `CompetitionProvider`) were mounted
+   globally, which was the actual dominant cause of intermittent search failures,
+   not the tape. All of that was removed with the portfolio on 2 November 2026.
    If you add anything that fires Twelve Data calls outside of an actual ticker
    search, ask whether it really needs Twelve Data's historical-series data or just
    a live quote — if the latter, use Finnhub instead and leave Twelve Data's
@@ -153,8 +154,8 @@ in this codebase:
    you touch this path — collapsing it back into one generic error message was
    exactly the bug that got fixed.
 5. **`unstable_cache` (from `next/cache`) is the right tool for durable, per-argument
-   server-side caching on Vercel** — a plain in-memory `Map` (see `lib/cache.ts`,
-   still used by `lib/portfolio.ts`'s trade-quote cache only) does *not* reliably
+   server-side caching on Vercel** — a plain in-memory `Map` (like the old
+   `lib/cache.ts`, removed with the portfolio on 2 November 2026) does *not* reliably
    persist across separate serverless invocations. Provider-response caching (this
    was `feat/provider-cache`, now merged) wraps each `lib/providers.ts` function
    individually with `unstable_cache` so every caller shares one cache entry per
@@ -257,8 +258,8 @@ in this codebase:
 ## Current state / what's already done
 
 Phases 1–4 of the original migration (from a single static HTML file) are complete:
-auth, live price proxy, watchlist, paper trading. Since then: mobile responsiveness
-pass, candlestick charts (dark mode) / line chart (light mode) toggle, full brand
+auth, live price proxy, watchlist, paper trading (retired 2 November 2026). Since then:
+mobile responsiveness pass, candlestick charts (dark mode) / line chart (light mode) toggle, full brand
 identity (logo, OG images, brand guidelines), SEO audit fixes (robots.txt, sitemap.xml,
 canonical tags, metadataBase pointed at the real domain), server-rendered per-ticker
 memo pages at `/research/[ticker]` (the biggest SEO lever — real content in the initial

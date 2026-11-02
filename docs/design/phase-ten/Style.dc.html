@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tokens and components</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=Inter:opsz,wght@14..32,400..700&amp;family=Newsreader:opsz,wght@6..72,400..600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0d1b2a}a:hover{color:#7d5c00}
+.dx{--bg:#f5f1e8;--surface:#fffdf8;--surface-2:#efe8d9;--ink:#0d1b2a;--ink-2:#2f3e55;--muted:#56657a;--rule:#e3dbcb;--rule-2:#cbc1ab;--gold:#a67c00;--gold-ink:#7d5c00;--gold-wash:rgba(166,124,0,.10);--pos:#1e5631;--neg:#8b1a1a;--pos-wash:rgba(30,86,49,.09);--neg-wash:rgba(139,26,26,.08);--r:0px;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-optical-sizing:auto;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.dx.t-dark{--bg:#0e1620;--surface:#131d2a;--surface-2:#1a2635;--ink:#e8ecf2;--ink-2:#c3ccd8;--muted:#93a0b2;--rule:#223041;--rule-2:#34465d;--gold:#d4a843;--gold-ink:#e2bb5c;--gold-wash:rgba(212,168,67,.13);--pos:#6ebf7f;--neg:#e58a8a;--pos-wash:rgba(110,191,127,.12);--neg-wash:rgba(229,138,138,.12)}
+.dx.r-soft{--r:6px}
+.dx *,.dx *::before,.dx *::after{box-sizing:border-box}
+.dx button{font:inherit;color:inherit}
+.rf-lbl{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-size:11.5px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);line-height:1.45}
+.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+.num{font-variant-numeric:tabular-nums lining-nums}
+.pos{color:var(--pos)}.neg{color:var(--neg)}
+.disp{font-weight:700;letter-spacing:-.025em}
+.h-serif .disp{font-family:Newsreader,Georgia,serif;font-weight:500;letter-spacing:-.01em}
+.rf-kicker{display:flex;align-items:center;gap:10px}
+.rf-kicker::before{content:"";width:18px;height:2px;background:var(--gold);flex:none}
+.st-h{margin:0;font-size:26px;font-weight:650;letter-spacing:-.015em}
+.st-block{display:flex;flex-direction:column;gap:20px;padding-top:28px;border-top:1px solid var(--ink)}
+.st-swatches{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:32px}
+.st-theme{display:flex;flex-direction:column;gap:10px;padding:20px;border:1px solid var(--rule)}
+.st-sw{display:grid;grid-template-columns:52px 120px 84px minmax(0,1fr);gap:14px;align-items:center;font-size:13.5px}
+.st-chip{height:34px;border:1px solid rgba(127,127,127,.35)}
+.st-type{display:grid;grid-template-columns:200px minmax(0,1fr);gap:14px 28px;align-items:baseline}
+.st-comp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px 40px}
+.st-cell{display:flex;flex-direction:column;gap:14px;padding:20px;background:var(--surface);border:1px solid var(--rule)}
+.rf-btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 18px;border:1px solid var(--ink);border-radius:var(--r);background:transparent;font-size:15px;font-weight:500;cursor:pointer}
+.rf-btn-solid{background:var(--ink);color:var(--bg)}
+.rf-seg{display:inline-flex;gap:2px;padding:3px;border:1px solid var(--rule-2);border-radius:var(--r)}
+.rf-seg-btn{min-width:48px;height:44px;padding:0 10px;border:0;border-radius:var(--r);background:transparent;font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:500;color:var(--ink-2)}
+.rf-seg-btn.is-active{background:var(--ink);color:var(--bg)}
+.rf-chip{min-height:44px;padding:0 16px;border:1px solid var(--rule-2);border-radius:var(--r);background:transparent;font-size:15px;font-weight:500;color:var(--ink-2)}
+.rf-chip.is-active{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.rf-tabs{display:flex;gap:2px;border-bottom:1px solid var(--ink)}
+.rf-tab{display:inline-flex;align-items:center;min-height:52px;padding:0 16px;font-size:16px;font-weight:500;color:var(--muted)}
+.rf-tab.is-active{color:var(--ink);font-weight:600;box-shadow:inset 0 -3px 0 var(--gold)}
+.rf-change{display:inline-flex;padding:4px 10px;border-radius:var(--r);font-family:"IBM Plex Mono",monospace;font-size:14px;font-weight:500}
+.rf-change.neg{background:var(--neg-wash)}.rf-change.pos{background:var(--pos-wash)}
+.rf-note{display:flex;gap:12px;align-items:flex-start;padding:14px 18px;background:var(--surface-2);border-radius:var(--r);font-size:15px;color:var(--ink-2)}
+.rf-range-track{position:relative;height:4px;background:var(--rule-2)}
+.rf-range-fill{position:absolute;left:0;top:0;bottom:0;background:var(--ink-2)}
+.rf-range-dot{position:absolute;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 3px var(--surface)}
+.rf-table{border-collapse:collapse;width:100%;font-size:15px}
+.rf-table th,.rf-table td{padding:12px 14px;text-align:right;border-bottom:1px solid var(--rule);font-variant-numeric:tabular-nums}
+.rf-table thead th{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:500;color:var(--muted);border-bottom:1px solid var(--ink)}
+.rf-table th[scope=row]{text-align:left;font-weight:500}
+.rf-table .is-now{background:var(--gold-wash)}
+.rf-table thead th.is-now{color:var(--gold-ink)}
+.rf-table tr.is-section th{font-family:"IBM Plex Mono",monospace;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;font-weight:500;padding-top:18px;border-bottom-color:var(--rule-2)}
+.rf-recent-card{position:relative;display:flex;flex-direction:column;gap:4px;padding:18px 48px 16px 18px;background:var(--bg);border:1px solid var(--rule);border-radius:var(--r)}
+.rf-iconbtn{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;color:var(--muted)}
+.rf-mark{color:var(--gold-ink);font-size:12px}
+.code{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--muted)}
+</style>
+</helmet>
+<div class="{{ rootClass }}" style="width: 1280px; padding: 64px 72px 80px; display: flex; flex-direction: column; gap: 56px">
+  <header style="display: flex; flex-direction: column; gap: 10px">
+    <div class="rf-lbl rf-kicker">The Dispatch · visual refresh</div>
+    <h1 class="disp" style="margin: 0; font-size: 48px; line-height: 1.05">Tokens and components</h1>
+    <p style="margin: 0; max-width: 70ch; color: var(--ink-2); font-size: 17px">The same brand, set for reading: larger type, more room between sections, hairlines instead of boxes, and gold kept for one meaning, the latest figure.</p>
+  </header>
+
+  <section class="st-block" aria-labelledby="st-color">
+    <h2 class="st-h" id="st-color">Colour</h2>
+    <div class="st-swatches">
+      <div class="st-theme" style="background: #f5f1e8; color: #0d1b2a">
+        <div class="rf-lbl" style="color: #56657a">Light</div>
+        <div class="st-sw"><span class="st-chip" style="background: #f5f1e8"></span><span class="mono">--bg</span><span class="mono">#f5f1e8</span><span>Page ground, unchanged cream</span></div>
+        <div class="st-sw"><span class="st-chip" style="background: #fffdf8"></span><span class="mono">--surface</span><span class="mono">#fffdf8</span><span>Panels, tables, search</span></div>
+        <div class="st-sw"><span class="st-chip" style="background: #efe8d9"></span><span class="mono">--surface-2</span><span class="mono">#efe8d9</span><span>Hover rows, notes</span></div>
+        <div class="st-sw"><span class="st-chip" style="background: #0d1b2a"></span><span class="mono">--ink</span><span class="mono">#0d1b2a</span><span>Text, section rules, active controls</span></div>
+        <div class="st-sw"><span class="st-chip" style="background: #2f3e55"></span><span class="mono">--ink-2</span><span class="mono">#2f3e55</span><span>Secondary text, bars</span></div>
+        <div class="st-sw"><span class="st-chip" style="background: #56657a"></span><span class="mono">--muted</span><span class="mono">#56657a</span><span>Labels, notes (5.3:1 on cream)</span></div>
+        <div class="st-sw"><span class="st-chip" style="background: #e3dbcb"></span><span class="mono">--rule</span><span class="mono">#e3dbcb</span><span>Hairlines</span></div>
+        <div class="st-sw"><span class="st-chip" style="background: #cbc1ab"></span><span class="mono">--rule-2</span><span class="mono">#cbc1ab</span><span>Control borders, stat rules</span></div>
+        <div class="st-sw"><span class="st-chip" style="background: #a67c00"></span><span class="mono">--gold</span><span class="mono">#a67c00</span><span>Fills only: latest bar, today’s dot</span></div>
+        <div class="st-sw"><span class="st-chip" style="background: #7d5c00"></span><span class="mono">--gold-ink</span><span class="mono">#7d5c00</span><span>Gold text and marks (5.7:1)</span></div>
+        <div class="st-sw"><span class="st-chip" style="background: rgba(166,124,0,.10)"></span><span class="mono">--gold-wash</span><span class="mono">10% gold</span><span>Latest column in tables</span></div>
+        <div class="st-sw"><span class="st-chip" style="background: #1e5631"></span><span class="mono">--pos</span><span class="mono">#1e5631</span><span>Rises</span></div>
+        <div class="st-sw"><span class="st-chip" style="background: #8b1a1a"></span><span class="mono">--neg</span><span class="mono">#8b1a1a</span><span>Falls, negative figures</span></div>
+      </div>
+      <div class="st-theme" style="background: #0e1620; color: #e8ecf2; border-color: #223041">
+        <div class="rf-lbl" style="color: #93a0b2">Dark</div>
+        <div class="st-sw"><span class="st-chip" style="background: #0e1620"></span><span class="mono">--bg</span><span class="mono">#0e1620</span><span>Page ground</span></div>
+        <div class="st-sw"><span class="st-chip" style="background: #131d2a"></span><span class="mono">--surface</span><span class="mono">#131d2a</span><span>Panels, tables, search</span></div>
+        <div class="st-sw"><span class="st-chip" style="background: #1a2635"></span><span class="mono">--surface-2</span><span class="mono">#1a2635</span><span>Hover rows, notes</span></div>
+        <div class="st-sw"><span class="st-chip" style="background: #e8ecf2"></span><span class="mono">--ink</span><span class="mono">#e8ecf2</span><span>Text, section rules</span></div>
+        <div class="st-sw"><span class="st-chip" style="background: #c3ccd8"></span><span class="mono">--ink-2</span><span class="mono">#c3ccd8</span><span>Secondary text, bars</span></div>
+        <div class="st-sw"><span class="st-chip" style="background: #93a0b2"></span><span class="mono">--muted</span><span class="mono">#93a0b2</span><span>Labels, notes (6.9:1)</span></div>
+        <div class="st-sw"><span class="st-chip" style="background: #223041"></span><span class="mono">--rule</span><span class="mono">#223041</span><span>Hairlines</span></div>
+        <div class="st-sw"><span class="st-chip" style="background: #34465d"></span><span class="mono">--rule-2</span><span class="mono">#34465d</span><span>Control borders</span></div>
+        <div class="st-sw"><span class="st-chip" style="background: #d4a843"></span><span class="mono">--gold</span><span class="mono">#d4a843</span><span>Fills</span></div>
+        <div class="st-sw"><span class="st-chip" style="background: #e2bb5c"></span><span class="mono">--gold-ink</span><span class="mono">#e2bb5c</span><span>Gold text and marks</span></div>
+        <div class="st-sw"><span class="st-chip" style="background: rgba(212,168,67,.13)"></span><span class="mono">--gold-wash</span><span class="mono">13% gold</span><span>Latest column</span></div>
+        <div class="st-sw"><span class="st-chip" style="background: #6ebf7f"></span><span class="mono">--pos</span><span class="mono">#6ebf7f</span><span>Rises</span></div>
+        <div class="st-sw"><span class="st-chip" style="background: #e58a8a"></span><span class="mono">--neg</span><span class="mono">#e58a8a</span><span>Falls</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="st-block" aria-labelledby="st-type">
+    <h2 class="st-h" id="st-type">Type</h2>
+    <div class="st-type">
+      <span class="code">Home headline · 68/1.0 · 700 · −3%</span><span class="disp" style="font-size: 68px; line-height: 1">Every company.</span>
+      <span class="code">Company name · 60/1.0 · 700 · −2.5%</span><span class="disp" style="font-size: 60px; line-height: 1">NVIDIA</span>
+      <span class="code">Price · 40 · 600 · tabular</span><span class="num" style="font-size: 40px; font-weight: 600; letter-spacing: -.02em">$202.49</span>
+      <span class="code">Fact figure · 48 · 650 · −3.5%</span><span class="num" style="font-size: 48px; font-weight: 650; letter-spacing: -.035em; line-height: 1">43×</span>
+      <span class="code">Section title · 26 (home 30) · 650</span><span style="font-size: 26px; font-weight: 650; letter-spacing: -.015em">Three facts from its filings</span>
+      <span class="code">Quote · 26/1.45 · 400</span><span style="font-size: 26px; line-height: 1.45; letter-spacing: -.012em">The company’s own words, at reading size.</span>
+      <span class="code">Stat value · 30 · 600</span><span class="num" style="font-size: 30px; font-weight: 600; letter-spacing: -.02em">$96.7B</span>
+      <span class="code">Body · 16/1.6 (was 14–15)</span><span style="font-size: 16px; line-height: 1.6; max-width: 62ch">Body copy never drops below 16px on desktop. Notes and sources sit at 14px. Reading lines stop at about 68 characters.</span>
+      <span class="code">Table · 15 · tabular figures</span><span class="num" style="font-size: 15px">215.94   130.50   60.92</span>
+      <span class="code">Label · Plex Mono 11.5 · +10% · caps</span><span class="rf-lbl">Fiscal years · gold is the latest</span>
+    </div>
+    <p style="margin: 0; color: var(--muted); font-size: 14px">Inter loads with its optical-size axis, so large headlines get Inter’s tighter display cut automatically. The Serif tweak swaps headlines and the quote to Newsreader, to try.</p>
+  </section>
+
+  <section class="st-block" aria-labelledby="st-comp">
+    <h2 class="st-h" id="st-comp">Components</h2>
+    <div class="st-comp">
+      <div class="st-cell">
+        <span class="code">.rf-btn · .rf-btn-solid · 44px tall</span>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap"><button class="rf-btn rf-btn-solid" type="button">Open file</button><button class="rf-btn" type="button">Sign in</button></div>
+      </div>
+      <div class="st-cell">
+        <span class="code">.rf-seg · chart ranges, period switch</span>
+        <div class="rf-seg" role="group" aria-label="Example ranges"><button class="rf-seg-btn" type="button">1M</button><button class="rf-seg-btn is-active" type="button" aria-pressed="true">1Y</button><button class="rf-seg-btn" type="button">5Y</button><button class="rf-seg-btn" type="button">MAX</button></div>
+      </div>
+      <div class="st-cell">
+        <span class="code">.rf-chip · pick a line to chart</span>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap"><button class="rf-chip is-active" type="button" aria-pressed="true">Revenue</button><button class="rf-chip" type="button">Net income</button><button class="rf-chip" type="button">Free cash flow</button></div>
+      </div>
+      <div class="st-cell">
+        <span class="code">.rf-tabs · gold underline marks the open tab</span>
+        <div class="rf-tabs"><span class="rf-tab is-active">Overview</span><span class="rf-tab">Financials</span><span class="rf-tab">Valuation</span></div>
+      </div>
+      <div class="st-cell">
+        <span class="code">.rf-kicker + section title</span>
+        <div><div class="rf-lbl rf-kicker">What stands out</div><div style="font-size: 26px; font-weight: 650; letter-spacing: -.015em; margin-top: 6px">Three facts from its filings</div></div>
+      </div>
+      <div class="st-cell">
+        <span class="code">.rf-change · rises and falls, never colour alone</span>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap"><span class="rf-change neg num">▼ −4.22%</span><span class="rf-change pos num">▲ +1.18%</span></div>
+      </div>
+      <div class="st-cell">
+        <span class="code">.rf-note · try-again and not-available messages</span>
+        <div class="rf-note"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" style="flex: none; margin-top: 3px"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v5M12 16.5v.5"></path></svg><span>The SEC’s figures for this company couldn’t be loaded just now. Try again in a minute.</span></div>
+      </div>
+      <div class="st-cell">
+        <span class="code">.rf-range · 52-week range, gold dot is today</span>
+        <div><div style="display: flex; justify-content: space-between"><span class="rf-lbl">Low $128.40</span><span class="rf-lbl">High $214.73</span></div><div class="rf-range-track" style="margin-top: 12px"><div class="rf-range-fill" style="width: 85.8%"></div><div class="rf-range-dot" style="left: 85.8%"></div></div></div>
+      </div>
+      <div class="st-cell">
+        <span class="code">.rf-fact · figure, then the sentence</span>
+        <div style="display: flex; flex-direction: column; gap: 10px; padding-top: 16px; border-top: 1px solid var(--ink)"><span class="num" style="font-size: 44px; font-weight: 650; letter-spacing: -.035em; line-height: 1">$40.1B</span><span style="color: var(--ink-2)">Spent repurchasing its own shares in fiscal 2026, about 41% of its free cash flow.</span></div>
+      </div>
+      <div class="st-cell">
+        <span class="code">.rf-stat · label, value, one-line meaning</span>
+        <div style="display: flex; flex-direction: column; gap: 6px; padding-top: 14px; border-top: 1px solid var(--rule-2)"><span class="rf-lbl">Free cash flow</span><span class="num" style="font-size: 30px; font-weight: 600; letter-spacing: -.02em">$96.7B</span><span style="font-size: 14px; color: var(--muted)">Operating cash flow minus capital spending, calculated by The Dispatch.</span></div>
+      </div>
+      <div class="st-cell">
+        <span class="code">.rf-recent-card · recently viewed</span>
+        <div class="rf-recent-card"><span class="mono" style="font-size: 12.5px; font-weight: 500; color: var(--ink-2)">COST</span><span style="font-size: 17px; font-weight: 600">Costco</span><span style="font-size: 13.5px; color: var(--muted)">2 hours ago · Valuation</span><button class="rf-iconbtn" type="button" aria-label="Remove Costco from recently viewed" style="position: absolute; top: 4px; right: 4px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div>
+      </div>
+      <div class="st-cell" style="grid-column: 1 / -1">
+        <span class="code">.rf-table · ink rule under the header, gold wash on the latest column, sections in mono caps, ‡ marks calculated figures</span>
+        <table class="rf-table">
+          <thead><tr><th scope="col" style="text-align: left">Line</th><th scope="col">FY24</th><th scope="col">FY25</th><th scope="col" class="is-now">FY26</th></tr></thead>
+          <tbody>
+            <tr class="is-section"><th scope="rowgroup" colspan="4">Cash flow</th></tr>
+            <tr><th scope="row">Operating cash flow</th><td>28.09</td><td>64.09</td><td class="is-now">102.72</td></tr>
+            <tr><th scope="row">Capital spending</th><td class="neg">−1.07</td><td class="neg">−3.24</td><td class="is-now neg">−6.04</td></tr>
+            <tr><th scope="row" style="font-weight: 650">Free cash flow <span class="rf-mark">‡</span></th><td style="font-weight: 650">27.02</td><td style="font-weight: 650">60.85</td><td class="is-now" style="font-weight: 650">96.68</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="st-block" aria-labelledby="st-rules">
+    <h2 class="st-h" id="st-rules">Rules that make it read well</h2>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 48px; font-size: 15.5px; color: var(--ink-2)">
+      <p style="margin: 0"><strong style="color: var(--ink)">Gold means now.</strong> The latest bar, the latest table column, today’s dot on a chart or range, the open tab. Nothing else is gold, so the eye always finds the current figure.</p>
+      <p style="margin: 0"><strong style="color: var(--ink)">Hairlines, not boxes.</strong> Sections open with a single ink rule. Panels are kept for the chart and the tables, where a frame helps. No box sits inside another box.</p>
+      <p style="margin: 0"><strong style="color: var(--ink)">One focal point a section.</strong> Facts lead with their figure, the chart leads with what moved, the quote leads with the company’s words.</p>
+      <p style="margin: 0"><strong style="color: var(--ink)">Room to breathe.</strong> 72px between sections on desktop, 44px on a phone. Content stops at 1200px; reading lines at about 68 characters.</p>
+      <p style="margin: 0"><strong style="color: var(--ink)">Square, flat, quiet.</strong> Square corners stay the rule. The only shadow is under the search dropdown, because it floats over the page.</p>
+      <p style="margin: 0"><strong style="color: var(--ink)">Readable everywhere.</strong> Body text at 16px, every control at least 44px tall, every grey passing 4.5:1 in both themes, rises and falls marked by an arrow as well as a colour.</p>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["Light","Dark"],"default":"Light","section":"Look"},"headlines":{"editor":"enum","options":["Inter","Serif"],"default":"Inter","section":"Look"},"corners":{"editor":"enum","options":["Square","Soft"],"default":"Square","section":"Look"},"$preview":{"width":1280,"height":2350}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var theme = this.props.theme ?? 'Light';
+    var head = this.props.headlines ?? 'Inter';
+    var corners = this.props.corners ?? 'Square';
+    return { rootClass: 'dx ' + (theme === 'Dark' ? 't-dark' : 't-light') + (head === 'Serif' ? ' h-serif' : '') + (corners === 'Soft' ? ' r-soft' : '') };
+  }
+}
+</script>
+</body>
+</html>

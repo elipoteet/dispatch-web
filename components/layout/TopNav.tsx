@@ -14,7 +14,6 @@ import { Logo } from "./Logo";
 const LINKS = [
   { href: "/", label: "Home" },
   { href: "/research", label: "Research" },
-  { href: "/portfolio", label: "Portfolio" },
   { href: "/about", label: "About" },
   { href: "/give", label: "Give Back" },
 ];
@@ -40,7 +39,7 @@ export function TopNav() {
         <Logo size={30} />
         <span>
           DISPATCH
-          <span className="tag">Equity Research &amp; Analytics</span>
+          <span className="tag">Research on every U.S. company</span>
         </span>
       </Link>
       <div className="nav-links">

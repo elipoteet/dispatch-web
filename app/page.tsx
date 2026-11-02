@@ -87,10 +87,6 @@ export default async function HomePage() {
         <div className="rf-home-section">
           <div className="rf-lbl">Tools</div>
           <div className="rf-tools">
-            <Link href="/portfolio" className="rf-tool">
-              <span className="rf-file-name">Portfolio simulator</span>
-              <span className="rf-file-text">Practice with paper money, in an amount you choose. Trade from any company&rsquo;s page.</span>
-            </Link>
             <div className="rf-tool is-coming">
               <span className="rf-file-name">Screener</span>
               <span className="rf-file-text">Filter every filer by growth, margins, cash flow and size.</span>

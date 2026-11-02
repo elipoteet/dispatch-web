@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NVIDIA overview</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=Inter:opsz,wght@14..32,400..700&amp;family=Newsreader:opsz,wght@6..72,400..600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0d1b2a}a:hover{color:#7d5c00}
+.dx{--bg:#f5f1e8;--surface:#fffdf8;--surface-2:#efe8d9;--ink:#0d1b2a;--ink-2:#2f3e55;--muted:#56657a;--rule:#e3dbcb;--rule-2:#cbc1ab;--gold:#a67c00;--gold-ink:#7d5c00;--gold-wash:rgba(166,124,0,.10);--pos:#1e5631;--neg:#8b1a1a;--pos-wash:rgba(30,86,49,.09);--neg-wash:rgba(139,26,26,.08);--chart-fill:rgba(13,27,42,.05);--mast-bg:#0d1b2a;--mast-ink:#e9e2d2;--r:0px;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-optical-sizing:auto;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.dx.t-dark{--bg:#0e1620;--surface:#131d2a;--surface-2:#1a2635;--ink:#e8ecf2;--ink-2:#c3ccd8;--muted:#93a0b2;--rule:#223041;--rule-2:#34465d;--gold:#d4a843;--gold-ink:#e2bb5c;--gold-wash:rgba(212,168,67,.13);--pos:#6ebf7f;--neg:#e58a8a;--pos-wash:rgba(110,191,127,.12);--neg-wash:rgba(229,138,138,.12);--chart-fill:rgba(232,236,242,.06);--mast-bg:#050a12;--mast-ink:#c3ccd8}
+.dx.r-soft{--r:6px}
+.dx *,.dx *::before,.dx *::after{box-sizing:border-box}
+.dx a{color:inherit;text-underline-offset:3px;text-decoration-thickness:1px}
+.dx a:hover{color:var(--gold-ink)}
+.dx button,.dx input{font:inherit;color:inherit}
+.dx :focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.disp{font-weight:700;letter-spacing:-.025em;text-wrap:balance}
+.h-serif .disp{font-family:Newsreader,Georgia,serif;font-weight:500;letter-spacing:-.01em}
+.rf-lbl{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-size:11.5px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);line-height:1.45}
+.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+.num{font-variant-numeric:tabular-nums lining-nums}
+.muted{color:var(--muted)}.pos{color:var(--pos)}.neg{color:var(--neg)}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.rf-mast{display:flex;justify-content:space-between;gap:16px;padding:9px 40px;background:var(--mast-bg);color:var(--mast-ink);font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase}
+.rf-nav{display:flex;align-items:center;gap:20px;padding:14px 40px;border-bottom:2px solid var(--ink);flex-wrap:wrap}
+.rf-brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-size:24px;font-weight:700;letter-spacing:-.025em;line-height:1}
+.rf-brand small{display:block;margin-top:5px;font-family:"IBM Plex Mono",monospace;font-weight:400;font-size:9.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted)}
+.rf-navlinks{display:flex;align-items:center;gap:4px;margin-left:auto;flex-wrap:wrap}
+.dx a.rf-navlink{display:inline-flex;align-items:center;min-height:44px;padding:0 12px;font-size:13px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;color:var(--ink-2)}
+.dx a.rf-navlink.is-active{color:var(--ink);box-shadow:inset 0 -2px 0 var(--gold)}
+.rf-navsearch{display:flex;align-items:center;gap:8px;width:260px;height:44px;padding:0 12px;border:1px solid var(--rule-2);border-radius:var(--r);background:var(--surface);color:var(--muted)}
+.rf-navsearch input{flex:1;min-width:0;border:0;outline:0;background:transparent;font-size:14.5px}
+.rf-iconbtn{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border:1px solid transparent;border-radius:var(--r);background:transparent;cursor:pointer;color:var(--ink)}
+.rf-iconbtn:hover{border-color:var(--rule-2)}
+.rf-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border:1px solid var(--ink);border-radius:var(--r);background:transparent;font-size:15px;font-weight:500;text-decoration:none;cursor:pointer;white-space:nowrap}
+.rf-btn-solid{background:var(--ink);color:var(--bg)}
+.rf-wrap{max-width:1200px;margin:0 auto;padding:0 40px}
+.rf-sec{display:flex;flex-direction:column;gap:22px}
+.rf-sechead{display:flex;justify-content:space-between;align-items:flex-end;gap:12px 24px;flex-wrap:wrap}
+.rf-kicker{display:flex;align-items:center;gap:10px}
+.rf-kicker::before{content:"";width:18px;height:2px;background:var(--gold);flex:none}
+.rf-h2{margin:6px 0 0;font-size:26px;line-height:1.2;font-weight:650;letter-spacing:-.015em}
+.rf-dek{margin:0;color:var(--muted);max-width:64ch}
+.rf-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:28px 56px;padding:48px 0 32px}
+.rf-head-main{display:flex;flex-direction:column;gap:12px;min-width:0;flex:1 1 520px}
+.rf-title-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.rf-title{margin:0;font-size:60px;line-height:1}
+.rf-ticker{font-family:"IBM Plex Mono",monospace;font-size:15px;font-weight:500;letter-spacing:.06em;padding:4px 10px;border:1px solid var(--rule-2);border-radius:var(--r);color:var(--ink-2)}
+.rf-price-row{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.rf-price{font-size:40px;font-weight:600;letter-spacing:-.02em}
+.rf-change{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:var(--r);font-family:"IBM Plex Mono",monospace;font-size:14px;font-weight:500}
+.rf-change.neg{background:var(--neg-wash)}.rf-change.pos{background:var(--pos-wash)}
+.rf-head-side{flex:0 1 380px;min-width:260px;display:flex;flex-direction:column;gap:16px}
+.rf-range-ends{display:flex;justify-content:space-between;gap:12px}
+.rf-range-track{position:relative;height:4px;background:var(--rule-2);margin:2px 0}
+.rf-range-fill{position:absolute;left:0;top:0;bottom:0;background:var(--ink-2)}
+.rf-range-dot{position:absolute;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 3px var(--bg)}
+.rf-next{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding-top:14px;border-top:1px solid var(--rule)}
+.rf-tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--ink)}
+.dx a.rf-tab{display:inline-flex;align-items:center;min-height:52px;padding:0 18px;font-size:16px;font-weight:500;color:var(--muted);text-decoration:none;white-space:nowrap}
+.dx a.rf-tab:hover{color:var(--ink)}
+.dx a.rf-tab.is-active{color:var(--ink);font-weight:600;box-shadow:inset 0 -3px 0 var(--gold)}
+.rf-body{display:flex;flex-direction:column;gap:72px;padding:56px 0 72px}
+.rf-quote{position:relative;margin:0;padding:34px 0 0;max-width:820px}
+.rf-quote-mark{position:absolute;top:-18px;left:-6px;font-family:Newsreader,Georgia,serif;font-size:104px;line-height:1;color:var(--gold)}
+.rf-quote-text{margin:0;font-size:26px;line-height:1.45;font-weight:400;letter-spacing:-.012em;text-wrap:pretty}
+.h-serif .rf-quote-text{font-family:Newsreader,Georgia,serif;font-size:30px;line-height:1.4}
+.rf-attr{display:flex;gap:6px 14px;flex-wrap:wrap;align-items:baseline;margin:18px 0 0;font-size:14px;color:var(--muted)}
+.rf-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:36px}
+.rf-fact{display:flex;flex-direction:column;gap:12px;padding-top:20px;border-top:1px solid var(--ink)}
+.rf-fact-fig{font-size:48px;line-height:1;font-weight:650;letter-spacing:-.035em}
+.rf-fact-text{margin:0;font-size:16.5px;line-height:1.55;color:var(--ink-2);text-wrap:pretty}
+.rf-panel{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);padding:28px 32px 24px}
+.rf-chart-top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:28px}
+.rf-chart-cap{font-size:22px;font-weight:600;letter-spacing:-.01em}
+.rf-seg{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;border:1px solid var(--rule-2);border-radius:var(--r)}
+.rf-seg-btn{min-width:48px;height:44px;padding:0 10px;border:0;border-radius:var(--r);background:transparent;font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:500;color:var(--ink-2);cursor:pointer}
+.rf-seg-btn:hover{background:var(--surface-2)}
+.rf-seg-btn.is-active{background:var(--ink);color:var(--bg)}
+.rf-plotwrap{position:relative;padding-right:88px}
+.rf-plot{position:relative;height:320px}
+.rf-plot svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.rf-grid{position:absolute;left:0;right:-88px;border-top:1px solid var(--rule)}
+.rf-ylab{position:absolute;right:-88px;width:80px;text-align:right;transform:translateY(-50%);font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--muted);background:var(--surface);padding-left:6px}
+.rf-xaxis{display:flex;justify-content:space-between;margin-top:12px;font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--muted)}
+.rf-dot{position:absolute;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 2px var(--surface)}
+.rf-now{position:absolute;width:13px;height:13px;margin:-6.5px 0 0 -6.5px;border-radius:50%;background:var(--ink);box-shadow:0 0 0 3px var(--surface),0 0 0 4px var(--gold)}
+.rf-prev{position:absolute;left:0;right:0;border-top:1.5px dashed var(--muted)}
+.rf-legend{display:flex;flex-wrap:wrap;gap:6px 24px;margin-top:20px;padding-top:16px;border-top:1px solid var(--rule);font-size:14px;color:var(--muted)}
+.rf-legend span{display:inline-flex;align-items:center;gap:8px}
+.rf-legend-dot{width:10px;height:10px;border-radius:50%;background:var(--gold)}
+.rf-legend-dash{width:20px;border-top:1.5px dashed var(--muted)}
+.rf-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:32px 36px}
+.rf-stat{display:flex;flex-direction:column;gap:6px;padding-top:16px;border-top:1px solid var(--rule-2)}
+.rf-stat-value{font-size:30px;line-height:1.15;font-weight:600;letter-spacing:-.02em}
+.rf-stat-note{font-size:14px;line-height:1.45;color:var(--muted)}
+.rf-foot{padding:22px 0 44px;border-top:1px solid var(--rule);font-size:13.5px;color:var(--muted)}
+</style>
+</helmet>
+<div class="{{ rootClass }}">
+  <div class="rf-mast">
+    <span>The Dispatch <span style="color: var(--gold); margin: 0 8px">•</span> Est. 2026</span>
+    <span>Monday, November 2, 2026</span>
+  </div>
+  <nav class="rf-nav" aria-label="Main">
+    <a class="rf-brand" href="Home.dc.html">
+      <svg width="32" height="29" viewBox="0 0 110 100" aria-hidden="true"><path fill-rule="evenodd" fill="var(--ink)" d="M38,20 L80,20 C102,20 102,80 80,80 L24,80 Z M52,35 L72,35 C88,35 88,65 72,65 L46,65 Z"></path><polyline points="18,80 38,62 50,72 64,54 92,26" fill="none" stroke="var(--bg)" stroke-width="11" stroke-linejoin="round" stroke-linecap="round"></polyline><polyline points="18,80 38,62 50,72 64,54 92,26" fill="none" stroke="var(--gold)" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"></polyline><polygon points="106,16 84,22 96,36" fill="var(--gold)"></polygon></svg>
+      <span>DISPATCH<small>Research on every U.S. company</small></span>
+    </a>
+    <div class="rf-navlinks">
+      <label class="rf-navsearch">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+        <span class="vh">Search companies</span>
+        <input type="search" placeholder="Search a company">
+      </label>
+      <a class="rf-navlink is-active" href="#">Research</a>
+      <a class="rf-navlink" href="#">About</a>
+      <a class="rf-navlink" href="#">Give Back</a>
+      <button class="rf-iconbtn" type="button" aria-label="Switch theme"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"></path></svg></button>
+      <button class="rf-btn" type="button">Sign in</button>
+    </div>
+  </nav>
+
+  <div class="rf-wrap">
+    <header class="rf-head">
+      <div class="rf-head-main">
+        <div class="rf-lbl">Nasdaq · Semiconductors · Fiscal year ends January</div>
+        <div class="rf-title-row">
+          <h1 class="rf-title disp">NVIDIA</h1>
+          <span class="rf-ticker">NVDA</span>
+        </div>
+        <div class="rf-price-row">
+          <span class="rf-price num">$202.49</span>
+          <span class="rf-change neg num">▼ −8.92 (−4.22%)</span>
+          <span class="rf-lbl">At close, Oct 30</span>
+        </div>
+      </div>
+      <div class="rf-head-side">
+        <div>
+          <div class="rf-range-ends"><span class="rf-lbl">52-week low <span class="num">$128.40</span></span><span class="rf-lbl">high <span class="num">$214.73</span></span></div>
+          <div class="rf-range-track" aria-hidden="true" style="margin-top: 10px"><div class="rf-range-fill" style="width: 85.8%"></div><div class="rf-range-dot" style="left: 85.8%"></div></div>
+          <div class="rf-lbl" style="text-align: right; margin-top: 10px">5.7% below its 52-week high</div>
+        </div>
+        <div class="rf-next">
+          <span class="rf-lbl">Next earnings</span>
+          <span style="font-size: 15px; font-weight: 500">Nov 17, 2026 · after the close</span>
+        </div>
+      </div>
+    </header>
+
+    <nav class="rf-tabs" aria-label="Research file">
+      <a class="rf-tab is-active" href="Main.dc.html" aria-current="page">Overview</a>
+      <a class="rf-tab" href="Financials.dc.html">Financials</a>
+      <a class="rf-tab" href="#">Valuation</a>
+      <a class="rf-tab" href="#">Earnings</a>
+      <a class="rf-tab" href="#">Insiders</a>
+      <a class="rf-tab" href="#">Filings</a>
+    </nav>
+
+    <div class="rf-body">
+      <section class="rf-sec" aria-label="In its own words">
+        <div class="rf-lbl rf-kicker">In its own words</div>
+        <figure class="rf-quote">
+          <span class="rf-quote-mark" aria-hidden="true">“</span>
+          <blockquote style="margin: 0"><p class="rf-quote-text">NVIDIA pioneered accelerated computing to help solve the most challenging computational problems.</p></blockquote>
+          <figcaption class="rf-attr">
+            <span>How NVIDIA describes itself in its fiscal 2026 annual report. The company’s words, not ours.</span>
+            <a href="#">Read the filing ↗</a>
+          </figcaption>
+        </figure>
+      </section>
+
+      <section class="rf-sec" aria-labelledby="stands">
+        <div class="rf-sechead">
+          <div>
+            <div class="rf-lbl rf-kicker">What stands out</div>
+            <h2 class="rf-h2" id="stands">Three facts from its filings</h2>
+          </div>
+          <span class="rf-lbl">Facts, not a verdict · through FY26</span>
+        </div>
+        <div class="rf-facts">
+          <div class="rf-fact">
+            <div class="rf-fact-fig num">43×</div>
+            <p class="rf-fact-text">Revenue is 43 times what it was in fiscal 2016, and rose 65% in fiscal 2026 to $215.9B.</p>
+          </div>
+          <div class="rf-fact">
+            <div class="rf-fact-fig num">71.1%</div>
+            <p class="rf-fact-text">Gross margin fell from 75.0% to 71.1% in fiscal 2026, its first decline since fiscal 2023.</p>
+          </div>
+          <div class="rf-fact">
+            <div class="rf-fact-fig num">$40.1B</div>
+            <p class="rf-fact-text">Spent repurchasing its own shares in fiscal 2026, about 41% of its free cash flow.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="rf-panel" aria-labelledby="price">
+        <div class="rf-chart-top">
+          <div>
+            <div class="rf-lbl" id="price">Price</div>
+            <div class="rf-chart-cap num"><span class="{{ capClass }}">{{ caption }}</span></div>
+          </div>
+          <div class="rf-seg" role="group" aria-label="Chart range">
+            <sc-for list="{{ ranges }}" as="r" hint-placeholder-count="8">
+              <button type="button" class="{{ r.cls }}" aria-pressed="{{ r.pressed }}" onClick="{{ r.pick }}">{{ r.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+        <div class="rf-plotwrap">
+          <div class="rf-plot">
+            <sc-for list="{{ ylabels }}" as="y" hint-placeholder-count="3">
+              <div class="rf-grid" style="top: {{ y.top }}"></div>
+              <span class="rf-ylab num" style="top: {{ y.top }}">{{ y.label }}</span>
+            </sc-for>
+            <svg viewBox="0 0 1000 300" preserveAspectRatio="none" role="img" aria-label="{{ ariaLabel }}">
+              <path d="{{ area }}" fill="var(--chart-fill)"></path>
+              <path d="{{ line }}" fill="none" stroke="var(--ink)" stroke-width="1.8" vector-effect="non-scaling-stroke" stroke-linejoin="round"></path>
+            </svg>
+            <sc-if value="{{ showPrev }}" hint-placeholder-val="{{ false }}">
+              <div class="rf-prev" style="top: {{ prevTop }}"></div>
+            </sc-if>
+            <sc-for list="{{ dots }}" as="d" hint-placeholder-count="4">
+              <span class="rf-dot" style="left: {{ d.left }}; top: {{ d.top }}" title="{{ d.title }}"></span>
+            </sc-for>
+            <span class="rf-now" style="left: 100%; top: {{ nowTop }}" title="Latest"></span>
+          </div>
+          <div class="rf-xaxis">
+            <sc-for list="{{ xlabels }}" as="x" hint-placeholder-count="5"><span>{{ x }}</span></sc-for>
+          </div>
+        </div>
+        <div class="rf-legend">
+          <sc-if value="{{ showDots }}" hint-placeholder-val="{{ true }}">
+            <span><span class="rf-legend-dot"></span>{{ dotsLabel }}</span>
+          </sc-if>
+          <sc-if value="{{ showPrev }}" hint-placeholder-val="{{ false }}">
+            <span><span class="rf-legend-dash"></span>Previous close $211.41</span>
+          </sc-if>
+          <span>Next earnings Nov 17, 2026, after the close</span>
+          <span style="margin-left: auto">{{ source }}</span>
+        </div>
+      </section>
+
+      <section class="rf-sec" aria-labelledby="numbers">
+        <div>
+          <div class="rf-lbl rf-kicker">Key numbers</div>
+          <h2 class="rf-h2" id="numbers">The business in eight figures</h2>
+        </div>
+        <div class="rf-stats">
+          <div class="rf-stat"><span class="rf-lbl">Market value</span><span class="rf-stat-value num">$4.93T</span><span class="rf-stat-note">Price times shares outstanding.</span></div>
+          <div class="rf-stat"><span class="rf-lbl">P/E</span><span class="rf-stat-value num">41.0×</span><span class="rf-stat-note">Price over the last four quarters’ earnings per share.</span></div>
+          <div class="rf-stat"><span class="rf-lbl">Revenue</span><span class="rf-stat-value num">$215.9B</span><span class="rf-stat-note">Fiscal 2026, up 65% on the year before.</span></div>
+          <div class="rf-stat"><span class="rf-lbl">Net margin</span><span class="rf-stat-value num">55.6%</span><span class="rf-stat-note">Net income as a share of revenue.</span></div>
+          <div class="rf-stat"><span class="rf-lbl">Gross margin</span><span class="rf-stat-value num">71.1%</span><span class="rf-stat-note">Down from 75.0% a year earlier.</span></div>
+          <div class="rf-stat"><span class="rf-lbl">Free cash flow</span><span class="rf-stat-value num">$96.7B</span><span class="rf-stat-note">Operating cash flow minus capital spending, calculated by The Dispatch.</span></div>
+          <div class="rf-stat"><span class="rf-lbl">Repurchases</span><span class="rf-stat-value num">$40.1B</span><span class="rf-stat-note">Its own shares bought back in fiscal 2026.</span></div>
+          <div class="rf-stat"><span class="rf-lbl">Operating cash flow</span><span class="rf-stat-value num">$102.7B</span><span class="rf-stat-note">Cash the business brought in, fiscal 2026.</span></div>
+        </div>
+      </section>
+    </div>
+
+    <p class="rf-foot">Data: SEC EDGAR · Twelve Data · Finnhub. Facts and figures, not investment advice. The Dispatch doesn’t rate stocks or put a price on them.</p>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["Light","Dark"],"default":"Light","section":"Look"},"headlines":{"editor":"enum","options":["Inter","Serif"],"default":"Inter","section":"Look"},"corners":{"editor":"enum","options":["Square","Soft"],"default":"Square","section":"Look"},"$preview":{"width":1280,"height":2250}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { range: '1Y' };
+  }
+  spec() {
+    var even = [];
+    for (var k = 0; k < 20; k++) even.push(0.025 + k * 0.05);
+    return {
+      '1D': { n: 78, s: 0.0019, t: 0.9578, seed: 11, x: ['9:30', '11:00', '12:30', '2:00', '4:00 PM'], dots: [], prev: true, src: 'Five-minute prices' },
+      '1W': { n: 65, s: 0.0042, t: 0.951, seed: 23, x: ['Oct 26', 'Oct 27', 'Oct 28', 'Oct 29', 'Oct 30'], dots: [], src: 'Thirty-minute prices' },
+      '1M': { n: 22, s: 0.019, t: 1.031, seed: 5, x: ['Oct 1', 'Oct 8', 'Oct 15', 'Oct 22', 'Oct 30'], dots: [], src: 'Daily closes' },
+      '3M': { n: 64, s: 0.02, t: 1.087, seed: 7, x: ['Aug', 'Sep', 'Oct'], dots: [0.36], src: 'Daily closes' },
+      '1Y': { n: 252, s: 0.024, t: 1.41, seed: 3, x: ['Nov 2025', 'Feb', 'May', 'Aug', 'Oct 2026'], dots: [0.06, 0.32, 0.57, 0.82], src: 'Daily closes' },
+      '5Y': { n: 260, s: 0.05, t: 9.6, seed: 17, x: ['2022', '2023', '2024', '2025', '2026'], dots: even, src: 'Weekly closes' },
+      '10Y': { n: 260, s: 0.055, t: 121, seed: 29, x: ['2017', '2019', '2021', '2023', '2025'], dots: [], src: 'Weekly closes' },
+      'MAX': { n: 330, s: 0.11, t: 4800, seed: 41, x: ['1999', '2005', '2011', '2017', '2023'], dots: [], src: 'Monthly closes', since: 'Jan 1999' }
+    };
+  }
+  money(v) {
+    if (v >= 100) return '$' + v.toFixed(0);
+    if (v >= 1) return '$' + v.toFixed(2);
+    return '$' + v.toFixed(3);
+  }
+  chart(range) {
+    var sp = this.spec()[range];
+    var seed = sp.seed * 9973 + 7;
+    var rnd = function () { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    var L = [0];
+    for (var i = 1; i < sp.n; i++) { var z = (rnd() + rnd() + rnd() - 1.5) * 2; L.push(L[i - 1] + z * sp.s); }
+    var end = L[sp.n - 1], lt = Math.log(sp.t), last = 202.49;
+    var P = L.map(function (l, j) { var f = j / (sp.n - 1); return Math.exp(l - end * f + lt * f) / sp.t * last; });
+    var lo = Math.min.apply(null, P), hi = Math.max.apply(null, P);
+    var yOf = function (p) { return 14 + (1 - (p - lo) / (hi - lo)) * 272; };
+    var pct = function (y) { return (y / 300 * 100).toFixed(2) + '%'; };
+    var pts = P.map(function (p, j) { return (j / (sp.n - 1) * 1000).toFixed(1) + ',' + yOf(p).toFixed(1); });
+    var line = 'M' + pts.join(' L');
+    var area = line + ' L1000,300 L0,300 Z';
+    var mid = (hi + lo) / 2;
+    var ylabels = [{ label: this.money(hi), top: pct(yOf(hi)) }, { label: this.money(mid), top: pct(yOf(mid)) }, { label: this.money(lo), top: pct(yOf(lo)) }];
+    var self = this;
+    var dots = sp.dots.map(function (f) { var j = Math.round(f * (sp.n - 1)); return { left: (f * 100).toFixed(2) + '%', top: pct(yOf(P[j])), title: 'Earnings release' }; });
+    var r = sp.t;
+    var caption, capClass;
+    if (range === '1D') { caption = '−4.22% on the day'; capClass = 'neg'; }
+    else if (sp.since) { caption = Math.round(r).toLocaleString('en-US') + '× since ' + sp.since; capClass = 'pos'; }
+    else if (r >= 3) { caption = (r >= 100 ? Math.round(r) : r.toFixed(1)) + '× over ' + range; capClass = 'pos'; }
+    else { var p = (r - 1) * 100; caption = (p >= 0 ? '+' : '−') + Math.abs(p).toFixed(1) + '% over ' + range; capClass = p >= 0 ? 'pos' : 'neg'; }
+    return {
+      line: line, area: area, ylabels: ylabels, xlabels: sp.x, dots: dots,
+      showDots: dots.length > 0, dotsLabel: 'Earnings releases (' + dots.length + ')',
+      showPrev: Boolean(sp.prev), prevTop: pct(yOf(P[0])), nowTop: pct(yOf(P[sp.n - 1])),
+      caption: caption, capClass: capClass, source: sp.src,
+      ariaLabel: 'NVIDIA price, ' + range + ': ' + caption
+    };
+  }
+  renderVals() {
+    var theme = this.props.theme ?? 'Light';
+    var head = this.props.headlines ?? 'Inter';
+    var corners = this.props.corners ?? 'Square';
+    var rootClass = 'dx ' + (theme === 'Dark' ? 't-dark' : 't-light') + (head === 'Serif' ? ' h-serif' : '') + (corners === 'Soft' ? ' r-soft' : '');
+    var self = this;
+    var range = this.state.range;
+    var ranges = ['1D', '1W', '1M', '3M', '1Y', '5Y', '10Y', 'MAX'].map(function (r) {
+      return { label: r, cls: 'rf-seg-btn' + (r === range ? ' is-active' : ''), pressed: r === range ? 'true' : 'false', pick: function () { self.setState({ range: r }); } };
+    });
+    var c = this.chart(range);
+    return Object.assign({ rootClass: rootClass, ranges: ranges }, c);
+  }
+}
+</script>
+</body>
+</html>

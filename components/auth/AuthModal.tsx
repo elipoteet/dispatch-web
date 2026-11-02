@@ -89,7 +89,7 @@ export function AuthModal() {
         </h2>
         <p className="sub">
           {mode === "sign-in"
-            ? "Access your watchlist and paper portfolio."
+            ? "Keep a watchlist and get alerts."
             : "Free — takes about ten seconds."}
         </p>
 

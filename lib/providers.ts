@@ -73,7 +73,7 @@ export class NoTickerDataError extends Error {}
 
 // —— Caching ——
 // Wrapped here (the provider-fetch layer) rather than at each call site, so
-// every caller — the research pages, the alerts cron, the portfolio —
+// every caller — the research pages and the alerts cron —
 // shares one cache entry per symbol instead of each re-spending Twelve
 // Data/Finnhub credits independently. Backed by
 // Next's built-in Data Cache (`unstable_cache`), which — unlike a plain
@@ -346,43 +346,6 @@ export async function fetchIntradayPrices(symbol: string): Promise<PriceRow[]> {
   return rows;
 }
 
-// Tiingo fallback for the live quote. IMPORTANT: Tiingo's free tier is
-// end-of-day only — this returns the previous close, not a live intraday
-// price. That's an acceptable degradation for a fallback that only fires
-// when Finnhub is already down, but it's worth knowing this isn't a
-// real-time quote if it's ever surfaced directly rather than just used for
-// mark-to-market math.
-async function fetchQuotePriceTiingo(symbol: string): Promise<number> {
-  const key = process.env.TIINGO_API_KEY;
-  if (!key) throw new Error("Tiingo API key not configured.");
-  const tiingoSymbol = symbol.replace(/\./g, "-");
-  const url = `https://api.tiingo.com/tiingo/daily/${encodeURIComponent(tiingoSymbol)}/prices?token=${encodeURIComponent(key)}`;
-  const res = await fetch(url, { cache: "no-store" });
-  if (res.status === 404) throw new NoTickerDataError("No price data for this symbol.");
-  if (!res.ok) throw new Error("Tiingo HTTP " + res.status);
-  const j = await res.json();
-  const price = Array.isArray(j) && j.length > 0 ? j[0].close : NaN;
-  if (isNaN(price)) throw new NoTickerDataError("No price data for this symbol.");
-  return price;
-}
-
-// Single lightweight quote for trade execution and mark-to-market pricing
-// (used for every held position, on every portfolio page load — see
-// lib/portfolio.ts's getLatestPrice). Deliberately Finnhub, not
-// Twelve Data: this fires far more often than a ticker search does, and
-// sharing Twelve Data's tight 8-req/min quota with it caused real,
-// intermittent ticker-search failures. Falls back to Tiingo (end-of-day) if
-// Finnhub is down, never to Twelve Data, so this path can never compete
-// for that quota. Not wrapped in unstable_cache here — getLatestPrice
-// already has its own short-TTL cache, deliberately separate and shorter
-// since it backs live trade execution pricing.
-export async function fetchLatestQuote(symbol: string): Promise<number> {
-  const finnhub = await fetchFinnhubQuote(symbol);
-  if (finnhub != null) return finnhub;
-  console.log(`[fallback] Finnhub quote failed for ${symbol}, trying Tiingo`);
-  return await fetchQuotePriceTiingo(symbol);
-}
-
 // —— Finnhub: fundamentals, consensus, news ——
 async function fh<T = unknown>(path: string, params: Record<string, string> = {}): Promise<T | null> {
   const key = process.env.FINNHUB_API_KEY;
@@ -398,24 +361,10 @@ async function fh<T = unknown>(path: string, params: Record<string, string> = {}
   }
 }
 
-// —— Finnhub: lightweight quote. Backs fetchLatestQuote above (portfolio
-// trade execution and mark-to-market). It was first written for the Monthly
-// Leaderboard's daily scoring cron, removed on 30 October 2026. Not run
-// through unstable_cache like the rest of this file: getLatestPrice already
-// has its own short-TTL cache, so a second layer here would be redundant.
-// Empirically confirmed (real throttled test, July 2026) that Finnhub's free
-// tier allows 60 requests/minute via the x-ratelimit-* response headers, then
-// hard-fails with 429 and remaining=0 for the rest of that rolling window.
-export async function fetchFinnhubQuote(symbol: string): Promise<number | null> {
-  const data = await fh<{ c: number }>("quote", { symbol: symbol.toUpperCase() });
-  if (!data || typeof data.c !== "number" || data.c <= 0) return null;
-  return data.c;
-}
-
 // —— Finnhub: the research page header (phase nine, stage 2) ——
 // Price, day change and company profile for /research/[ticker]. Finnhub, not
-// Twelve Data, for the same reason as fetchLatestQuote: a header loads on every
-// visit, and Twelve Data's 8-per-minute allowance is kept for price history.
+// Twelve Data: a header loads on every visit, and Twelve Data's
+// 8-per-minute allowance is kept for price history.
 
 export type QuoteSnapshot = {
   price: number;

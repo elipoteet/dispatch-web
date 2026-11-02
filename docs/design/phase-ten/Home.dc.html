@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The Dispatch home</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=Inter:opsz,wght@14..32,400..700&amp;family=Newsreader:opsz,wght@6..72,400..600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0d1b2a}a:hover{color:#7d5c00}
+.dx{--bg:#f5f1e8;--surface:#fffdf8;--surface-2:#efe8d9;--ink:#0d1b2a;--ink-2:#2f3e55;--muted:#56657a;--rule:#e3dbcb;--rule-2:#cbc1ab;--gold:#a67c00;--gold-ink:#7d5c00;--gold-wash:rgba(166,124,0,.10);--pos:#1e5631;--neg:#8b1a1a;--mast-bg:#0d1b2a;--mast-ink:#e9e2d2;--shadow:0 22px 48px -18px rgba(13,27,42,.28);--r:0px;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-optical-sizing:auto;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.dx.t-dark{--bg:#0e1620;--surface:#131d2a;--surface-2:#1a2635;--ink:#e8ecf2;--ink-2:#c3ccd8;--muted:#93a0b2;--rule:#223041;--rule-2:#34465d;--gold:#d4a843;--gold-ink:#e2bb5c;--gold-wash:rgba(212,168,67,.13);--pos:#6ebf7f;--neg:#e58a8a;--mast-bg:#050a12;--mast-ink:#c3ccd8;--shadow:0 22px 48px -18px rgba(0,0,0,.6)}
+.dx.r-soft{--r:6px}
+.dx *,.dx *::before,.dx *::after{box-sizing:border-box}
+.dx a{color:inherit;text-underline-offset:3px;text-decoration-thickness:1px}
+.dx a:hover{color:var(--gold-ink)}
+.dx button,.dx input{font:inherit;color:inherit}
+.dx :focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.disp{font-weight:700;letter-spacing:-.03em;text-wrap:balance}
+.h-serif .disp{font-family:Newsreader,Georgia,serif;font-weight:500;letter-spacing:-.015em}
+.rf-lbl{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-size:11.5px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);line-height:1.45}
+.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+.num{font-variant-numeric:tabular-nums lining-nums}
+.muted{color:var(--muted)}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.rf-mast{display:flex;justify-content:space-between;gap:16px;padding:9px 40px;background:var(--mast-bg);color:var(--mast-ink);font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase}
+.rf-nav{display:flex;align-items:center;gap:20px;padding:14px 40px;border-bottom:2px solid var(--ink);flex-wrap:wrap}
+.rf-brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-size:24px;font-weight:700;letter-spacing:-.025em;line-height:1}
+.rf-brand small{display:block;margin-top:5px;font-family:"IBM Plex Mono",monospace;font-weight:400;font-size:9.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted)}
+.rf-navlinks{display:flex;align-items:center;gap:4px;margin-left:auto;flex-wrap:wrap}
+.dx a.rf-navlink{display:inline-flex;align-items:center;min-height:44px;padding:0 12px;font-size:13px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;color:var(--ink-2)}
+.dx a.rf-navlink.is-active{color:var(--ink);box-shadow:inset 0 -2px 0 var(--gold)}
+.rf-iconbtn{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border:1px solid transparent;border-radius:var(--r);background:transparent;cursor:pointer;color:var(--ink)}
+.rf-iconbtn:hover{border-color:var(--rule-2)}
+.rf-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border:1px solid var(--ink);border-radius:var(--r);background:transparent;font-size:15px;font-weight:500;text-decoration:none;cursor:pointer;white-space:nowrap}
+.rf-btn-solid{background:var(--ink);color:var(--bg)}
+.rf-wrap{max-width:1200px;margin:0 auto;padding:0 40px}
+.rf-hero{display:flex;flex-direction:column;gap:24px;padding:84px 0 72px;border-bottom:1px solid var(--ink)}
+.rf-hero-title{margin:0;font-size:68px;line-height:1.0;max-width:15ch}
+.rf-hero-lede{margin:0;font-size:19px;line-height:1.6;color:var(--ink-2);max-width:60ch}
+.rf-kicker{display:flex;align-items:center;gap:10px}
+.rf-kicker::before{content:"";width:18px;height:2px;background:var(--gold);flex:none}
+.rf-search{position:relative;max-width:700px;margin-top:8px}
+.rf-search-box{display:flex;align-items:center;gap:12px;height:62px;padding:0 6px 0 20px;background:var(--surface);border:1px solid var(--ink);border-radius:var(--r);color:var(--muted)}
+.rf-search-box.is-open{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-wash)}
+.rf-search-box input{flex:1;min-width:0;height:100%;border:0;outline:0;background:transparent;font-size:18px;color:var(--ink)}
+.rf-drop{position:absolute;left:0;right:0;top:70px;z-index:5;background:var(--surface);border:1px solid var(--rule-2);border-radius:var(--r);box-shadow:var(--shadow);padding:6px 0 8px}
+.rf-drop-head{display:flex;justify-content:space-between;align-items:center;padding:4px 10px 4px 20px}
+.dx a.rf-drop-item{display:grid;grid-template-columns:70px minmax(0,1fr) auto;gap:14px;align-items:center;min-height:50px;padding:0 20px;text-decoration:none}
+.dx a.rf-drop-item:hover{background:var(--surface-2);color:var(--ink)}
+.rf-drop-sym{font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:14px}
+.rf-drop-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rf-drop-when{font-size:13px;color:var(--muted)}
+.rf-drop-foot{margin:6px 20px 0;padding-top:10px;border-top:1px solid var(--rule);font-size:13px;color:var(--muted)}
+.rf-linkbtn{min-height:44px;padding:0 10px;border:0;background:none;font-size:13.5px;color:var(--muted);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.rf-linkbtn:hover{color:var(--gold-ink)}
+.rf-quick{display:flex;align-items:center;gap:6px 14px;flex-wrap:wrap;font-size:14.5px;color:var(--muted)}
+.rf-sec{display:flex;flex-direction:column;gap:24px;padding-top:72px}
+.rf-sechead{display:flex;justify-content:space-between;align-items:flex-end;gap:12px 24px;flex-wrap:wrap}
+.rf-h2{margin:6px 0 0;font-size:30px;line-height:1.15;font-weight:650;letter-spacing:-.02em}
+.h-serif .rf-h2{font-family:Newsreader,Georgia,serif;font-weight:500}
+.rf-dek{margin:4px 0 0;color:var(--muted);max-width:64ch}
+.rf-recent{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(210px,100%),1fr));gap:14px}
+.rf-recent-card{position:relative;display:flex;flex-direction:column;gap:4px;padding:18px 48px 16px 18px;background:var(--surface);border:1px solid var(--rule);border-radius:var(--r)}
+.rf-recent-card:hover{border-color:var(--ink)}
+.dx a.rf-recent-link{font-size:17px;font-weight:600;text-decoration:none;line-height:1.3}
+.dx a.rf-recent-link::after{content:"";position:absolute;inset:0}
+.rf-recent-x{position:absolute;top:4px;right:4px;z-index:1;color:var(--muted)}
+.rf-recent-meta{font-size:13.5px;color:var(--muted)}
+.rf-tick{font-family:"IBM Plex Mono",monospace;font-size:12.5px;font-weight:500;letter-spacing:.06em;color:var(--ink-2)}
+.rf-empty{padding:18px 20px;background:var(--surface-2);border-radius:var(--r);color:var(--ink-2);font-size:15px}
+.rf-companies{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:8px 40px}
+.dx a.rf-company{display:flex;flex-direction:column;gap:10px;padding:22px 0 26px;border-top:1px solid var(--ink);text-decoration:none}
+.dx a.rf-company:hover .rf-company-name{color:var(--gold-ink)}
+.rf-company-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.rf-company-name{font-size:21px;font-weight:600;letter-spacing:-.01em}
+.rf-company-fact{margin:0;font-size:16px;line-height:1.55;color:var(--ink-2)}
+.rf-files{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:0 40px}
+.dx a.rf-file{display:grid;grid-template-columns:44px minmax(0,1fr);gap:4px 12px;padding:20px 0 22px;border-top:1px solid var(--rule-2);text-decoration:none}
+.rf-file-n{grid-row:span 2;font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--gold-ink);padding-top:3px}
+.rf-file-name{font-size:18px;font-weight:600}
+.rf-file-text{font-size:15px;line-height:1.55;color:var(--muted)}
+.rf-tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:16px}
+.rf-tool{display:flex;flex-direction:column;gap:6px;padding:22px 24px;border:1px dashed var(--rule-2);border-radius:var(--r)}
+.rf-how{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:24px 40px}
+.rf-how li{display:flex;flex-direction:column;gap:8px;padding-top:16px;border-top:1px solid var(--ink)}
+.rf-how strong{font-size:17px}
+.rf-how span{color:var(--ink-2);font-size:15.5px;line-height:1.55}
+.rf-foot{margin-top:80px;padding:22px 0 44px;border-top:1px solid var(--rule);font-size:13.5px;color:var(--muted)}
+</style>
+</helmet>
+<div class="{{ rootClass }}">
+  <div class="rf-mast">
+    <span>The Dispatch <span style="color: var(--gold); margin: 0 8px">•</span> Est. 2026</span>
+    <span>Monday, November 2, 2026</span>
+  </div>
+  <nav class="rf-nav" aria-label="Main">
+    <a class="rf-brand" href="Home.dc.html">
+      <svg width="32" height="29" viewBox="0 0 110 100" aria-hidden="true"><path fill-rule="evenodd" fill="var(--ink)" d="M38,20 L80,20 C102,20 102,80 80,80 L24,80 Z M52,35 L72,35 C88,35 88,65 72,65 L46,65 Z"></path><polyline points="18,80 38,62 50,72 64,54 92,26" fill="none" stroke="var(--bg)" stroke-width="11" stroke-linejoin="round" stroke-linecap="round"></polyline><polyline points="18,80 38,62 50,72 64,54 92,26" fill="none" stroke="var(--gold)" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"></polyline><polygon points="106,16 84,22 96,36" fill="var(--gold)"></polygon></svg>
+      <span>DISPATCH<small>Research on every U.S. company</small></span>
+    </a>
+    <div class="rf-navlinks">
+      <a class="rf-navlink is-active" href="Home.dc.html">Home</a>
+      <a class="rf-navlink" href="#">Research</a>
+      <a class="rf-navlink" href="#">About</a>
+      <a class="rf-navlink" href="#">Give Back</a>
+      <button class="rf-iconbtn" type="button" aria-label="Switch theme"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"></path></svg></button>
+      <button class="rf-btn" type="button">Sign in</button>
+    </div>
+  </nav>
+
+  <div class="rf-wrap">
+    <section class="rf-hero">
+      <div class="rf-lbl rf-kicker">Free · from SEC filings · no ratings</div>
+      <h1 class="rf-hero-title disp">A research file on every U.S. public company.</h1>
+      <p class="rf-hero-lede">Read straight from the reports companies file with the SEC: ten years of financials, what stands out in them, insider trades, what changed in the risk factors, and the price history. Facts to think with, not a verdict to follow.</p>
+      <div class="rf-search">
+        <div class="{{ boxClass }}">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+          <label class="vh" for="home-q">Search a ticker or company name</label>
+          <input id="home-q" type="search" placeholder="Search a ticker or company, like NVDA or Costco" onClick="{{ toggleDrop }}" aria-expanded="{{ dropExpanded }}">
+          <button class="rf-btn rf-btn-solid" type="button">Open file</button>
+        </div>
+        <sc-if value="{{ dropOpen }}" hint-placeholder-val="{{ true }}">
+          <div class="rf-drop">
+            <div class="rf-drop-head">
+              <span class="rf-lbl">Recently viewed</span>
+              <button class="rf-linkbtn" type="button" onClick="{{ clearAll }}">Clear</button>
+            </div>
+            <sc-if value="{{ hasRecents }}" hint-placeholder-val="{{ true }}">
+              <sc-for list="{{ dropItems }}" as="it" hint-placeholder-count="5">
+                <a class="rf-drop-item" href="{{ it.href }}">
+                  <span class="rf-drop-sym">{{ it.sym }}</span>
+                  <span class="rf-drop-name">{{ it.name }}</span>
+                  <span class="rf-drop-when">{{ it.when }}</span>
+                </a>
+              </sc-for>
+            </sc-if>
+            <sc-if value="{{ noRecents }}" hint-placeholder-val="{{ false }}">
+              <p class="rf-drop-foot" style="border-top: 0; margin-top: 0">Companies you open will show up here.</p>
+            </sc-if>
+            <p class="rf-drop-foot">Type to search every U.S. company by ticker or name.</p>
+          </div>
+        </sc-if>
+      </div>
+      <div class="rf-quick"><span class="rf-lbl">Try</span><a href="Main.dc.html">NVIDIA</a><a href="#">Costco</a><a href="#">JPMorgan</a><a href="#">Coca-Cola</a></div>
+    </section>
+
+    <sc-if value="{{ hasRecents }}" hint-placeholder-val="{{ true }}">
+      <section class="rf-sec" aria-labelledby="recent-title">
+        <div class="rf-sechead">
+          <div>
+            <div class="rf-lbl rf-kicker">Recently viewed</div>
+            <h2 class="rf-h2" id="recent-title">Pick up where you left off</h2>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px">
+            <span class="rf-lbl">Saved on this device only</span>
+            <button class="rf-linkbtn" type="button" onClick="{{ clearAll }}">Clear all</button>
+          </div>
+        </div>
+        <div class="rf-recent">
+          <sc-for list="{{ recents }}" as="it" hint-placeholder-count="5">
+            <div class="rf-recent-card">
+              <span class="rf-tick">{{ it.sym }}</span>
+              <a class="rf-recent-link" href="{{ it.href }}">{{ it.name }}</a>
+              <span class="rf-recent-meta">{{ it.when }} · {{ it.tab }}</span>
+              <button class="rf-iconbtn rf-recent-x" type="button" aria-label="{{ it.removeLabel }}" onClick="{{ it.remove }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+    </sc-if>
+
+    <section class="rf-sec" aria-labelledby="start-title">
+      <div>
+        <div class="rf-lbl rf-kicker">Start with a company</div>
+        <h2 class="rf-h2" id="start-title">One fact from each file</h2>
+      </div>
+      <div class="rf-companies">
+        <a class="rf-company" href="Main.dc.html"><span class="rf-company-top"><span class="rf-company-name">NVIDIA</span><span class="rf-tick">NVDA</span></span><span class="rf-lbl">Semiconductors</span><p class="rf-company-fact">Revenue is 43 times what it was in fiscal 2016, and rose 65% in fiscal 2026 to $215.9B.</p></a>
+        <a class="rf-company" href="#"><span class="rf-company-top"><span class="rf-company-name">JPMorgan Chase</span><span class="rf-tick">JPM</span></span><span class="rf-lbl">Banks</span><p class="rf-company-fact">Holds $4.42T of assets against $362.4B of shareholders’ equity.</p></a>
+        <a class="rf-company" href="#"><span class="rf-company-top"><span class="rf-company-name">Apple</span><span class="rf-tick">AAPL</span></span><span class="rf-lbl">Consumer electronics</span><p class="rf-company-fact">[One fact from its filings, picked by the same rules as today]</p></a>
+        <a class="rf-company" href="#"><span class="rf-company-top"><span class="rf-company-name">Costco</span><span class="rf-tick">COST</span></span><span class="rf-lbl">Retail</span><p class="rf-company-fact">[One fact from its filings]</p></a>
+        <a class="rf-company" href="#"><span class="rf-company-top"><span class="rf-company-name">Chevron</span><span class="rf-tick">CVX</span></span><span class="rf-lbl">Oil and gas</span><p class="rf-company-fact">[One fact from its filings]</p></a>
+        <a class="rf-company" href="#"><span class="rf-company-top"><span class="rf-company-name">Coca-Cola</span><span class="rf-tick">KO</span></span><span class="rf-lbl">Beverages</span><p class="rf-company-fact">[One fact from its filings]</p></a>
+      </div>
+    </section>
+
+    <section class="rf-sec" aria-labelledby="file-title">
+      <div>
+        <div class="rf-lbl rf-kicker">What’s in a file</div>
+        <h2 class="rf-h2" id="file-title">Six tabs, one company</h2>
+      </div>
+      <div class="rf-files">
+        <a class="rf-file" href="Main.dc.html"><span class="rf-file-n">01</span><span class="rf-file-name">Overview</span><span class="rf-file-text">What the company does, what stands out in its numbers, and its price.</span></a>
+        <a class="rf-file" href="Financials.dc.html"><span class="rf-file-n">02</span><span class="rf-file-name">Financials</span><span class="rf-file-text">Ten years of revenue, profit, margins and cash flow, annual and quarterly.</span></a>
+        <a class="rf-file" href="#"><span class="rf-file-n">03</span><span class="rf-file-name">Valuation</span><span class="rf-file-text">The growth today’s price assumes, its yields, and its multiples against its own history.</span></a>
+        <a class="rf-file" href="#"><span class="rf-file-n">04</span><span class="rf-file-name">Earnings</span><span class="rf-file-text">Quarterly results, the next report date, and the company’s own outlook.</span></a>
+        <a class="rf-file" href="#"><span class="rf-file-n">05</span><span class="rf-file-name">Insiders</span><span class="rf-file-text">Shares bought and sold by executives and directors, from their Form 4 filings.</span></a>
+        <a class="rf-file" href="#"><span class="rf-file-n">06</span><span class="rf-file-name">Filings</span><span class="rf-file-text">Every report, and what changed in the risk factors from one year to the next.</span></a>
+      </div>
+    </section>
+
+    <section class="rf-sec" aria-labelledby="tools-title">
+      <div>
+        <div class="rf-lbl rf-kicker">Coming next</div>
+        <h2 class="rf-h2" id="tools-title">Tools</h2>
+      </div>
+      <div class="rf-tools">
+        <div class="rf-tool"><span class="rf-lbl">Coming</span><span style="font-size: 18px; font-weight: 600">Screener</span><span class="muted" style="font-size: 15px">Filter every filer by growth, margins, cash flow and size.</span></div>
+        <div class="rf-tool"><span class="rf-lbl">Coming</span><span style="font-size: 18px; font-weight: 600">Compare</span><span class="muted" style="font-size: 15px">Two companies side by side, from the same filings.</span></div>
+      </div>
+    </section>
+
+    <section class="rf-sec" aria-labelledby="how-title">
+      <div>
+        <div class="rf-lbl rf-kicker">How it works</div>
+        <h2 class="rf-h2" id="how-title">Three things to know</h2>
+      </div>
+      <ol class="rf-how">
+        <li><strong>Straight from the SEC.</strong><span>Every figure comes from the reports companies file with the SEC. Where we calculate something, the page says so.</span></li>
+        <li><strong>Free, for everyone.</strong><span>No account needed to read anything. Your recently viewed companies stay on your own device.</span></li>
+        <li><strong>No verdicts.</strong><span>Nothing here rates a stock, scores it or puts a price on it. The judgment stays yours.</span></li>
+      </ol>
+    </section>
+
+    <p class="rf-foot">Data: SEC EDGAR · Twelve Data · Finnhub. Facts and figures, not investment advice.</p>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["Light","Dark"],"default":"Light","section":"Look"},"headlines":{"editor":"enum","options":["Inter","Serif"],"default":"Inter","section":"Look"},"corners":{"editor":"enum","options":["Square","Soft"],"default":"Square","section":"Look"},"$preview":{"width":1280,"height":2500}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      dropOpen: true,
+      recents: [
+        { sym: 'NVDA', name: 'NVIDIA', when: 'Just now', tab: 'Overview', href: 'Main.dc.html' },
+        { sym: 'COST', name: 'Costco', when: '2 hours ago', tab: 'Valuation', href: '#' },
+        { sym: 'JPM', name: 'JPMorgan Chase', when: 'Yesterday', tab: 'Insiders', href: '#' },
+        { sym: 'KO', name: 'Coca-Cola', when: '3 days ago', tab: 'Filings', href: '#' },
+        { sym: 'CULP', name: 'Culp', when: 'Last week', tab: 'Financials', href: '#' }
+      ]
+    };
+  }
+  renderVals() {
+    var theme = this.props.theme ?? 'Light';
+    var head = this.props.headlines ?? 'Inter';
+    var corners = this.props.corners ?? 'Square';
+    var rootClass = 'dx ' + (theme === 'Dark' ? 't-dark' : 't-light') + (head === 'Serif' ? ' h-serif' : '') + (corners === 'Soft' ? ' r-soft' : '');
+    var self = this;
+    var list = this.state.recents;
+    var recents = list.map(function (it) {
+      return Object.assign({}, it, {
+        removeLabel: 'Remove ' + it.name + ' from recently viewed',
+        remove: function () { self.setState({ recents: self.state.recents.filter(function (x) { return x.sym !== it.sym; }) }); }
+      });
+    });
+    return {
+      rootClass: rootClass,
+      dropOpen: this.state.dropOpen,
+      dropExpanded: this.state.dropOpen ? 'true' : 'false',
+      boxClass: 'rf-search-box' + (this.state.dropOpen ? ' is-open' : ''),
+      toggleDrop: function () { self.setState({ dropOpen: !self.state.dropOpen }); },
+      clearAll: function () { self.setState({ recents: [] }); },
+      recents: recents,
+      dropItems: recents.slice(0, 5),
+      hasRecents: list.length > 0,
+      noRecents: list.length === 0
+    };
+  }
+}
+</script>
+</body>
+</html>

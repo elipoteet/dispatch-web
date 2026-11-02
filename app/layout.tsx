@@ -5,16 +5,12 @@ import { createClient } from "@/lib/supabase/server";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { AuthModalProvider } from "@/components/auth/AuthModalContext";
 import { AuthModal } from "@/components/auth/AuthModal";
-import { PortfolioProvider } from "@/components/portfolio/PortfolioProvider";
-import { OnboardingModal } from "@/components/portfolio/OnboardingModal";
-import { TradeModal } from "@/components/portfolio/TradeModal";
-import { Toast } from "@/components/portfolio/Toast";
 import { Masthead } from "@/components/layout/Masthead";
 import { TopNav } from "@/components/layout/TopNav";
 import { Footer } from "@/components/layout/Footer";
 
 const SITE_NAME = "The Dispatch";
-// The title a page without its own gets (About, Give, Portfolio, the 404), and
+// The title a page without its own gets (About, Give, the 404), and
 // the one shared links show. Was "Equity Research", from the retired memo.
 const SITE_TITLE = `${SITE_NAME} — Free research on every U.S. public company`;
 const SITE_DESCRIPTION =
@@ -81,16 +77,11 @@ export default async function RootLayout({
       <body>
         <AuthProvider initialUser={user}>
           <AuthModalProvider>
-            <PortfolioProvider>
-              <Masthead />
-              <TopNav />
-              <main>{children}</main>
-              <Footer />
-              <AuthModal />
-              <OnboardingModal />
-              <TradeModal />
-              <Toast />
-            </PortfolioProvider>
+            <Masthead />
+            <TopNav />
+            <main>{children}</main>
+            <Footer />
+            <AuthModal />
           </AuthModalProvider>
         </AuthProvider>
       </body>

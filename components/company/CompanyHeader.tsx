@@ -1,5 +1,4 @@
 import { fiscalYearEndMonth, formatPct, formatPrice, formatSignedNumber, formatSignedPct } from "@/lib/research/format";
-import { PaperTradeButton } from "./PaperTradeButton";
 
 export type CompanyHeaderProps = {
   symbol: string;
@@ -75,11 +74,6 @@ export function CompanyHeader({ symbol, name, exchange, sector, fiscalYearEnd, q
       </div>
       <div className="rf-head-side">
         {range52 && <RangeBar low={range52.low} high={range52.high} price={quote?.price ?? null} />}
-        {quote && (
-          <div className="rf-actions">
-            <PaperTradeButton symbol={symbol} price={quote.price} />
-          </div>
-        )}
       </div>
     </header>
   );

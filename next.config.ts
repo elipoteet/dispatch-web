@@ -8,11 +8,15 @@ const nextConfig: NextConfig = {
       { source: "/pricing", destination: "/give", permanent: true },
       // The Monthly Leaderboard and its competition accounts were removed on
       // 30 October 2026: the site no longer ranks people or keeps a track
-      // record. Old links land on the paper-trading portfolio, the nearest
-      // thing that remains. The competition tables stay in the database.
-      { source: "/leaderboard", destination: "/portfolio", permanent: true },
-      { source: "/leaderboard/:path*", destination: "/portfolio", permanent: true },
-      { source: "/competition", destination: "/portfolio", permanent: true },
+      // record. The competition tables stay in the database.
+      { source: "/leaderboard", destination: "/research", permanent: true },
+      { source: "/leaderboard/:path*", destination: "/research", permanent: true },
+      { source: "/competition", destination: "/research", permanent: true },
+      // The paper-trading portfolio was retired on 2 November 2026 (phase
+      // ten). Old links land on the research page; the paper_* and
+      // equity_snapshot tables stay in the database untouched.
+      { source: "/portfolio", destination: "/research", permanent: true },
+      { source: "/portfolio/:path*", destination: "/research", permanent: true },
     ];
   },
 };

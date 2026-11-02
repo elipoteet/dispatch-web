@@ -56,7 +56,6 @@
 .rf-range-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--navy); }
 .rf-range-marker { position: absolute; top: -4px; width: 2px; height: 14px; margin-left: -1px; background: var(--gold); }
 .rf-range-note { text-align: right; }
-.rf-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .rf-btn {
   display: inline-flex;
   align-items: center;
@@ -421,7 +420,6 @@
   .rf-title { font-size: 30px; }
   .rf-price { font-size: 26px; }
   .rf-head-side { align-items: stretch; flex-basis: 100%; min-width: 0; }
-  .rf-actions { justify-content: flex-start; }
   .rf-hero { padding: 24px 0 40px; }
   .rf-hero-title { font-size: 34px; }
   .rf-page-title { font-size: 30px; }
