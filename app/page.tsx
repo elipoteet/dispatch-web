@@ -22,7 +22,7 @@ const FILE_SECTIONS: { label: string; text: string; href?: string }[] = [
   { label: "Overview", text: "What the company does, what stands out in its numbers, and its price.", href: `/research/${EXAMPLE}` },
   { label: "Financials", text: "Ten years of revenue, profit, margins and cash flow, annual and quarterly.", href: `/research/${EXAMPLE}/financials` },
   { label: "Valuation", text: "The growth today’s price assumes, its yields, and its multiples against ten years of its own history.", href: `/research/${EXAMPLE}/valuation` },
-  { label: "Earnings", text: "Quarterly results, the next report date, and the company’s own guidance." },
+  { label: "Earnings", text: "Quarterly results, the next report date, and the company’s own guidance.", href: `/research/${EXAMPLE}/earnings` },
   { label: "Insiders", text: "Shares bought and sold by executives and directors, from Form 4 filings." },
   { label: "Filings", text: "Every report, and what changed in the risk factors from one year to the next." },
 ];

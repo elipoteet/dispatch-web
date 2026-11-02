@@ -3,16 +3,13 @@
 // Twelve Data request, and only for companies whose share counts jumped), the
 // 10-year Treasury yield, and the peers. Server-only.
 
-import { unstable_cache } from "next/cache";
-import { fetchUnadjustedDailyCloses, TwelveDataBusyError } from "@/lib/providers";
 import type { FilerKind } from "@/lib/sec/concepts";
 import type { CompanyPage } from "@/lib/research/company";
-import { needsSplitCheck, splitSteps, type SplitStep } from "@/lib/research/splits";
+import { loadSplitSteps } from "@/lib/research/splitData";
 import {
   finnhubShareCount,
   historyMatchesToday,
   rangeStats,
-  shareCountsInWindow,
   sharesToday,
   todayFigures,
   valuationHistory,
@@ -23,14 +20,6 @@ import {
 } from "@/lib/research/valuation";
 import { getTenYearTreasury, type TreasuryYield } from "@/lib/research/treasury";
 import { loadPeers, type PeerRow } from "@/lib/research/peers";
-
-// Unadjusted prices never change once traded, so a day-old copy is only
-// missing the newest sessions. ~100KB for twelve years.
-const cachedUnadjusted = unstable_cache(
-  async (symbol: string) => fetchUnadjustedDailyCloses(symbol),
-  ["unadjustedDaily", "3000"],
-  { revalidate: 60 * 60 * 24 },
-);
 
 // busy: Twelve Data's allowance is used up for the minute. unavailable: no
 // price history. no-shares: the filings give no share count for past quarters.
@@ -58,21 +47,6 @@ export function metricsFor(kind: FilerKind): MetricKey[] {
   return kind === "financial" ? ["pe", "pb"] : ["pe", "evSales", "fcfYield"];
 }
 
-async function loadSplitSteps(symbol: string, company: CompanyPage, finnhubShares: number | null, asOf: string) {
-  const rows = company.financials?.rows ?? [];
-  if (!needsSplitCheck(shareCountsInWindow(rows, asOf), finnhubShares)) {
-    return { steps: [] as SplitStep[], status: "ok" as const };
-  }
-  if (!company.daily) return { steps: null, status: "unavailable" as const };
-  try {
-    const raw = await cachedUnadjusted(symbol);
-    return { steps: splitSteps(raw, company.daily), status: "ok" as const };
-  } catch (err) {
-    if (err instanceof TwelveDataBusyError) return { steps: null, status: "busy" as const };
-    console.error(`[valuation] ${symbol}: split check failed:`, err instanceof Error ? err.message : err);
-    return { steps: null, status: "unavailable" as const };
-  }
-}
 
 export async function loadValuation(company: CompanyPage): Promise<ValuationData | null> {
   const fin = company.financials;
@@ -82,7 +56,7 @@ export async function loadValuation(company: CompanyPage): Promise<ValuationData
   const finnhubShares = finnhubShareCount(company.profile, price);
 
   const [split, treasury, peers] = await Promise.all([
-    loadSplitSteps(company.symbol, company, finnhubShares, asOf),
+    loadSplitSteps(company, finnhubShares, asOf),
     getTenYearTreasury(),
     loadPeers(company.symbol, fin.cik),
   ]);

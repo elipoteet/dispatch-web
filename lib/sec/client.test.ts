@@ -1,5 +1,68 @@
 import { describe, expect, it } from "vitest";
-import { compactSubmissions, earningsReleaseDates, latestFiling, type Submissions } from "@/lib/sec/client";
+import {
+  compactSubmissions,
+  earningsReleaseDates,
+  earningsReleaseFilings,
+  filingIndexUrl,
+  latestFiling,
+  pressReleaseUrl,
+  type Submissions,
+} from "@/lib/sec/client";
+
+describe("earningsReleaseFilings", () => {
+  const s = {
+    filings: {
+      recent: {
+        form: ["8-K", "8-K", "8-K", "10-Q", "8-K/A", "8-K"],
+        items: ["2.02,9.01", "2.02", "5.07", "", "2.02", "2.02,7.01"],
+        filingDate: ["2026-08-26", "2026-08-26", "2026-06-25", "2026-08-27", "2026-06-01", "2026-05-28"],
+        accessionNumber: ["a1", "a2", "a3", "a4", "a5", "a6"],
+        reportDate: [],
+        primaryDocument: [],
+      },
+    },
+  } as unknown as Submissions;
+
+  it("lists the earnings 8-Ks newest first, one per day, leaving out amendments", () => {
+    expect(earningsReleaseFilings(s)).toEqual([
+      { accession: "a1", filed: "2026-08-26" },
+      { accession: "a6", filed: "2026-05-28" },
+    ]);
+    expect(earningsReleaseFilings(s, 1)).toHaveLength(1);
+  });
+});
+
+// The documents table on an EDGAR filing index, as served (November 2026).
+describe("pressReleaseUrl", () => {
+  const row = (type: string, href: string) =>
+    `<tr>\n<td scope="row">2</td>\n<td scope="row">${type}</td>\n<td scope="row"><a href="${href}">doc.htm</a></td>\n<td scope="row">${type}</td>\n<td scope="row">120714</td>\n</tr>`;
+  const index = (...rows: string[]) =>
+    `<table class="tableFile" summary="Document Format Files">\n<tr>\n<th scope="col">Seq</th><th scope="col">Description</th><th scope="col">Document</th><th scope="col">Type</th><th scope="col">Size</th>\n</tr>\n${rows.join("\n")}\n</table>`;
+
+  it("finds exhibit 99.1 among the filing's documents", () => {
+    const html = index(
+      row("8-K", "/ix?doc=/Archives/edgar/data/1045810/000104581026000080/nvda-20260826.htm"),
+      row("EX-99.1", "/Archives/edgar/data/1045810/000104581026000080/q2fy27pr.htm"),
+      row("EX-99.2", "/Archives/edgar/data/1045810/000104581026000080/q2fy27cfocommentary.htm"),
+    );
+    expect(pressReleaseUrl(html)).toBe("https://www.sec.gov/Archives/edgar/data/1045810/000104581026000080/q2fy27pr.htm");
+  });
+
+  it("accepts EX-99.01 and plain EX-99, and unwraps the inline-XBRL viewer", () => {
+    expect(pressReleaseUrl(index(row("EX-99.01", "/ix?doc=/Archives/edgar/data/1/2/pr.htm")))).toBe("https://www.sec.gov/Archives/edgar/data/1/2/pr.htm");
+    expect(pressReleaseUrl(index(row("EX-99", "/Archives/edgar/data/1/2/pr.htm")))).toBe("https://www.sec.gov/Archives/edgar/data/1/2/pr.htm");
+  });
+
+  it("returns nothing when there is no press release", () => {
+    expect(pressReleaseUrl(index(row("8-K", "/Archives/edgar/data/1/2/a.htm"), row("EX-10.1", "/Archives/edgar/data/1/2/b.htm")))).toBeNull();
+  });
+
+  it("builds the index address from the CIK and accession number", () => {
+    expect(filingIndexUrl("0001045810", "0001045810-26-000080")).toBe(
+      "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000080/0001045810-26-000080-index.htm",
+    );
+  });
+});
 
 // Earnings releases are 8-Ks filed under Item 2.02, "Results of Operations
 // and Financial Condition".

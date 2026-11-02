@@ -31,7 +31,8 @@ export type LineItem =
   | "total_assets"
   | "total_equity"
   | "total_debt"
-  | "shares_outstanding";
+  | "shares_outstanding"
+  | "eps_diluted";
 
 // Balance-sheet items are instants (a value on one date) and are never summed
 // across quarters; everything else is a duration (a value over a span) and is
@@ -49,7 +50,14 @@ export const INSTANT_ITEMS: ReadonlySet<LineItem> = new Set<LineItem>([
 // quarters' counts: deriving NVIDIA's Q4 by subtraction gave about minus 49
 // billion shares. These keep the full year and any genuinely filed quarter,
 // and skip Q4 derivation and year-to-date unwinding. Found in stage 4.
-export const NON_ADDITIVE_ITEMS: ReadonlySet<LineItem> = new Set<LineItem>(["shares_diluted"]);
+//
+// Earnings per share too, for a second reason: a stock split. Each filing
+// states EPS in the shares of its own date, so a fourth quarter worked out as
+// the year (from a 10-K after NVIDIA's 2024 split) less a first quarter (from
+// a 10-Q before it) mixes share sizes, and came out at -$0.25 where NVIDIA
+// earned $0.49. The Earnings tab derives Q4 itself, after putting every figure
+// on today's share basis (lib/research/earnings.ts).
+export const NON_ADDITIVE_ITEMS: ReadonlySet<LineItem> = new Set<LineItem>(["shares_diluted", "eps_diluted"]);
 
 // free_cash_flow is absent here because no company reports it — it is operating
 // cash flow minus capex, computed by us, and labelled as ours wherever shown.
@@ -119,11 +127,17 @@ export const CONCEPT_TAGS: Record<TaggedLineItem, readonly string[]> = {
     "LongTermDebtAndCapitalLeaseObligations",
     "LongTermDebtNoncurrent",
   ],
+  // Diluted earnings per share as reported (GAAP), for the Earnings tab
+  // (Stage 5). Filed in "USD/shares". Only filed figures are stored: no Q4,
+  // which a 10-K doesn't report (see NON_ADDITIVE_ITEMS for why).
+  eps_diluted: ["EarningsPerShareDiluted", "EarningsPerShareBasicAndDiluted"],
 };
 
-// Shares are filed in the "shares" unit, everything else in USD.
-export function unitFor(item: LineItem): "USD" | "shares" {
-  return item === "shares_diluted" || item === "shares_outstanding" ? "shares" : "USD";
+// Shares are filed in the "shares" unit, earnings per share in "USD/shares",
+// everything else in USD.
+export function unitFor(item: LineItem): "USD" | "shares" | "USD/shares" {
+  if (item === "shares_diluted" || item === "shares_outstanding") return "shares";
+  return item === "eps_diluted" ? "USD/shares" : "USD";
 }
 
 // —— Business models where a line item is meaningless, not merely missing ——

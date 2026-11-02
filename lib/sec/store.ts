@@ -128,15 +128,16 @@ export async function saveFinancials(cik: string, rows: FinancialRow[]): Promise
   }));
 
   // Upserting never removes a row, so a figure the normaliser has stopped
-  // producing would linger. Normaliser version 3 stopped deriving quarterly
-  // share counts by subtraction (they came out negative), so clear those out.
+  // producing would linger. It no longer derives quarterly share counts or
+  // EPS by subtraction (version 3 and version 8: the first came out negative,
+  // the second mixed share sizes across a split), so clear those out.
   // Targeted on purpose: a blanket "delete what this save didn't write" would
   // also drop capex filled from Finnhub whenever that one request failed.
   const { error: cleanupError } = await supabase
     .from("sec_financials")
     .delete()
     .eq("cik", cik)
-    .eq("line_item", "shares_diluted")
+    .in("line_item", ["shares_diluted", "eps_diluted"])
     .eq("derived", true);
   if (cleanupError) console.error(`[sec] saveFinancials(${cik}) cleanup failed:`, cleanupError.message);
 

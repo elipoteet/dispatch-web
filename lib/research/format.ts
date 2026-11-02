@@ -22,11 +22,33 @@ export function fiscalYearEndMonth(mmdd: string | null | undefined): string | nu
   return MONTHS[Number(mmdd.slice(0, 2)) - 1] ?? null;
 }
 
+// The fiscal year end the company's own figures run to, as MMDD, from its
+// latest full year. Preferred to the SEC's submissions field, which can give a
+// newly chosen year end before any year has ended on it: Culp's says December
+// (1231), while every report so far, its July 2026 10-K included, runs to early
+// May. Labelling those quarters as calendar quarters put "Q1 2025" on a
+// quarter that ended in August 2024.
+export function fiscalYearEndFromRows(rows: { lineItem: string; fiscalPeriod: string; periodEnd: string }[]): string | null {
+  let latest = "";
+  for (const r of rows) {
+    if (r.fiscalPeriod !== "FY" || (r.lineItem !== "revenue" && r.lineItem !== "net_income")) continue;
+    if (r.periodEnd > latest) latest = r.periodEnd;
+  }
+  return /^\d{4}-\d{2}-\d{2}$/.test(latest) ? latest.slice(5, 7) + latest.slice(8, 10) : null;
+}
+
 // A December year-end company's fiscal 2025 IS 2025, so it reads as a plain
 // year. Anyone else's reads as "fiscal 2026", because NVIDIA's fiscal 2026
 // mostly happened in calendar 2025 and a bare "2026" would mislead.
+//
+// Within a week of New Year counts: a 52/53-week year ending on the last
+// Saturday of December (AMD's "1227") or the first days of January is the
+// calendar year in all but name, and AMD calls it "2025", not "fiscal 2025".
 export function isCalendarYear(fiscalYearEnd: string | null | undefined): boolean {
-  return fiscalYearEnd === "1231";
+  if (!fiscalYearEnd || !/^\d{4}$/.test(fiscalYearEnd)) return false;
+  const month = fiscalYearEnd.slice(0, 2);
+  const day = Number(fiscalYearEnd.slice(2));
+  return (month === "12" && day >= 24) || (month === "01" && day <= 7);
 }
 
 export function yearPhrase(fiscalYear: number, fiscalYearEnd: string | null | undefined): string {

@@ -314,6 +314,61 @@ export function earningsReleaseDates(submissions: Submissions): { dates: string[
   return { dates: [...dates].sort(), completeFrom: oldestFiling };
 }
 
+// The earnings-release 8-Ks themselves, newest first, for the Earnings tab's
+// guidance (stage 5). One per filing day: a company occasionally files two
+// 8-Ks under Item 2.02 on the same day (the release and a correction).
+export type ReleaseFiling = { accession: string; filed: string };
+
+export function earningsReleaseFilings(submissions: Submissions, limit = 5): ReleaseFiling[] {
+  const r = submissions.filings?.recent;
+  if (!r?.form?.length) return [];
+  const out: ReleaseFiling[] = [];
+  const days = new Set<string>();
+  for (let i = 0; i < r.form.length && out.length < limit; i++) {
+    if (r.form[i] !== "8-K") continue;
+    if (!(r.items?.[i] ?? "").split(",").map((s) => s.trim()).includes("2.02")) continue;
+    if (days.has(r.filingDate[i])) continue;
+    days.add(r.filingDate[i]);
+    out.push({ accession: r.accessionNumber[i], filed: r.filingDate[i] });
+  }
+  return out.sort((a, b) => (a.filed < b.filed ? 1 : -1));
+}
+
+// A filing's index page on EDGAR, which lists every document in it by type.
+export function filingIndexUrl(cik: string, accession: string): string {
+  const cikNum = String(Number(padCik(cik)));
+  return `https://www.sec.gov/Archives/edgar/data/${cikNum}/${accession.replace(/-/g, "")}/${accession}-index.htm`;
+}
+
+// The press release in an earnings 8-K: the document typed EX-99.1 on the
+// filing's index page (some filers number it EX-99.01 or plain EX-99). Index
+// links sometimes go through the inline-XBRL viewer ("/ix?doc=/Archives/...");
+// the document's own address is what's returned.
+export function pressReleaseUrl(indexHtml: string): string | null {
+  const rows = [...indexHtml.matchAll(/<tr[\s\S]*?<\/tr>/gi)].map((m) => m[0]);
+  const typed = (re: RegExp) =>
+    rows.find((row) => {
+      const cells = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map((c) => c[1].replace(/<[^>]+>/g, "").trim());
+      return cells.some((c) => re.test(c));
+    });
+  const row = typed(/^EX-99\.0?1$/i) ?? typed(/^EX-99$/i);
+  const href = row?.match(/href="([^"]+)"/i)?.[1];
+  if (!href) return null;
+  const path = href.replace(/^\/ix\?doc=/, "").replace(/^https:\/\/www\.sec\.gov/, "");
+  return path.startsWith("/") ? `https://www.sec.gov${path}` : null;
+}
+
+// Any EDGAR page as text, through the same rate limit and User-Agent as
+// everything else. Throws on failure, so a cache never keeps one.
+export async function fetchSecText(url: string): Promise<string> {
+  const ua = userAgent();
+  await waitForSlot();
+  const res = await fetch(url, { headers: { "User-Agent": ua, Accept: "text/html" }, cache: "no-store" });
+  if (res.status === 404) throw new NoSecDataError(`No document at ${url}.`);
+  if (!res.ok) throw new Error(`SEC HTTP ${res.status} for ${url}`);
+  return res.text();
+}
+
 // The public EDGAR address of a filing's main document — the page every
 // "source" link on the research pages points at.
 export function filingDocumentUrl(cik: string, filing: Pick<FilingRef, "accession" | "primaryDocument">): string {

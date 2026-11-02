@@ -59,7 +59,9 @@ export type CompanyFinancials = {
 // 5: Q2 and Q4 of cash-flow items unwound correctly from year-to-date totals
 // (stage 4; wrong since stage 1). 6: debt taken per balance-sheet date, and any
 // missing quarter from a second tag whose full year matches (stage 4).
-export const NORMALIZER_VERSION = 6;
+// 7: diluted earnings per share (stage 5). 8: EPS stored as filed only, no
+// derived Q4 (stage 5; a split made it wrong).
+export const NORMALIZER_VERSION = 8;
 
 export function accessionStamp(accession: string): string {
   return `${accession}#n${NORMALIZER_VERSION}`;

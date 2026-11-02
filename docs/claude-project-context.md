@@ -213,6 +213,20 @@ in this codebase:
     totals were unaffected, so arithmetic checks that only compare quarters with the
     year can't catch this kind of bug. `normalize.test.ts` now checks Q1+Q2 and
     Q1+Q2+Q3 against the filed six- and nine-month totals.
+13. **Per-share figures from different filings are in different-sized shares
+    across a stock split.** NVIDIA's fiscal 2024 EPS is $1.19 in a post-split
+    10-K, and its Q1 is $0.82 in a pre-split 10-Q, so "year less three quarters"
+    gave -$0.25. Put each figure on today's basis first (value ÷ `factorAt(steps,
+    row.filedAt)`, `lib/research/splits.ts`). The normaliser stores EPS and
+    diluted share counts as filed only (`NON_ADDITIVE_ITEMS`).
+14. **Two SEC timing traps.**
+    - **The earnings press release (8-K Item 2.02) precedes the 10-Q by weeks.**
+      The newest stored quarter can be one behind the quarter just reported
+      (JPMorgan, 1 November 2026).
+    - **The submissions file's `fiscalYearEnd` can be a newly elected year end
+      that no reported year uses yet** (Culp: "1231", reports to May). Take the
+      year end from the latest full year's `periodEnd`
+      (`fiscalYearEndFromRows`).
 
 ## Workflow conventions already established
 

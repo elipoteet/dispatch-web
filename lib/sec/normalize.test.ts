@@ -312,6 +312,51 @@ describe("stage 4: debt and shares outstanding", () => {
   });
 });
 
+describe("stage 5: diluted earnings per share", () => {
+  const n = normalizeCompanyFacts(nvda, { sic: nvda.meta.sic }).rows;
+
+  it("reads NVIDIA's quarterly EPS as filed in its 10-Qs", () => {
+    // GAAP diluted EPS, fiscal 2026: $0.76, $1.08, $1.30.
+    expect(pick(n, "eps_diluted", 2026, "Q1")!.value).toBeCloseTo(0.76, 2);
+    expect(pick(n, "eps_diluted", 2026, "Q2")!.value).toBeCloseTo(1.08, 2);
+    expect(pick(n, "eps_diluted", 2026, "Q3")!.value).toBeCloseTo(1.3, 2);
+    expect(pick(n, "eps_diluted", 2026, "Q1")!.unit).toBe("USD/shares");
+  });
+
+  it("agrees with net income over diluted shares for the year", () => {
+    // An independent check: the year's EPS is the year's net income divided
+    // by the year's weighted diluted share count, to within a cent or two.
+    const perShare = (fx: typeof nvda) => {
+      const rows = normalizeCompanyFacts(fx, { sic: fx.meta.sic }).rows;
+      return {
+        eps: pick(rows, "eps_diluted", 2025)!.value,
+        simple: pick(rows, "net_income", 2025)!.value / pick(rows, "shares_diluted", 2025)!.value,
+      };
+    };
+    for (const fx of [nvda, aapl]) {
+      const { eps, simple } = perShare(fx);
+      expect(Math.abs(eps - simple)).toBeLessThan(0.02);
+    }
+    // JPMorgan's is lower, and should be: its EPS is struck after the dividends
+    // on its preferred stock, which belong to no common shareholder.
+    const j = perShare(jpm);
+    expect(j.eps).toBeLessThan(j.simple);
+    expect(j.simple - j.eps).toBeLessThan(1);
+  });
+
+  it("stores only what was filed: no fourth quarter, nothing derived", () => {
+    // Q4 EPS is the Earnings tab's to work out, on one share basis.
+    expect(pick(n, "eps_diluted", 2026, "Q4")).toBeNull();
+    expect(n.filter((r) => r.lineItem === "eps_diluted" && r.derived)).toEqual([]);
+    expect(pick(n, "eps_diluted", 2026, "FY")).not.toBeNull();
+  });
+
+  it("keeps a loss as a negative EPS (Culp)", () => {
+    const c = normalizeCompanyFacts(culp, { sic: culp.meta.sic }).rows;
+    expect(c.some((r) => r.lineItem === "eps_diluted" && r.fiscalPeriod === "FY" && r.value < 0)).toBe(true);
+  });
+});
+
 describe("suppression rules", () => {
   it("leaves ordinary operating companies untouched", () => {
     expect(suppressedItems(filerKindFromSic(3674))).toBeNull();

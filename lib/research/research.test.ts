@@ -331,6 +331,11 @@ describe("format", () => {
     expect(fiscalYearEndMonth("0131")).toBe("January");
     expect(yearPhrase(2026, "0131")).toBe("fiscal 2026");
     expect(yearPhrase(2025, "1231")).toBe("2025");
+    // A 52/53-week year ending within a week of New Year is the calendar year.
+    expect(yearPhrase(2025, "1227")).toBe("2025");
+    expect(yearPhrase(2025, "0103")).toBe("2025");
+    expect(yearPhrase(2025, "0927")).toBe("fiscal 2025");
+    expect(yearPhrase(2025, "1130")).toBe("fiscal 2025");
   });
 
   it("title-cases SEC names but keeps names already in mixed case", () => {

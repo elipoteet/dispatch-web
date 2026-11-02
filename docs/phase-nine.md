@@ -147,6 +147,12 @@ Next report date from Finnhub's calendar. Quarterly revenue and EPS bars from SE
 
 **Revised 31 October (no paid AI):** guidance has to be found by rules. A revenue outlook in a press release is usually one sentence with a recognisable shape ("Revenue is expected to be $78.0 billion, plus or minus 2%"; "revenue between $X and $Y"). Match only those shapes, quote the sentence beside the bar, and show nothing for a company that phrases it any other way. Coverage will be partial, and that is the honest trade. Decide in Stage 5 whether partial coverage is worth shipping.
 
+**As built (1 November).** Recap in `docs/phase-nine-stage-5-recap.md`.
+- Partial coverage shipped. On the latest releases of fifty large companies, the rules found the next quarter's revenue outlook for 15 and nothing for 35, with no false readings.
+- EPS is shown on today's share basis; a split had made one derived quarter negative.
+- The next report's quarter is counted from the newest release, because the 10-Q lags it.
+- `NORMALIZER_VERSION` 8.
+
 ### Stage 6. Insiders
 
 Parse Form 4 XML found through the submissions file. Store purchases (code P) and sales (code S) by default. Grants, option exercises and tax withholding sit behind a "show all" toggle, since they're mostly noise. Flag trades made under a preset 10b5-1 plan; Form 4 has carried that checkbox since 2023. Summary row: total bought and sold over the last 12 months, and the share of sales made on preset plans. Link each row to its filing. Refresh through the daily cron for companies people have opened.

@@ -19,7 +19,7 @@ import {
   type QuoteSnapshot,
 } from "@/lib/providers";
 import { averageVolume, getDailyHistory, range52Week, type DailyBar } from "@/lib/analysis/tickerChart";
-import { titleCaseName } from "@/lib/research/format";
+import { fiscalYearEndFromRows, titleCaseName } from "@/lib/research/format";
 
 export type CompanyPage = {
   symbol: string;
@@ -100,7 +100,8 @@ export const loadCompanyPage = cache(async (symbolRaw: string): Promise<CompanyP
     name,
     exchange: displayExchange(financials?.exchange ?? submissions?.exchanges?.[0], profile?.exchange),
     sector,
-    fiscalYearEnd: submissions?.fiscalYearEnd ?? financials?.fiscalYearEnd ?? null,
+    fiscalYearEnd:
+      (financials ? fiscalYearEndFromRows(financials.rows) : null) ?? submissions?.fiscalYearEnd ?? financials?.fiscalYearEnd ?? null,
     cik: ref?.cik ?? null,
     filesReports,
     financials,

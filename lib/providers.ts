@@ -513,12 +513,23 @@ export type NextEarnings = {
   date: string;
   // bmo: before the market opens; amc: after it closes; dmh: during hours.
   hour: "bmo" | "amc" | "dmh" | null;
+  // The company's fiscal year and quarter being reported, and the average
+  // analyst estimates for it, as Finnhub compiles them (free; checked
+  // November 2026). Any can be missing.
+  fiscalYear: number | null;
+  fiscalQuarter: number | null;
+  epsEstimate: number | null;
+  revenueEstimate: number | null;
 };
+
+const finite = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
 
 async function fetchNextEarningsRaw(symbol: string): Promise<NextEarnings | null> {
   const today = new Date().toISOString().slice(0, 10);
   const horizon = new Date(Date.now() + 150 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const data = await fh<{ earningsCalendar?: { date: string; hour?: string }[] }>("calendar/earnings", {
+  const data = await fh<{
+    earningsCalendar?: { date: string; hour?: string; year?: number; quarter?: number; epsEstimate?: number; revenueEstimate?: number }[];
+  }>("calendar/earnings", {
     symbol: symbol.toUpperCase(),
     from: today,
     to: horizon,
@@ -529,15 +540,66 @@ async function fetchNextEarningsRaw(symbol: string): Promise<NextEarnings | null
     .sort((a, b) => (a.date < b.date ? -1 : 1))[0];
   if (!next) return null;
   const hour = next.hour === "bmo" || next.hour === "amc" || next.hour === "dmh" ? next.hour : null;
-  return { date: next.date, hour };
+  return {
+    date: next.date,
+    hour,
+    fiscalYear: finite(next.year),
+    fiscalQuarter: finite(next.quarter),
+    epsEstimate: finite(next.epsEstimate),
+    revenueEstimate: finite(next.revenueEstimate),
+  };
 }
 
-const cachedNextEarnings = unstable_cache(fetchNextEarningsRaw, ["nextEarnings"], { revalidate: 60 * 60 * 12 });
+// The key's version: entries cached before the estimates were added would
+// otherwise be served without them for up to twelve hours.
+const cachedNextEarnings = unstable_cache(fetchNextEarningsRaw, ["nextEarnings", "v2"], { revalidate: 60 * 60 * 12 });
 
 export async function fetchNextEarnings(symbol: string): Promise<NextEarnings | null> {
   if (!process.env.FINNHUB_API_KEY) return null;
   try {
     return await cachedNextEarnings(symbol.toUpperCase());
+  } catch {
+    return null;
+  }
+}
+
+// —— Finnhub: reported EPS against the average estimate (phase nine, stage 5) ——
+// /stock/earnings on the free plan: the last four quarters, each with the
+// average analyst estimate and the figure reported on the same basis
+// (usually adjusted, so not always the GAAP EPS in the filings). Labelled with
+// the company's own fiscal year and quarter: NVIDIA's fiscal 2027 second
+// quarter is year 2027, quarter 2 (checked November 2026). Cached half a day.
+export type EarningsSurprise = {
+  fiscalYear: number;
+  fiscalQuarter: number;
+  actual: number;
+  estimate: number;
+};
+
+async function fetchEarningsSurprisesRaw(symbol: string): Promise<EarningsSurprise[]> {
+  const data = await fh<{ year?: number; quarter?: number; actual?: number | null; estimate?: number | null }[]>("stock/earnings", {
+    symbol: symbol.toUpperCase(),
+  });
+  if (!Array.isArray(data)) throw new Error("Finnhub earnings request failed");
+  return data
+    .map((r) => ({
+      fiscalYear: finite(r.year),
+      fiscalQuarter: finite(r.quarter),
+      actual: finite(r.actual),
+      estimate: finite(r.estimate),
+    }))
+    .filter((r): r is EarningsSurprise => r.fiscalYear != null && r.fiscalQuarter != null && r.actual != null && r.estimate != null)
+    .sort((a, b) => b.fiscalYear - a.fiscalYear || b.fiscalQuarter - a.fiscalQuarter);
+}
+
+const cachedEarningsSurprises = unstable_cache(fetchEarningsSurprisesRaw, ["earningsSurprises", "v1"], {
+  revalidate: 60 * 60 * 12,
+});
+
+export async function fetchEarningsSurprises(symbol: string): Promise<EarningsSurprise[] | null> {
+  if (!process.env.FINNHUB_API_KEY) return null;
+  try {
+    return await cachedEarningsSurprises(symbol.toUpperCase());
   } catch {
     return null;
   }
