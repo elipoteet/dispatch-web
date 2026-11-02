@@ -41,6 +41,7 @@ export default async function TickerLayout({
     tabs.push({ href: `${base}/financials`, label: "Financials" });
     tabs.push({ href: `${base}/valuation`, label: "Valuation" });
     tabs.push({ href: `${base}/earnings`, label: "Earnings" });
+    tabs.push({ href: `${base}/insiders`, label: "Insiders" });
   }
 
   return (

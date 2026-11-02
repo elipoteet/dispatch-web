@@ -227,6 +227,11 @@ in this codebase:
       that no reported year uses yet** (Culp: "1231", reports to May). Take the
       year end from the latest full year's `periodEnd`
       (`fiscalYearEndFromRows`).
+15. **Form 4's 10b5-1 checkbox (`aff10b5One`) is per filing, not per trade, and
+    is written "1", "true" or "0".** Read a trade's own footnotes first
+    (`lib/sec/form4.ts`). Filings from before April 2023 have no box at all.
+    The submissions file names the XSL rendering ("xslF345X06/form4.xml"); the
+    raw XML is the same name without the folder.
 
 ## Workflow conventions already established
 

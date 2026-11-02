@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { loadReport } from "@/lib/analysis/loadReport";
 import { detectAlerts, maState, rsiState, type TickerState } from "@/lib/analysis/alertState";
+import { refreshInsiders } from "@/lib/sec/insiders";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -11,6 +12,9 @@ export const maxDuration = 60;
 // spacing iterations at 8s keeps us at 7.5/min, leaving a little headroom
 // for concurrent visitor traffic sharing the same quota.
 const THROTTLE_MS = 8_000;
+
+// Twenty of the sixty seconds: about 130 Form 4s at the SEC's pace.
+const INSIDER_BUDGET_MS = 20_000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -38,6 +42,16 @@ export async function GET(request: Request) {
 
   const db = createServiceRoleClient();
 
+  // Step 0 — new insider filings (phase nine, stage 6) for every company whose
+  // Insiders tab has been opened, folded into this cron rather than adding
+  // another (the brief's rule). Its own time budget, so the alert checks
+  // below still get theirs within the minute this function has.
+  const insiders = await refreshInsiders(INSIDER_BUDGET_MS).catch((err: unknown) => {
+    console.error("[cron/alerts] insider refresh failed:", err instanceof Error ? err.message : err);
+    return { companies: 0, filings: 0 };
+  });
+  console.log(`[cron/alerts] insiders: ${insiders.filings} new filings across ${insiders.companies} companies`);
+
   // Step 1 — distinct tickers across every watchlist. Alerts are free for
   // everyone, so there's no subscriber filter here.
   const { data: watchRows, error: watchError } = await db.from("watchlist").select("ticker");
@@ -47,7 +61,7 @@ export async function GET(request: Request) {
   }
   const tickers = [...new Set((watchRows ?? []).map((r) => r.ticker as string))];
   if (!tickers.length) {
-    return NextResponse.json({ checked: 0, events: 0 });
+    return NextResponse.json({ checked: 0, events: 0, insiders });
   }
 
   let eventCount = 0;
@@ -113,5 +127,5 @@ export async function GET(request: Request) {
     if (i < tickers.length - 1) await sleep(THROTTLE_MS);
   }
 
-  return NextResponse.json({ checked: tickers.length, events: eventCount });
+  return NextResponse.json({ checked: tickers.length, events: eventCount, insiders });
 }

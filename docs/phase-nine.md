@@ -157,6 +157,12 @@ Next report date from Finnhub's calendar. Quarterly revenue and EPS bars from SE
 
 Parse Form 4 XML found through the submissions file. Store purchases (code P) and sales (code S) by default. Grants, option exercises and tax withholding sit behind a "show all" toggle, since they're mostly noise. Flag trades made under a preset 10b5-1 plan; Form 4 has carried that checkbox since 2023. Summary row: total bought and sold over the last 12 months, and the share of sales made on preset plans. Link each row to its filing. Refresh through the daily cron for companies people have opened.
 
+**As built (2 November).** Recap in `docs/phase-nine-stage-6-recap.md`.
+- Migration 0023 (`insider_filings`, `insider_trades`) was pasted.
+- Every transaction is stored; the page filters to purchases and sales by default.
+- The plan flag comes from a trade's own footnote first and the filing's checkbox second, because the box is one per filing.
+- A first visit reads 10 filings and up to 150 more after the response; the alerts cron reads the rest within a 20-second budget.
+
 ### Stage 7. Filings and "what changed"
 
 - A filings list linking to EDGAR.
