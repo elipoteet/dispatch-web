@@ -1,5 +1,6 @@
-// The markets strip in the masthead: SPY, QQQ, DIA, IWM and GLD, then the
-// 10-year Treasury yield, as one still line on every page. Server-only.
+// The markets tape on the home page: SPY, QQQ, DIA, IWM and GLD, then the
+// 10-year Treasury yield, in the old site's scrolling ticker tape, below the
+// hero. Not links. Server-only.
 //
 // Quotes from Finnhub only, never Twelve Data, whose eight requests a minute
 // are kept for price history. Each fund's quote is cached once for everyone
@@ -9,9 +10,9 @@
 // five minutes of trading and five per night. The yield comes from the
 // Treasury cache the Valuation tab already keeps; no request of its own.
 //
-// Rendered on the server with the page (app/layout.tsx), so it never flickers
+// Rendered on the server with the page (app/page.tsx), so it never flickers
 // in and the browser asks for nothing. A quote that fails is left out; if
-// every fund fails, there is no strip at all, and the masthead shows the date.
+// every fund fails, there is no tape at all.
 
 import { unstable_cache } from "next/cache";
 import { fetchQuoteSnapshot } from "@/lib/providers";
@@ -26,8 +27,6 @@ export type MarketItem = {
   value: string;
   change: string;
   direction: "up" | "down" | "flat";
-  // A fund links to its research page; the yield has none.
-  href: string | null;
   title?: string;
 };
 
@@ -71,17 +70,16 @@ function direction(rounded: number): MarketItem["direction"] {
 }
 
 // The line's items from whatever came back. A fund whose quote failed is
-// left out; with no fund at all there's no strip, even if the yield is there.
+// left out; with no fund at all there's no tape, even if the yield is there.
 export function stripItems(quotes: (StripQuote | null)[], treasury: TreasuryYield | null): MarketItem[] {
   const items: MarketItem[] = [];
   for (const q of quotes) {
     if (!q) continue;
     items.push({
       symbol: q.symbol,
-      value: q.price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      value: `$${q.price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       change: formatSignedPct(q.changePct, 2),
       direction: direction(Number(q.changePct.toFixed(2))),
-      href: `/research/${q.symbol.toLowerCase()}`,
     });
   }
   if (items.length === 0) return [];
@@ -92,7 +90,6 @@ export function stripItems(quotes: (StripQuote | null)[], treasury: TreasuryYiel
       value: `${treasury.percent.toFixed(2)}%`,
       change: moved == null ? "" : `${moved > 0 ? "+" : moved < 0 ? "-" : ""}${Math.abs(moved).toFixed(2)}`,
       direction: moved == null ? "flat" : direction(moved),
-      href: null,
       title: `10-year Treasury yield, ${SHORT_DATE.format(new Date(treasury.date))}${moved == null ? "" : "; change in percentage points"}`,
     });
   }

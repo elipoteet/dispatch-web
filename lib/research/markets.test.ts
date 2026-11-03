@@ -40,16 +40,14 @@ describe("stripItems", () => {
   const gld = { symbol: "GLD", price: 1234.5, changePct: -1.2 };
   const treasury = { date: "2026-10-30", percent: 4.94, previous: { date: "2026-10-29", percent: 4.98 } };
 
-  it("shows each fund's price and day's change, linking to its page", () => {
-    expect(stripItems([spy], null)).toEqual([
-      { symbol: "SPY", value: "712.34", change: "+0.42%", direction: "up", href: "/research/spy" },
-    ]);
-    expect(stripItems([gld], null)[0]).toMatchObject({ value: "1,234.50", change: "-1.20%", direction: "down" });
+  it("shows each fund's price and day's change, as the old tape did", () => {
+    expect(stripItems([spy], null)).toEqual([{ symbol: "SPY", value: "$712.34", change: "+0.42%", direction: "up" }]);
+    expect(stripItems([gld], null)[0]).toMatchObject({ value: "$1,234.50", change: "-1.20%", direction: "down" });
   });
 
-  it("ends with the 10-year yield and its change, without a link", () => {
+  it("ends with the 10-year yield and its change", () => {
     const items = stripItems([spy], treasury);
-    expect(items.at(-1)).toMatchObject({ symbol: "10Y", value: "4.94%", change: "-0.04", direction: "down", href: null });
+    expect(items.at(-1)).toMatchObject({ symbol: "10Y", value: "4.94%", change: "-0.04", direction: "down" });
     expect(items.at(-1)!.title).toContain("Oct 30");
   });
 

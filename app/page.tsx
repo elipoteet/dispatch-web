@@ -4,12 +4,15 @@ import { CompanySearch } from "@/components/company/CompanySearch";
 import { RecentlyViewed } from "@/components/company/RecentlyViewed";
 import { getHomeCards } from "@/lib/research/home";
 import { shortName } from "@/lib/research/format";
+import { getMarketsStrip } from "@/lib/research/markets";
+import { MarketsTape } from "@/components/home/MarketsTape";
 
 // The front door to the research files, laid out as the Home board in
-// docs/design/phase-ten/Home.dc.html. Search first; then the visitor's
-// recently viewed companies, from their own browser after the page loads;
-// example companies with one fact each from their filings; what a file holds;
-// the tools to come; and how it works. No live prices anywhere on this page.
+// docs/design/phase-ten/Home.dc.html. Search first; then the markets tape (the
+// old site's, from a shared Finnhub cache: lib/research/markets.ts); the
+// visitor's recently viewed companies, from their own browser after the page
+// loads; example companies with one fact each from their filings; what a file
+// holds; the tools to come; and how it works.
 
 export const metadata: Metadata = {
   title: { absolute: "The Dispatch — Free research on every U.S. public company" },
@@ -31,11 +34,11 @@ const FILE_SECTIONS: { label: string; text: string; href: string }[] = [
 ];
 
 export default async function HomePage() {
-  const cards = await getHomeCards();
+  const [cards, tape] = await Promise.all([getHomeCards(), getMarketsStrip()]);
 
   return (
     <section className="page active rf" id="page-home">
-      <div className="rf-wrap">
+      <div className="rf-wrap rf-wrap-top">
         <div className="rf-hero">
           <div className="rf-lbl rf-kicker">Free · from SEC filings · no ratings</div>
           <h1 className="rf-hero-title">A research file on every U.S. public company.</h1>
@@ -53,7 +56,12 @@ export default async function HomePage() {
             ))}
           </div>
         </div>
+      </div>
 
+      {/* Edge to edge, as the old tape was. */}
+      {tape && <MarketsTape tape={tape} />}
+
+      <div className="rf-wrap">
         <RecentlyViewed />
 
         <section className="rf-home-section" aria-labelledby="rf-home-start">

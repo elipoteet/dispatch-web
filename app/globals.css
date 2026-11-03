@@ -2397,33 +2397,21 @@ footer { background: var(--mast-bg); color: var(--mast-ink); border-top: 0; }
 body { display: flex; flex-direction: column; }
 body > main { flex: 1 0 auto; }
 
-/* ——— The markets strip, in the masthead ———
-   One still line in place of the date (lib/research/markets.ts). The
-   masthead is dark in both themes, so inside it the rise and fall colours
-   take the dark theme's values of --green and --accent: the light theme's
-   dark green and red would be unreadable on navy. Never gold. */
-.masthead { --green: #6ebf7f; --accent: #e58a8a; --muted: #93a0b2; align-items: center; }
-.mast-brand { flex: none; white-space: nowrap; }
-/* Sized to its own items and pushed right, so the name beside it widening
-   as the web font arrives can't move it. */
-.mast-markets { flex: 0 1 auto; margin-left: auto; min-width: 0; display: flex; overflow-x: auto; scrollbar-width: none; }
-.mast-markets::-webkit-scrollbar { display: none; }
-.mast-markets ul { display: flex; align-items: baseline; gap: 22px; margin: 0; padding: 0; list-style: none; white-space: nowrap; }
-.mast-markets li { letter-spacing: 0.06em; font-variant-numeric: tabular-nums; }
-.mast-markets a, .mast-markets .mk-item { display: inline-flex; align-items: baseline; gap: 7px; color: inherit; text-decoration: none; }
-/* The link fills the bar's height, so it's easy to tap. */
-.mast-markets a { padding: 9px 0; margin: -9px 0; }
-.mast-markets a:hover .mk-sym { text-decoration: underline; text-underline-offset: 3px; }
-.mk-sym { font-weight: 600; }
-.mk-chg.up { color: var(--green); }
-.mk-chg.down { color: var(--accent); }
-.mk-note { color: var(--muted); }
-
-@media (max-width: 640px) {
-  .mast-est { display: none; }
-  /* With the strip showing, it has the bar to itself: the logo is in the
-     nav just below. */
-  .mast-brand.has-markets { display: none; }
-  .mast-markets { flex: 1 1 auto; margin-left: 0; }
-  .mast-markets ul { gap: 16px; }
+/* ——— The markets tape, on the home page ———
+   The old site's ticker tape (the .ticker-tape rules in the HOME section
+   above), brought back below the hero (components/home/MarketsTape.tsx).
+   Two changes to how it looked: the band stays dark in dark mode too (on the
+   old site it turned light, with gold and green text that couldn't be read
+   on it), and the items repeat four times and move one set's width per
+   minute, so a wide screen never shows an empty stretch. It stops for a
+   visitor who has turned motion off, and pauses under the pointer. */
+.ticker-tape { background: var(--mast-bg); color: var(--mast-ink); border-bottom: 0; }
+.ticker-tape-inner { width: max-content; gap: 0; padding-left: 0; animation: tape-scroll 60s linear infinite; }
+@keyframes tape-scroll { from { transform: translateX(0); } to { transform: translateX(-25%); } }
+.ticker-tape:hover .ticker-tape-inner { animation-play-state: paused; }
+.tt-set { display: flex; gap: 48px; padding-left: 48px; }
+.tt-note { color: #93a0b2; }
+@media (prefers-reduced-motion: reduce) {
+  .ticker-tape { overflow-x: auto; }
+  .tt-set[aria-hidden="true"] { display: none; }
 }

@@ -715,3 +715,9 @@ a.rf-search-item, a.rf-search-item:hover { color: var(--navy); text-decoration: 
   .rf-page-title { font-size: 34px; }
   .rf-page-lede { font-size: 17px; }
 }
+
+/* The home page's column breaks after the hero for the full-width markets
+   tape, then carries on. */
+.rf-wrap.rf-wrap-top { padding-bottom: 0; }
+/* The tape is the hero's lower edge when it's there; the rule only when not. */
+.rf-wrap-top:has(+ .ticker-tape) .rf-hero { border-bottom: 0; }
