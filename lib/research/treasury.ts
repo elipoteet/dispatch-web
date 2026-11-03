@@ -5,7 +5,9 @@
 
 import { unstable_cache } from "next/cache";
 
-export type TreasuryYield = { date: string; percent: number };
+// previous: the trading day before's yield, from the same file, so the
+// markets strip can show the day's change without a request of its own.
+export type TreasuryYield = { date: string; percent: number; previous?: { date: string; percent: number } };
 
 function csvUrl(year: number): string {
   return `https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/${year}/all?type=daily_treasury_yield_curve&field_tdr_date_value=${year}&page&_format=csv`;
@@ -26,15 +28,18 @@ export function parseTenYear(csv: string): TreasuryYield | null {
   const header = lines[0].split(",").map((h) => h.replace(/"/g, "").trim());
   const col = header.indexOf("10 Yr");
   if (col < 0) return null;
-  let best: TreasuryYield | null = null;
+  const days: { date: string; percent: number }[] = [];
   for (const line of lines.slice(1)) {
     const cells = line.split(",");
     const date = isoDate(cells[0] ?? "");
     const percent = Number(cells[col]);
     if (!date || !cells[col]?.trim() || !Number.isFinite(percent)) continue;
-    if (!best || date > best.date) best = { date, percent };
+    days.push({ date, percent });
   }
-  return best;
+  if (days.length === 0) return null;
+  days.sort((a, b) => (a.date < b.date ? 1 : -1));
+  const [newest, before] = days;
+  return before ? { ...newest, previous: before } : newest;
 }
 
 async function fetchTenYearRaw(): Promise<TreasuryYield> {
@@ -51,7 +56,7 @@ async function fetchTenYearRaw(): Promise<TreasuryYield> {
   throw new Error("Treasury yield curve unavailable");
 }
 
-const cachedTenYear = unstable_cache(fetchTenYearRaw, ["treasury10y", "v1"], { revalidate: 60 * 60 * 24 });
+const cachedTenYear = unstable_cache(fetchTenYearRaw, ["treasury10y", "v2"], { revalidate: 60 * 60 * 24 });
 
 export async function getTenYearTreasury(): Promise<TreasuryYield | null> {
   try {

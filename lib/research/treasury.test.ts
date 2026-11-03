@@ -9,17 +9,17 @@ const CSV = `Date,"1 Mo","1.5 Month","2 Mo","3 Mo","4 Mo","6 Mo","1 Yr","2 Yr","
 
 describe("parseTenYear", () => {
   it("reads the newest day's 10-year yield", () => {
-    expect(parseTenYear(CSV)).toEqual({ date: "2026-10-30", percent: 4.94 });
+    expect(parseTenYear(CSV)).toEqual({ date: "2026-10-30", percent: 4.94, previous: { date: "2026-10-29", percent: 4.98 } });
   });
 
   it("finds the column by name, wherever it sits", () => {
     const moved = `Date,"10 Yr","1 Mo"\n10/30/2026,4.94,4.06\n`;
-    expect(parseTenYear(moved)).toEqual({ date: "2026-10-30", percent: 4.94 });
+    expect(parseTenYear(moved)).toMatchObject({ date: "2026-10-30", percent: 4.94 });
   });
 
   it("skips a day with the 10-year blank", () => {
     const gap = `Date,"10 Yr"\n10/31/2026,\n10/30/2026,4.94\n`;
-    expect(parseTenYear(gap)).toEqual({ date: "2026-10-30", percent: 4.94 });
+    expect(parseTenYear(gap)).toMatchObject({ date: "2026-10-30", percent: 4.94 });
   });
 
   it("returns nothing for an empty year or a changed format", () => {

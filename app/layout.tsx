@@ -6,6 +6,7 @@ import { AuthProvider } from "@/components/auth/AuthProvider";
 import { AuthModalProvider } from "@/components/auth/AuthModalContext";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { Masthead } from "@/components/layout/Masthead";
+import { getMarketsStrip } from "@/lib/research/markets";
 import { TopNav } from "@/components/layout/TopNav";
 import { Footer } from "@/components/layout/Footer";
 
@@ -59,9 +60,15 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // The markets strip comes from a shared cache (lib/research/markets.ts), so
+  // this is a cache read on almost every request, made alongside the sign-in
+  // check rather than after it.
+  const [
+    {
+      data: { user },
+    },
+    markets,
+  ] = await Promise.all([supabase.auth.getUser(), getMarketsStrip()]);
 
   return (
     <html lang="en">
@@ -77,7 +84,7 @@ export default async function RootLayout({
       <body>
         <AuthProvider initialUser={user}>
           <AuthModalProvider>
-            <Masthead />
+            <Masthead markets={markets} />
             <TopNav />
             <main>{children}</main>
             <Footer />

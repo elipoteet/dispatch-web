@@ -99,6 +99,19 @@ export function thinIntraday(points: ChartPoint[], minutes: number): ChartPoint[
 // Market holidays aren't known here: on one, the open-hours bucket still turns
 // every five minutes, which costs a little quota and nothing else.
 export function intradayCacheBucket(now: Date): string {
+  const { date, minutes, weekend } = newYorkClock(now);
+  if (!weekend && minutes >= MARKET_OPEN && minutes < MARKET_SETTLED) return `${date}-open-${Math.floor(minutes / 5)}`;
+  return `${date}-${minutes < MARKET_OPEN ? "pre" : "post"}`;
+}
+
+// The market's hours in New York minutes: 9:30 to 4:00, with prices
+// settling by 4:15. Shared by the 1D chart and the markets strip.
+export const MARKET_OPEN = 9 * 60 + 30;
+export const MARKET_CLOSE = 16 * 60;
+export const MARKET_SETTLED = 16 * 60 + 15;
+
+// The date, minutes past midnight and weekday in New York.
+export function newYorkClock(now: Date): { date: string; minutes: number; weekend: boolean } {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat("en-US", {
       timeZone: "America/New_York",
@@ -113,13 +126,11 @@ export function intradayCacheBucket(now: Date): string {
       .formatToParts(now)
       .map((p) => [p.type, p.value]),
   );
-  const date = `${parts.year}-${parts.month}-${parts.day}`;
-  const minutes = (Number(parts.hour) % 24) * 60 + Number(parts.minute);
-  const weekend = parts.weekday === "Sat" || parts.weekday === "Sun";
-  const open = 9 * 60 + 30;
-  const settled = 16 * 60 + 15;
-  if (!weekend && minutes >= open && minutes < settled) return `${date}-open-${Math.floor(minutes / 5)}`;
-  return `${date}-${minutes < open ? "pre" : "post"}`;
+  return {
+    date: `${parts.year}-${parts.month}-${parts.day}`,
+    minutes: (Number(parts.hour) % 24) * 60 + Number(parts.minute),
+    weekend: parts.weekday === "Sat" || parts.weekday === "Sun",
+  };
 }
 
 // —— Earnings markers ——
