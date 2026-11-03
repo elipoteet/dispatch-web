@@ -60,8 +60,10 @@ export type CompanyFinancials = {
 // (stage 4; wrong since stage 1). 6: debt taken per balance-sheet date, and any
 // missing quarter from a second tag whose full year matches (stage 4).
 // 7: diluted earnings per share (stage 5). 8: EPS stored as filed only, no
-// derived Q4 (stage 5; a split made it wrong).
-export const NORMALIZER_VERSION = 8;
+// derived Q4 (stage 5; a split made it wrong). 9: cash worked out from the
+// restricted-cash total where the cash line's own tag is missing (Chevron's
+// 2019 and 2024; review of 2 November 2026).
+export const NORMALIZER_VERSION = 9;
 
 export function accessionStamp(accession: string): string {
   return `${accession}#n${NORMALIZER_VERSION}`;

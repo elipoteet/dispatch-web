@@ -12,10 +12,13 @@ import {
   sharesAt,
   sharesToday,
   todayFigures,
+  todayOnFilings,
   trailingFour,
   valuationHistory,
 } from "./valuation";
 import { needsSplitCheck, type SplitStep } from "./splits";
+import { keyStats } from "./keyStats";
+import { formatMoney, formatMultiple } from "./format";
 
 import nvdaFixture from "@/lib/sec/__fixtures__/nvda-facts.json";
 import aaplFixture from "@/lib/sec/__fixtures__/aapl-facts.json";
@@ -224,5 +227,41 @@ describe("closeOnOrBefore", () => {
   });
   it("won't reach back more than a week", () => {
     expect(closeOnOrBefore(daily, "2026-02-05")).toBeNull();
+  });
+});
+
+// Review of 2 November 2026, mistake 2: the Overview showed Chevron at $444.4B
+// and a P/E of 21.6 (Finnhub's share count), the Valuation tab $450.0B and
+// 21.9× (the filing's cover count, checked against Finnhub's).
+describe("one market value on every tab", () => {
+  const asOf = "2026-11-01";
+  const price = 200;
+  // Finnhub's count 1% under the cover's: close enough that the cover's is used.
+  const cover = nvda.filter((r) => r.lineItem === "shares_outstanding").sort((a, b) => (a.periodEnd < b.periodEnd ? -1 : 1)).at(-1)!.value;
+  const profile = { marketCapMillions: null, sharesOutstandingMillions: (cover * 0.99) / 1e6 };
+
+  it("gives the Overview the Valuation tab's market value and P/E", () => {
+    const now = todayOnFilings({ rows: nvda, profile, price, asOf })!;
+    expect(now.shares.source).toBe("cover");
+    const stats = keyStats({
+      rows: nvda,
+      filerKind: "operating",
+      price,
+      sharesOutstandingMillions: profile.sharesOutstandingMillions,
+      marketCapMillions: null,
+      averageVolume: null,
+      today: now.figures,
+    });
+    const byId = Object.fromEntries(stats.map((s) => [s.id, s.value]));
+    expect(byId["market-value"]).toBe(formatMoney(now.figures!.marketValue));
+    expect(byId.pe).toBe(formatMultiple(now.figures!.pe!));
+    // And not Finnhub's count, which the Overview used before.
+    expect(now.figures!.marketValue).toBe(price * cover);
+  });
+
+  it("is the figure the Valuation tab computes", () => {
+    const now = todayOnFilings({ rows: nvda, profile, price, asOf })!;
+    const direct = todayFigures({ rows: nvda, price, shares: sharesToday({ rows: nvda, steps: null, finnhubShares: finnhubShareCount(profile, price), asOf })!.shares });
+    expect(now.figures).toEqual(direct);
   });
 });

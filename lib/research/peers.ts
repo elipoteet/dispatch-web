@@ -14,7 +14,7 @@ import { getCompanyFinancials, NORMALIZER_VERSION } from "@/lib/sec";
 import { getStoredCompany, getStoredFinancials } from "@/lib/sec/store";
 import type { LineItem } from "@/lib/sec/concepts";
 import { fetchCompanyProfile, fetchPeers, fetchQuoteSnapshot } from "@/lib/providers";
-import { finnhubShareCount, sharesToday, todayFigures, type TodayFigures } from "@/lib/research/valuation";
+import { finnhubShareCount, sharesToday, todayFigures, type SharesToday, type TodayFigures } from "@/lib/research/valuation";
 import { titleCaseName } from "@/lib/research/format";
 
 export const MAX_PEERS = 6;
@@ -34,10 +34,31 @@ const PEER_ITEMS: LineItem[] = [
   "shares_outstanding",
 ];
 
+// What a peer with no figures lacks, so the table can say (review of
+// 2 November 2026: ExxonMobil read "No current price" when it had a price;
+// its new 2026 SEC registration had no filings yet).
+export type PeerMissing = "price" | "filings" | "shares" | "trailing";
+
 export type PeerRow =
   | { symbol: string; name: string; status: "ready"; figures: TodayFigures }
   | { symbol: string; name: string; status: "loading" }
-  | { symbol: string; name: string; status: "no-price" };
+  | { symbol: string; name: string; status: "missing"; missing: PeerMissing };
+
+export function peerMissing(input: { price: number | null; rowCount: number; shares: SharesToday | null; figures: TodayFigures | null }): PeerMissing | null {
+  if (input.figures) return null;
+  if (input.price == null) return "price";
+  if (input.rowCount === 0) return "filings";
+  if (!input.shares) return "shares";
+  return "trailing";
+}
+
+// The company's own spelling where the SEC has it: its ticker list writes
+// "ExxonMobil Holdings Corp", where Finnhub has "Exxonmobil Holdings Corp".
+// A name the SEC holds only in capitals ("CHEVRON CORP") takes Finnhub's.
+export function peerName(sec: string, finnhub: string | null | undefined): string {
+  if (/[a-z]/.test(sec)) return titleCaseName(sec);
+  return finnhub || titleCaseName(sec);
+}
 
 // Per server instance: two visitors on the same instance don't load the same
 // peer twice. Across instances the database upsert makes a repeat harmless.
@@ -90,10 +111,9 @@ export async function loadPeers(symbol: string, cik: string, options: { backgrou
   const toLoad: string[] = [];
   const rows = await Promise.all(
     chosen.map(async ({ symbol: s, ref, stored }): Promise<PeerRow> => {
-      const fallbackName = titleCaseName(stored?.name ?? ref.name);
       if (!stored) {
         toLoad.push(s);
-        return { symbol: s, name: fallbackName, status: "loading" };
+        return { symbol: s, name: peerName(ref.name, (await fetchCompanyProfile(s))?.name), status: "loading" };
       }
       // Stored before the debt and cover-share figures existed: show what's
       // there and refresh it behind the scenes.
@@ -104,14 +124,15 @@ export async function loadPeers(symbol: string, cik: string, options: { backgrou
         fetchQuoteSnapshot(s),
         fetchCompanyProfile(s),
       ]);
-      const name = profile?.name ?? fallbackName;
+      const name = peerName(ref.name, profile?.name);
       const finnhubShares = finnhubShareCount(profile, quote?.price ?? null);
       // No split check for a peer: one price request each would be six of
       // Twelve Data's eight a minute. The cover count is checked against
       // Finnhub's instead, which catches a split since the last filing.
       const shares = sharesToday({ rows, steps: null, finnhubShares, asOf });
       const figures = quote && shares ? todayFigures({ rows, price: quote.price, shares: shares.shares }) : null;
-      if (!figures) return { symbol: s, name, status: "no-price" };
+      const missing = peerMissing({ price: quote?.price ?? null, rowCount: rows.length, shares, figures });
+      if (missing || !figures) return { symbol: s, name, status: "missing", missing: missing ?? "trailing" };
       return { symbol: s, name, status: "ready", figures };
     }),
   );

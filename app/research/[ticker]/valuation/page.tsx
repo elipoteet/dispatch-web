@@ -4,8 +4,9 @@ import { notFound } from "next/navigation";
 import { loadCompanyPage } from "@/lib/research/company";
 import { isCrawler } from "@/lib/research/crawler";
 import { loadValuation, metricsFor, type MetricKey, type ValuationData } from "@/lib/research/valuationPage";
+import type { PeerMissing } from "@/lib/research/peers";
 import { historyWindowStart } from "@/lib/research/valuation";
-import { formatMoney, formatPct } from "@/lib/research/format";
+import { formatMoney, formatPct, shortName } from "@/lib/research/format";
 import { PricedIn } from "@/components/company/PricedIn";
 import { METRIC_LABELS, ValuationHistory, formatMetric } from "@/components/company/ValuationHistory";
 
@@ -36,6 +37,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 const MONTH_YEAR = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
 const DAY = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+
+// Said for a peer with no figures, naming what it lacks.
+const PEER_MISSING: Record<PeerMissing, string> = {
+  price: "No current price.",
+  filings: "No figures from a 10-K or 10-Q on file yet.",
+  shares: "No share count in its filings or from Finnhub.",
+  trailing: "Its filings don't give four quarters of figures yet.",
+};
 
 function pctOrDash(v: number | null): string {
   return v == null ? "—" : formatPct(v * 100);
@@ -114,7 +123,7 @@ function Peers({ data, symbol, name, metrics }: { data: ValuationData; symbol: s
             {data.today && (
               <tr className="is-emphasis">
                 <th scope="row">
-                  {name} <span className="rf-ticker">{symbol}</span>
+                  {shortName(name)} <span className="rf-ticker">{symbol}</span>
                 </th>
                 <td>{formatMoney(data.today.marketValue)}</td>
                 {cols.map((k) => (
@@ -126,7 +135,7 @@ function Peers({ data, symbol, name, metrics }: { data: ValuationData; symbol: s
             {data.peers.map((p) => (
               <tr key={p.symbol}>
                 <th scope="row">
-                  <a href={`/research/${p.symbol.toLowerCase()}/valuation`}>{p.name}</a> <span className="rf-ticker">{p.symbol}</span>
+                  <a href={`/research/${p.symbol.toLowerCase()}/valuation`}>{shortName(p.name)}</a> <span className="rf-ticker">{p.symbol}</span>
                 </th>
                 {p.status === "ready" ? (
                   <>
@@ -138,7 +147,7 @@ function Peers({ data, symbol, name, metrics }: { data: ValuationData; symbol: s
                   </>
                 ) : (
                   <td colSpan={cols.length + 2} className="rf-peers-wait">
-                    {p.status === "loading" ? "Loading its filings. Refresh in a minute." : "No current price."}
+                    {p.status === "loading" ? "Loading its filings. Refresh in a minute." : PEER_MISSING[p.missing]}
                   </td>
                 )}
               </tr>

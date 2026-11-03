@@ -147,3 +147,43 @@ export function summarySentences(s: InsiderSummary): string[] {
   }
   return out;
 }
+
+// —— Names ——
+// A Form 4 names a person surname first ("WIRTH MICHAEL K", "Pate R. Hewitt");
+// the table shows them the way people write them ("Michael K Wirth", "R.
+// Hewitt Pate"). A fund, trust or company is shown as filed: the form gives
+// no flag for which is which, so its name's own words decide.
+const ENTITY_WORDS =
+  /\b(?:llc|l\.l\.c|lp|l\.p|llp|inc|incorporated|corp|corporation|co|company|companies|ltd|limited|plc|trust|trustee|fund|funds|partners|partnership|holdings?|capital|management|group|foundation|bank|associates|advisors|advisers|investments?|ventures|securities|n\.v|s\.a|ag|gmbh|estate)\b\.?|&/i;
+// Kept at the end: "Culp Robert George IV" is Robert George Culp IV.
+const SUFFIXES = /^(?:jr|sr|ii|iii|iv|v|md|phd|esq)\.?$/i;
+// Part of the surname when they start it: "Van Horn John" is John Van Horn.
+const PARTICLES = /^(?:van|von|de|del|della|der|den|di|da|du|la|le|st\.?)$/i;
+
+function personName(name: string): string {
+  const comma = name.indexOf(",");
+  if (comma > 0) {
+    const rest = name.slice(comma + 1).trim();
+    return rest ? `${rest} ${name.slice(0, comma).trim()}` : name.slice(0, comma).trim();
+  }
+  const words = name.split(/\s+/).filter(Boolean);
+  if (words.length < 2) return name;
+  const suffix: string[] = [];
+  while (words.length > 2 && SUFFIXES.test(words[words.length - 1])) suffix.unshift(words.pop()!);
+  let cut = 1;
+  while (cut < words.length - 1 && PARTICLES.test(words[cut - 1])) cut++;
+  const surname = words.slice(0, cut);
+  const given = words.slice(cut);
+  return [...given, ...surname, ...suffix].join(" ");
+}
+
+// Title case first (the SEC's are often capitals), then each person's names in
+// the usual order. Joint filers ("A and B") are each turned around.
+export function insiderName(filed: string, titleCase: (s: string) => string): string {
+  const name = titleCase(filed.trim());
+  if (ENTITY_WORDS.test(name)) return name;
+  return name
+    .split(/\s+and\s+/i)
+    .map((part) => (ENTITY_WORDS.test(part) ? part : personName(part)))
+    .join(" and ");
+}

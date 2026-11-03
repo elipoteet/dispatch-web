@@ -3,7 +3,7 @@
 // the shapes found in real filings (November 2026).
 
 import { describe, expect, it } from "vitest";
-import { htmlToText } from "./tenK";
+import { breakAfterLeadingBold, htmlToText } from "./tenK";
 import { compareRiskFactors, extractRiskFactors, firstSentence, normalize, riskParagraphs, textFragment } from "./riskFactors";
 import nvda from "./__fixtures__/nvda-risk-factors.json";
 
@@ -149,5 +149,57 @@ describe("helpers", () => {
     expect(
       textFragment("We have entered into an intellectual property license arrangement with Groq, Inc., or Groq, that required significant, nonrefundable payments."),
     ).toBe("#:~:text=We%20have%20entered%20into%20an%20intellectual,Groq%2C%20that%20required%20significant%2C%20nonrefundable%20payments.");
+  });
+});
+
+// Review of 2 November 2026: Chevron's headings share a block with the
+// paragraph under them, so "...reputational risks The company is..." read as
+// one sentence. Its 2025 10-K's own markup, shortened.
+describe("a heading that shares a block with its paragraph", () => {
+  const AI =
+    `<div style="margin-bottom:5pt;text-align:justify"><span style="color:#ee2724;font-family:'Times New Roman',serif;font-size:10pt;font-style:italic;font-weight:700;line-height:115%">Chevron is incorporating artificial intelligence technologies into its processes and these technologies may present business, compliance, and reputational risks </span>` +
+    `<span style="color:#000000;font-family:'Times New Roman',serif;font-size:10pt;font-weight:400;line-height:115%">The company is increasingly utilizing artificial intelligence (&#8220;AI&#8221;) technologies in certain of its processes, information systems and various operations, and expects that AI will assume a more critical role in its operations over time.  The use of AI technologies introduces certain risks to the company.</span></div>`;
+  const HESS =
+    `<div style="margin-bottom:5pt;text-align:justify"><span style="color:#ff0000;font-family:'Times New Roman',serif;font-size:10pt;font-style:italic;font-weight:700;line-height:125%">One of our subsidiaries acts as the general partner of a publicly traded limited partnership, Hess Midstream LP, which may involve a potential legal liability</span>` +
+    `<span style="color:#ee2724;font-family:'Times New Roman',serif;font-size:10pt;font-style:italic;font-weight:700;line-height:125%"> </span>` +
+    `<span style="color:#000000;font-family:'Times New Roman',serif;font-size:10pt;font-weight:400;line-height:125%">One of our subsidiaries acts as the general partner of Hess Midstream, a publicly traded limited partnership. Our control of the general partner of Hess Midstream may increase the possibility of claims.</span></div>`;
+  const paragraphs = (html: string) => riskParagraphs(`Item 1A. Risk Factors\n${htmlToText(breakAfterLeadingBold(html))}`);
+
+  it("gives the heading and the paragraph a line each", () => {
+    expect(paragraphs(AI)).toEqual([
+      "Chevron is incorporating artificial intelligence technologies into its processes and these technologies may present business, compliance, and reputational risks",
+      "The company is increasingly utilizing artificial intelligence (“AI”) technologies in certain of its processes, information systems and various operations, and expects that AI will assume a more critical role in its operations over time. The use of AI technologies introduces certain risks to the company.",
+    ]);
+    // So the sentence shown for the paragraph starts where the company's does.
+    expect(firstSentence(paragraphs(AI)[1])).toMatch(/^The company is increasingly utilizing/);
+  });
+
+  it("copes with a bold space after the heading", () => {
+    const [heading, body] = paragraphs(HESS);
+    expect(heading).toMatch(/which may involve a potential legal liability$/);
+    expect(firstSentence(body)).toBe("One of our subsidiaries acts as the general partner of Hess Midstream, a publicly traded limited partnership.");
+  });
+
+  it("copes with a plain space between the heading and the paragraph", () => {
+    const html =
+      `<div style="margin-bottom:5pt;text-align:justify"><span style="font-style:italic;font-weight:700">Changes in management&#8217;s estimates and assumptions may have a material impact on the company&#8217;s consolidated financial statements and financial or operational performance in any given period</span>` +
+      `<span style="font-family:'Arial',sans-serif;font-weight:400"> </span>` +
+      `<span style="font-weight:400">In preparing the company&#8217;s periodic reports, management is required to make estimates and assumptions as of a specified date.</span></div>`;
+    const [heading, body] = paragraphs(html);
+    expect(heading).toMatch(/in any given period$/);
+    expect(body).toMatch(/^In preparing the company’s periodic reports/);
+  });
+
+  it("leaves bold inside a sentence, and a block that is bold throughout, as they were", () => {
+    const inside = `<p><span>We rely on </span><span style="font-weight:700">a single supplier of wafers</span><span> for most of our products.</span></p>`;
+    expect(breakAfterLeadingBold(inside)).toBe(inside);
+    const allBold = `<div><span style="font-weight:700">Risks Related to Our Industry and Markets</span></div>`;
+    expect(breakAfterLeadingBold(allBold)).toBe(allBold);
+  });
+
+  it("before the fix, the two ran together", () => {
+    const joined = riskParagraphs(`Item 1A. Risk Factors\n${htmlToText(AI)}`);
+    expect(joined).toHaveLength(1);
+    expect(joined[0]).toContain("reputational risks The company");
   });
 });

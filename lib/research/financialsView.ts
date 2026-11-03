@@ -61,12 +61,18 @@ function unitFor(values: number[]): { divisor: number; label: string } {
   return max >= 1e9 ? { divisor: 1e9, label: "$ billions" } : { divisor: 1e6, label: "$ millions" };
 }
 
-function moneyDisplay(value: number, divisor: number): string {
+// One number format per row, set by its largest figure, so a row never
+// switches mid-way (review of 2 November 2026: "147 94.69 162"). Two decimals
+// below 100, one from 100, whole numbers from 1,000 with separators: a bank's
+// balance sheet runs to "4,425" billion.
+function rowDecimals(values: number[], divisor: number): number {
+  const max = Math.max(0, ...values.map((v) => Math.abs(v / divisor)));
+  return max >= 1000 ? 0 : max >= 100 ? 1 : 2;
+}
+
+function moneyDisplay(value: number, divisor: number, decimals: number): string {
   const v = value / divisor;
-  const abs = Math.abs(v);
-  // Whole numbers from 100 up, with thousands separators: a bank's balance
-  // sheet runs to "4,425" billion.
-  const text = abs >= 100 ? Math.round(abs).toLocaleString("en-US") : abs.toFixed(2);
+  const text = Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
   return v < 0 ? `-${text}` : text;
 }
 
@@ -103,10 +109,11 @@ function buildView(
 
   const moneyRow = (item: LineItem, label: string, section: string, emphasis?: boolean): TableRow | null => {
     if (options.suppressed.has(item)) return null;
-    const cells = periods.map((p): Cell => {
-      const row = p.get(s, item);
+    const found = periods.map((p) => p.get(s, item));
+    const decimals = rowDecimals(found.filter((r): r is FinancialRow => r != null).map((r) => r.value), unit.divisor);
+    const cells = found.map((row): Cell => {
       if (!row) return { value: null, display: "—" };
-      return { value: row.value, display: moneyDisplay(row.value, unit.divisor), negative: row.value < 0, marks: marksOf(row) };
+      return { value: row.value, display: moneyDisplay(row.value, unit.divisor, decimals), negative: row.value < 0, marks: marksOf(row) };
     });
     if (cells.every((c) => c.value == null)) return null;
     return { id: item, label, kind: "money", section, emphasis, cells };

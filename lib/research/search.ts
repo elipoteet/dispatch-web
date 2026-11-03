@@ -60,3 +60,27 @@ export function searchCompanies(entries: SearchEntry[], query: string, limit = 8
   }
   return results;
 }
+
+// Where Enter goes when nothing in the list is highlighted (review of
+// 2 November 2026: "costco" went to /research/costco and a 404 while the list
+// showed Costco). In order:
+//   1. a result whose ticker is exactly what was typed ("cost", "$nvda");
+//   2. otherwise the top result, which is what the list shows first;
+//   3. a typed ticker only when there are no results, which is how funds the
+//      SEC's list leaves out (VOO) are reached.
+// One exception to 2: a top result found only because its ticker starts with
+// what was typed ("qqq" finds QQQX, a different fund) is a guess at another
+// symbol, so a ticker-shaped query goes to its own page instead (QQQ).
+const TICKER_SHAPED = /^[A-Za-z.\-]{1,10}$/;
+
+export function chooseSearchTarget(query: string, results: SearchResult[]): string | null {
+  const q = query.trim().replace(/^\$/, "");
+  if (!q) return null;
+  const upper = q.toUpperCase();
+  const exact = results.find((r) => r.symbol.toUpperCase() === upper);
+  if (exact) return exact.symbol;
+  const top = results[0];
+  const tickerShaped = TICKER_SHAPED.test(q);
+  if (top && !(tickerShaped && top.symbol.toUpperCase().startsWith(upper))) return top.symbol;
+  return tickerShaped ? q : null;
+}

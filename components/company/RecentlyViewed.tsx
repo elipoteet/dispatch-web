@@ -4,6 +4,7 @@ import { useId } from "react";
 import Link from "next/link";
 import { clearRecent, recentHref, removeRecent, RECENT_SHOW, tabLabel, viewedLabel } from "@/lib/recent";
 import { useRecent } from "@/lib/useRecent";
+import { shortName } from "@/lib/research/format";
 
 // The companies this visitor opened lately, from their own browser (phase
 // ten, Stage B). Renders nothing on the server or for a visitor with none, so
@@ -44,7 +45,7 @@ export function RecentlyViewed() {
             {/* No prefetch: a prefetched company page loads its data, which
                 would spend Twelve Data requests on companies nobody clicked. */}
             <Link href={recentHref(e)} className="rf-recent-link" prefetch={false}>
-              {e.name}
+              {shortName(e.name)}
             </Link>
             <span className="rf-recent-meta">
               {viewedLabel(e.viewedAt)} · {tabLabel(e.tab)}
@@ -52,7 +53,7 @@ export function RecentlyViewed() {
             <button
               type="button"
               className="rf-recent-x"
-              aria-label={`Remove ${e.name} from recently viewed`}
+              aria-label={`Remove ${shortName(e.name)} from recently viewed`}
               data-recent-x={e.symbol}
               onClick={() => remove(e.symbol, i)}
             >

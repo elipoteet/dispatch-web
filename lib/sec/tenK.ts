@@ -62,6 +62,34 @@ export function htmlToText(html: string): string {
     .join("\n");
 }
 
+// A risk's heading and its first paragraph can share one block: a bold run,
+// then plain text. Chevron's 2025 10-K reads
+//   <div><span style="…font-weight:700…">…may present business, compliance,
+//   and reputational risks </span><span style="…font-weight:400…">The company
+//   is increasingly utilizing…
+// and as text the two run together into one "sentence" ("…reputational risks
+// The company is…"), since the heading has no full stop. The words alone can't
+// tell a heading from a capitalised word mid-sentence; the markup can. So a
+// line break goes after a block's opening bold run when plain text follows in
+// the same block. A bold run inside a sentence (not at the block's start), or
+// a block that is bold throughout, is left as it is. For Item 1A only (see
+// lib/sec/filingChanges.ts): the business section's quote is read as before.
+const BOLD_OPEN = String.raw`(?:<(?:b|strong)\b[^>]*>|<span\b[^>]*font-weight:\s*(?:bold|[6-9]00)\b[^>]*>)`;
+const LEADING_BOLD_RUN = new RegExp(
+  String.raw`(<(?:p|div)\b[^>]*>\s*` +
+    // The heading: one bold run of real length, then any bold runs that carry
+    // on from it (Chevron's sometimes ends with a bold space of its own).
+    String.raw`${BOLD_OPEN}[^<]{15,}<\/(?:b|strong|span)>(?:\s*${BOLD_OPEN}[^<]*<\/(?:b|strong|span)>)*)` +
+    // Then plain text in the same block, past any spans holding only a space:
+    // a run that isn't bold, or bare text.
+    String.raw`(?=(?:\s*<span\b[^>]*>\s*<\/span>)*\s*(?:<span\b(?![^>]*font-weight:\s*(?:bold|[6-9]00)\b)[^>]*>\s*[^<\s]|[^<\s]))`,
+  "gi",
+);
+
+export function breakAfterLeadingBold(html: string): string {
+  return html.replace(LEADING_BOLD_RUN, "$1<br>");
+}
+
 // "Item 1. Business" at the start of a line, tolerating the punctuation and
 // spacing variations filers use ("ITEM 1.", "Item 1:", "Item 1 -", a line break
 // between the number and the word).

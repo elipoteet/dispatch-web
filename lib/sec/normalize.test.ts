@@ -14,6 +14,7 @@ import nvdaFixture from "@/lib/sec/__fixtures__/nvda-facts.json";
 import aaplFixture from "@/lib/sec/__fixtures__/aapl-facts.json";
 import jpmFixture from "@/lib/sec/__fixtures__/jpm-facts.json";
 import culpFixture from "@/lib/sec/__fixtures__/culp-facts.json";
+import cvxCashFixture from "@/lib/sec/__fixtures__/cvx-cash-facts.json";
 
 type Fixture = CompanyFacts & { meta: { sic: string; name: string; fiscalYearEnd: string } };
 
@@ -371,5 +372,38 @@ describe("suppression rules", () => {
   it("treats an unknown SIC as an operating company", () => {
     expect(filerKindFromSic(null)).toBe("operating");
     expect(filerKindFromSic(undefined)).toBe("operating");
+  });
+});
+
+// Review of 2 November 2026: Chevron's cash was blank for 2019 and 2024. Its
+// balance sheet tagged those year-ends with an element of its own, which the
+// SEC's summary data leaves out; the restricted-cash total and the restricted
+// cash itself are filed in standard tags.
+describe("Chevron — cash where its own tag is missing", () => {
+  const { rows } = normalizeCompanyFacts(cvxCashFixture as unknown as CompanyFacts);
+  const cash = (fiscalYear: number, period = "Q4") =>
+    rows.find((r) => r.lineItem === "cash_and_equivalents" && r.fiscalYear === fiscalYear && r.fiscalPeriod === period);
+
+  it("works out the 2019 and 2024 year-ends as the balance sheet states them", () => {
+    // $6,911M including restricted cash, less $452M current and $773M non-current.
+    expect(cash(2019)).toMatchObject({ value: 5_686e6, derived: true });
+    expect(cash(2024)).toMatchObject({ value: 6_781e6, derived: true });
+    expect(cash(2019)!.sourceTag).toContain(" - ");
+  });
+
+  it("keeps the company's own figure wherever it filed one", () => {
+    expect(cash(2023)).toMatchObject({ value: 8_178e6, sourceTag: "CashAndCashEquivalentsAtCarryingValue", derived: false });
+    expect(cash(2019, "Q3")).toMatchObject({ value: 11_697e6, derived: false });
+  });
+
+  it("prefers the worked-out figure to the total that still includes restricted cash", () => {
+    // 2025 has no filed cash line at all; the total would say $7,285M.
+    expect(cash(2025)).toMatchObject({ value: 6_293e6, derived: true });
+  });
+
+  it("leaves a company that doesn't tag its restricted cash alone", () => {
+    // Apple keeps some restricted cash without tagging it, so its total isn't cash.
+    const apple = normalizeCompanyFacts(aapl).rows.filter((r) => r.lineItem === "cash_and_equivalents");
+    expect(apple.some((r) => r.sourceTag.includes(" - "))).toBe(false);
   });
 });

@@ -6,7 +6,7 @@ export function Footer() {
       </div>
       <div>
         Data: SEC EDGAR <span className="fgold">·</span> Twelve Data <span className="fgold">·</span> Finnhub{" "}
-        <span className="fgold">·</span> Not Investment Advice
+        <span className="fgold">·</span> Not Investment Advice <span className="fgold">·</span> No Ratings
       </div>
       <div>Set in Inter &amp; IBM Plex Mono</div>
       <div>

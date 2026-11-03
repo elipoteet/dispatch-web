@@ -10,8 +10,7 @@ import {
   finnhubShareCount,
   historyMatchesToday,
   rangeStats,
-  sharesToday,
-  todayFigures,
+  todayOnFilings,
   valuationHistory,
   type QuarterPoint,
   type RangeStats,
@@ -64,8 +63,10 @@ export async function loadValuation(
     loadPeers(company.symbol, fin.cik, options),
   ]);
 
-  const shares = sharesToday({ rows: fin.rows, steps: split.steps, finnhubShares, asOf });
-  const today = price != null && shares ? todayFigures({ rows: fin.rows, price, shares: shares.shares }) : null;
+  // The same market value as the Overview's (todayOnFilings).
+  const now = todayOnFilings({ rows: fin.rows, profile: company.profile, price, asOf });
+  const shares = now?.shares ?? null;
+  const today = now?.figures ?? null;
 
   let history =
     company.daily && split.steps ? valuationHistory({ rows: fin.rows, daily: company.daily, steps: split.steps, asOf }) : [];

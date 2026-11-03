@@ -65,10 +65,6 @@ export default async function TickerLayout({
         <ResearchTabs tabs={tabs} />
         <RecordVisit symbol={company.symbol} name={company.name} tabs={recentTabs} />
         {children}
-        <p className="rf-footer-note">
-          Data: SEC EDGAR · Twelve Data · Finnhub. Facts and figures, not investment advice. The Dispatch doesn&rsquo;t rate stocks
-          or put a price on them.
-        </p>
       </div>
     </section>
   );

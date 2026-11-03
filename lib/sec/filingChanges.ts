@@ -8,13 +8,15 @@
 
 import { createPublicClient, createServiceRoleClient } from "@/lib/supabase/service";
 import { documentOfType, fetchAnnualReports, fetchSecText, getSubmissions, latestFiling, NoSecDataError } from "@/lib/sec/client";
-import { htmlToText } from "@/lib/sec/tenK";
+import { breakAfterLeadingBold, htmlToText } from "@/lib/sec/tenK";
 import { compareRiskFactors, extractRiskFactors, firstSentence, riskParagraphs, type RiskComparison } from "@/lib/sec/riskFactors";
 
 // Stored with every comparison. Bump it when the rules in riskFactors.ts
 // change, and comparisons made under the old ones are worked out again on the
-// next visit. 2: leading bullets dropped from paragraphs.
-export const COMPARISON_VERSION = 2;
+// next visit. 2: leading bullets dropped from paragraphs. 3: a heading that
+// shares a block with its paragraph split from it (Chevron, review of
+// 2 November 2026).
+export const COMPARISON_VERSION = 3;
 
 // How much of each list is kept. The counts are always exact; a 10-K that
 // was rewritten top to bottom (JPMorgan's, for 2025) would otherwise store
@@ -73,7 +75,8 @@ async function mainDocument(indexUrl: string): Promise<string | null> {
 }
 
 async function riskSection(url: string): Promise<string[] | null> {
-  const section = extractRiskFactors(htmlToText(await fetchSecText(url)));
+  // A heading that shares a block with its paragraph gets its own line first.
+  const section = extractRiskFactors(htmlToText(breakAfterLeadingBold(await fetchSecText(url))));
   return section ? riskParagraphs(section) : null;
 }
 

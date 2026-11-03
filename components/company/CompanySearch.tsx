@@ -5,13 +5,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { clearRecent, recentHref, RECENT_IN_SEARCH, viewedLabel } from "@/lib/recent";
 import { useRecent } from "@/lib/useRecent";
+import { chooseSearchTarget } from "@/lib/research/search";
+import { shortName } from "@/lib/research/format";
 
 type Result = { symbol: string; name: string };
 
 // Ticker or company name. Suggestions come from the SEC's list of listed
-// companies via /api/search; pressing Enter on anything that looks like a
-// ticker goes straight to its page, which is how funds and other symbols that
-// aren't on the SEC's company list (QQQ, VOO) are reached.
+// companies via /api/search. Enter opens the highlighted suggestion, or else
+// the one chooseSearchTarget picks: an exact ticker, then the top suggestion,
+// and a typed ticker only when nothing matches, which is how funds the SEC's
+// company list leaves out (VOO) are reached.
 //
 // Focused and empty, the box offers the visitor's recently viewed companies
 // instead (phase ten, Stage B), with the same arrow keys, Enter and Escape.
@@ -30,6 +33,8 @@ export function CompanySearch({
   const recentTitleId = useId();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Result[]>([]);
+  // The words the results are for: Enter can come before the lookup does.
+  const [resultsFor, setResultsFor] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const rootRef = useRef<HTMLFormElement>(null);
@@ -51,6 +56,7 @@ export function CompanySearch({
         const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`, { signal: controller.signal });
         const json = res.ok ? await res.json() : { results: [] };
         setResults(json.results ?? []);
+        setResultsFor(q);
         setActive(-1);
         setOpen(true);
       } catch {
@@ -81,7 +87,7 @@ export function CompanySearch({
     router.push(`/research/${encodeURIComponent(symbol.toLowerCase())}`);
   }
 
-  function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     const q = query.trim();
     if (!q) {
@@ -92,11 +98,19 @@ export function CompanySearch({
       return;
     }
     if (active >= 0 && results[active]) return go(results[active].symbol);
-    const exact = results.find((r) => r.symbol.toUpperCase() === q.toUpperCase().replace(/^\$/, ""));
-    if (exact) return go(exact.symbol);
-    // Looks like a ticker: go to it, even if it isn't on the SEC's list.
-    if (/^\$?[A-Za-z.\-]{1,10}$/.test(q) && !q.includes(" ")) return go(q.replace(/^\$/, ""));
-    if (results[0]) return go(results[0].symbol);
+    // Typed and sent before the suggestions caught up: look the words up
+    // first, so Enter goes where the list is about to show.
+    let list = results;
+    if (resultsFor !== q) {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+        list = res.ok ? ((await res.json()).results ?? []) : [];
+      } catch {
+        list = [];
+      }
+    }
+    const target = chooseSearchTarget(q, list);
+    if (target) go(target);
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -175,7 +189,7 @@ export function CompanySearch({
             <li key={r.symbol} id={`${listId}-${i}`} role="option" aria-selected={i === active}>
               <button type="button" className={`rf-search-item${i === active ? " is-active" : ""}`} onMouseDown={(e) => e.preventDefault()} onClick={() => go(r.symbol)}>
                 <span className="rf-search-sym">{r.symbol}</span>
-                <span className="rf-search-name">{r.name}</span>
+                <span className="rf-search-name">{shortName(r.name)}</span>
               </button>
             </li>
           ))}
@@ -213,7 +227,7 @@ export function CompanySearch({
                   onClick={() => setOpen(false)}
                 >
                   <span className="rf-search-sym">{r.symbol}</span>
-                  <span className="rf-search-name">{r.name}</span>
+                  <span className="rf-search-name">{shortName(r.name)}</span>
                   <span className="rf-search-when">{viewedLabel(r.viewedAt)}</span>
                 </Link>
               </li>

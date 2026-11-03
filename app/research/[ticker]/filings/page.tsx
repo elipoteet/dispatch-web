@@ -242,12 +242,13 @@ export default async function FilingsPage({ params, searchParams }: Props) {
               Every recent report
             </h2>
           </div>
+          {/* No prefetch: each would render this page again before anyone clicks. */}
           <div className="rf-chips" role="group" aria-label="Which filings">
-            <Link href={base} className={`rf-chip${category ? "" : " is-active"}`} aria-current={category ? undefined : "page"}>
+            <Link href={base} prefetch={false} className={`rf-chip${category ? "" : " is-active"}`} aria-current={category ? undefined : "page"}>
               All
             </Link>
             {(Object.keys(CATEGORY_LABELS) as FilingCategory[]).map((c) => (
-              <Link key={c} href={`${base}?type=${c}`} className={`rf-chip${category === c ? " is-active" : ""}`} aria-current={category === c ? "page" : undefined}>
+              <Link key={c} href={`${base}?type=${c}`} prefetch={false} className={`rf-chip${category === c ? " is-active" : ""}`} aria-current={category === c ? "page" : undefined}>
                 {CATEGORY_LABELS[c]}
               </Link>
             ))}

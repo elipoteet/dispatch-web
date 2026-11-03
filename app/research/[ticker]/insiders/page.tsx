@@ -14,7 +14,7 @@ import {
   readInsiderFilings,
   storedTrades,
 } from "@/lib/sec/insiders";
-import { isMarketTrade, summarize, summarySentences, tradeLabel, tradeValue, withoutRepeats } from "@/lib/research/insiders";
+import { insiderName, isMarketTrade, summarize, summarySentences, tradeLabel, tradeValue, withoutRepeats } from "@/lib/research/insiders";
 import { formatMoney, titleCaseName } from "@/lib/research/format";
 
 type Props = {
@@ -208,7 +208,7 @@ export default async function InsidersPage({ params, searchParams }: Props) {
                     <tr key={`${t.accession}-${t.line}`}>
                       <th scope="row">{t.date ? DATE.format(new Date(t.date)) : "—"}</th>
                       <td className="rf-insider-who">
-                        <span>{titleCaseName(t.ownerName)}</span>
+                        <span>{insiderName(t.ownerName, titleCaseName)}</span>
                         {t.ownerRole && <span className="rf-insider-role">{t.ownerRole}</span>}
                       </td>
                       <td className="rf-insider-what">

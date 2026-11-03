@@ -97,6 +97,27 @@ export function formatPct(value: number, digits = 1): string {
   return `${value.toFixed(digits)}%`;
 }
 
+// The name to put on a card, a link or a list: the legal form taken off the
+// end ("NVIDIA Corporation" is NVIDIA, "JPMorgan Chase & Co." JPMorgan Chase,
+// "ExxonMobil Holdings Corp" ExxonMobil), and a "The" from the front or back.
+// The company's header keeps the full name.
+const LEGAL_FORM = /(?:,?\s+|\s*&\s*|\s+and\s+)(?:corporation|corp|incorporated|inc|company|co|holdings|ltd|limited|plc|llc|l\.?p|n\.?v|s\.?a|ag)\.?$/i;
+
+export function shortName(name: string): string {
+  let short = name.trim().replace(/\s*\(the\)$/i, "").replace(/^the\s+/i, "");
+  for (let i = 0; i < 4; i++) {
+    const next = short.replace(LEGAL_FORM, "").replace(/[\s,&]+$/, "");
+    if (next === short || !next) break;
+    short = next;
+  }
+  return short || name.trim();
+}
+
+// "21.9×": a multiple such as P/E, as the Valuation tab writes it.
+export function formatMultiple(value: number): string {
+  return `${value.toFixed(1)}×`;
+}
+
 // "+65%", "-3.2%". Never shows "-0%".
 export function formatSignedPct(value: number, digits = 0): string {
   const rounded = Number(value.toFixed(digits));

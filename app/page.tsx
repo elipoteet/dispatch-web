@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CompanySearch } from "@/components/company/CompanySearch";
 import { RecentlyViewed } from "@/components/company/RecentlyViewed";
 import { getHomeCards } from "@/lib/research/home";
+import { shortName } from "@/lib/research/format";
 
 // The front door to the research files, laid out as the Home board in
 // docs/design/phase-ten/Home.dc.html. Search first; then the visitor's
@@ -47,7 +48,7 @@ export default async function HomePage() {
             <span className="rf-lbl">Try</span>
             {cards.slice(0, 4).map((c) => (
               <Link key={c.symbol} href={`/research/${c.slug}`} prefetch={false}>
-                {c.name}
+                {shortName(c.name)}
               </Link>
             ))}
           </div>
@@ -70,7 +71,7 @@ export default async function HomePage() {
               // page fetched and stored Apple and Costco without a click.
               <Link key={c.symbol} href={`/research/${c.slug}`} className="rf-company-card" prefetch={false}>
                 <span className="rf-company-head">
-                  <span className="rf-company-name">{c.name}</span>
+                  <span className="rf-company-name">{shortName(c.name)}</span>
                   <span className="rf-ticker">{c.symbol}</span>
                 </span>
                 {c.sector && <span className="rf-lbl">{c.sector}</span>}
@@ -143,7 +144,6 @@ export default async function HomePage() {
           </ol>
         </section>
 
-        <p className="rf-footer-note">Data: SEC EDGAR · Twelve Data · Finnhub. Facts and figures, not investment advice.</p>
       </div>
     </section>
   );

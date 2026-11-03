@@ -2391,3 +2391,8 @@ footer { background: var(--mast-bg); color: var(--mast-ink); border-top: 0; }
   .nav-links a.active { box-shadow: inset 3px 0 0 var(--gold); padding-left: 12px; }
   .nav-actions { padding-top: 12px; flex-wrap: wrap; }
 }
+
+/* A short page (the not-found page) keeps the footer at the bottom of the
+   screen rather than halfway up it. */
+body { display: flex; flex-direction: column; }
+body > main { flex: 1 0 auto; }

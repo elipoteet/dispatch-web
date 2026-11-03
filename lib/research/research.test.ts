@@ -14,8 +14,8 @@ import { whatStandsOut } from "@/lib/research/standsOut";
 import { keyStats, marketValue } from "@/lib/research/keyStats";
 import { buildFinancialsView } from "@/lib/research/financialsView";
 import { FinancialSeries } from "@/lib/research/series";
-import { searchCompanies } from "@/lib/research/search";
-import { fiscalYearEndMonth, formatMoney, formatSignedPct, titleCaseName, yearPhrase } from "@/lib/research/format";
+import { chooseSearchTarget, searchCompanies } from "@/lib/research/search";
+import { fiscalYearEndMonth, formatMoney, formatSignedPct, shortName, titleCaseName, yearPhrase } from "@/lib/research/format";
 import { descriptionToShow, needsDescription } from "@/lib/research/description";
 
 type Fixture = CompanyFacts & { meta: { sic: string; fiscalYearEnd: string } };
@@ -176,10 +176,13 @@ describe("keyStats", () => {
     const byId = Object.fromEntries(stats.map((s) => [s.id, s]));
     expect(byId["market-value"].value).toBe("$4.82T");
     const ttm = new FinancialSeries(nvda.rows).trailingTwelveMonths("net_income")!.value;
-    expect(byId.pe.value).toBe(((200 * 24_100e6) / ttm).toFixed(1));
+    // Written as the Valuation tab writes a multiple (review of 2 November 2026).
+    expect(byId.pe.value).toBe(`${((200 * 24_100e6) / ttm).toFixed(1)}×`);
     expect(byId.revenue).toMatchObject({ label: "Revenue FY26", value: "$215.9B", note: "+65% on the year" });
-    expect(byId["gross-margin"]).toMatchObject({ value: "71.1%", note: "Down from 75.0%" });
-    expect(byId.fcf.value).toBe("$96.7B");
+    expect(byId["gross-margin"]).toMatchObject({ label: "Gross margin FY26", value: "71.1%", note: "Down from 75.0%" });
+    // Every full-year figure names its year.
+    expect(byId.fcf).toMatchObject({ label: "Free cash flow FY26", value: "$96.7B" });
+    expect(byId["net-margin"].label).toBe("Net margin FY26");
     expect(byId.repurchases).toMatchObject({ label: "Repurchases FY26", value: "$40.1B" });
     expect(byId.volume.value).toBe("180.0M");
   });
@@ -211,13 +214,27 @@ describe("keyStats", () => {
 });
 
 describe("buildFinancialsView", () => {
+  it("keeps one number format across every row", () => {
+    for (const company of [nvda, jpm, aapl, culp]) {
+      const view = buildFinancialsView({ ...company, suppressed: [] });
+      for (const period of [view.annual, view.quarterly]) {
+        for (const row of period?.rows ?? []) {
+          if (row.kind !== "money") continue;
+          const decimals = new Set(row.cells.filter((c) => c.value != null).map((c) => c.display.split(".")[1]?.length ?? 0));
+          expect(decimals.size, `${row.label}: ${row.cells.map((c) => c.display).join(" ")}`).toBeLessThanOrEqual(1);
+        }
+      }
+    }
+  });
+
   it("NVIDIA annual: ten fiscal years, in billions, with growth and margin rows", () => {
     const view = buildFinancialsView({ ...nvda, suppressed: [] }).annual!;
     expect(view.columns.map((c) => c.label)).toEqual(["FY17", "FY18", "FY19", "FY20", "FY21", "FY22", "FY23", "FY24", "FY25", "FY26"]);
     expect(view.unitLabel).toBe("$ billions");
     const revenue = view.rows.find((r) => r.id === "revenue")!;
-    expect(revenue.cells.at(-1)!.display).toBe("216");
-    expect(revenue.cells[0].display).toBe("6.91");
+    // One format per row, set by its largest figure (review of 2 November 2026).
+    expect(revenue.cells.at(-1)!.display).toBe("215.9");
+    expect(revenue.cells[0].display).toBe("6.9");
     expect(view.rows.find((r) => r.id === "revenue-growth")!.cells.at(-1)!.display).toBe("+65%");
     expect(view.rows.find((r) => r.id === "gross-margin")!.cells.at(-1)!.display).toBe("71.1%");
     expect(view.rows.find((r) => r.id === "free_cash_flow")!.cells.at(-1)!.display).toBe("96.68");
@@ -383,5 +400,67 @@ describe("format", () => {
   it("drops the SEC's filing suffixes from names", () => {
     expect(titleCaseName("COSTCO WHOLESALE CORP /NEW")).toBe("Costco Wholesale Corp");
     expect(titleCaseName("EXXON MOBIL CORP /DE/")).toBe("Exxon Mobil Corp");
+  });
+});
+
+// Review of 2 November 2026, mistake 1.
+describe("chooseSearchTarget: where Enter goes", () => {
+  const costco = [{ symbol: "COST", name: "Costco Wholesale Corp" }];
+  const apple = [
+    { symbol: "AAPL", name: "Apple Inc." },
+    { symbol: "APLE", name: "Apple Hospitality REIT, Inc." },
+  ];
+
+  it("opens the company the list shows first when a name is typed", () => {
+    expect(chooseSearchTarget("costco", costco)).toBe("COST");
+    expect(chooseSearchTarget("apple", apple)).toBe("AAPL");
+    expect(chooseSearchTarget("apple inc", apple)).toBe("AAPL");
+  });
+
+  it("prefers an exact ticker to the top of the list", () => {
+    expect(chooseSearchTarget("aple", apple)).toBe("APLE");
+    expect(chooseSearchTarget("$cost", costco)).toBe("COST");
+  });
+
+  it("goes to a typed ticker when the list has nothing, so funds are reachable", () => {
+    expect(chooseSearchTarget("voo", [])).toBe("voo");
+    expect(chooseSearchTarget("brk.b", [])).toBe("brk.b");
+  });
+
+  it("doesn't swap a typed ticker for a longer one that merely starts with it", () => {
+    expect(chooseSearchTarget("qqq", [{ symbol: "QQQX", name: "Nuveen NASDAQ 100 Dynamic Overwrite Fund" }])).toBe("qqq");
+  });
+
+  it("goes nowhere for words that match nothing and aren't a ticker", () => {
+    expect(chooseSearchTarget("no such company", [])).toBeNull();
+    expect(chooseSearchTarget("   ", costco)).toBeNull();
+  });
+});
+
+// Review of 2 November 2026, polish 8.
+describe("shortName", () => {
+  it("takes the legal form off the end", () => {
+    expect(shortName("NVIDIA Corporation")).toBe("NVIDIA");
+    expect(shortName("Costco Wholesale Corp")).toBe("Costco Wholesale");
+    expect(shortName("Coca-Cola Co")).toBe("Coca-Cola");
+    expect(shortName("Apple Inc.")).toBe("Apple");
+    expect(shortName("Meta Platforms, Inc.")).toBe("Meta Platforms");
+    expect(shortName("Texas Instruments Incorporated")).toBe("Texas Instruments");
+    expect(shortName("JPMorgan Chase & Co.")).toBe("JPMorgan Chase");
+    expect(shortName("ExxonMobil Holdings Corp")).toBe("ExxonMobil");
+    expect(shortName("Culp, Inc.")).toBe("Culp");
+  });
+
+  it("drops a 'The' at either end", () => {
+    expect(shortName("Coca-Cola Company (The)")).toBe("Coca-Cola");
+    expect(shortName("The Home Depot, Inc.")).toBe("Home Depot");
+  });
+
+  it("leaves names that are names", () => {
+    expect(shortName("Procter & Gamble Co")).toBe("Procter & Gamble");
+    expect(shortName("AT&T Inc.")).toBe("AT&T");
+    expect(shortName("SPDR S&P 500 ETF Trust")).toBe("SPDR S&P 500 ETF Trust");
+    expect(shortName("Bank Of Montreal")).toBe("Bank Of Montreal");
+    expect(shortName("Corp")).toBe("Corp");
   });
 });

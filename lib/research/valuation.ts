@@ -270,6 +270,28 @@ export function sharesToday(input: {
   return null;
 }
 
+// Today's market value and multiples as every tab shows them: price × the
+// share count on the cover of the latest filing, checked against Finnhub's.
+// The Overview and the Valuation tab both take them from here, so they can't
+// disagree; they did (Chevron, 2 November 2026: $444.4B and P/E 21.6 on the
+// Overview from Finnhub's count, $450.0B and 21.9× on Valuation).
+//
+// No split factors: they'd cost a Twelve Data request on the most-visited
+// page. They only matter for a split since the cover's date, and then the
+// cover count falls outside the check against Finnhub's and Finnhub's is used
+// (sharesToday), which is the post-split count anyway.
+export function todayOnFilings(input: {
+  rows: FinancialRow[];
+  profile: { marketCapMillions: number | null; sharesOutstandingMillions: number | null } | null;
+  price: number | null;
+  asOf: string;
+}): { shares: SharesToday; figures: TodayFigures | null } | null {
+  const shares = sharesToday({ rows: input.rows, steps: null, finnhubShares: finnhubShareCount(input.profile, input.price), asOf: input.asOf });
+  if (!shares) return null;
+  const figures = input.price != null ? todayFigures({ rows: input.rows, price: input.price, shares: shares.shares }) : null;
+  return { shares, figures };
+}
+
 // —— Whether the history and today are on the same footing ——
 // The newest quarter-end's market value, recomputed with today's share count,
 // should be within a buyback or two of the one the history computed. If it's

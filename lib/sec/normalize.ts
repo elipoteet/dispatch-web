@@ -296,6 +296,55 @@ function sliceYear(periods: Map<string, Candidate>, year: FiscalYearSpan, isInst
   return slice;
 }
 
+// —— Cash from the total that includes restricted cash ——
+// Some balance sheets tag their cash line with a company-specific element that
+// the SEC's summary data leaves out: Chevron's year-ends of 2019, 2024 and 2025,
+// for one. The cash-flow statement's total, cash including restricted cash, is
+// always there in a standard tag. That total less the restricted cash filed for
+// the same date, current and non-current, is the balance sheet's figure
+// exactly: Chevron's 2019 is $6,911M − $452M − $773M = $5,686M, its balance
+// sheet's number, and the arithmetic agrees with the cash it did tag at all 26
+// dates where both exist (checked November 2026).
+//
+// Only for a company that files its restricted cash in these tags, and only on
+// a date where every one of them it uses has a value. Apple and NVIDIA keep
+// some restricted cash without tagging it, so for them the total isn't cash.
+const CASH_WITH_RESTRICTED = "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents";
+const RESTRICTED_CASH_TAGS = [
+  ["RestrictedCashCurrent", "RestrictedCashAndCashEquivalentsCurrent"],
+  ["RestrictedCashNoncurrent", "RestrictedCashAndCashEquivalentsNoncurrent"],
+];
+// Named after both inputs, as free cash flow is, so it reads as calculated.
+const CASH_FROM_TOTAL = `${CASH_WITH_RESTRICTED} - restricted cash`;
+
+function cashFromTotal(companyFacts: CompanyFacts, unit: string): Map<string, Candidate> | null {
+  const total = periodsForTag(companyFacts, CASH_WITH_RESTRICTED, unit);
+  if (!total) return null;
+  const byEnd = (periods: Map<string, Candidate> | null) => (periods ? new Map([...periods.values()].map((c) => [c.fact.end, c])) : null);
+  const groups = RESTRICTED_CASH_TAGS.map((tags) =>
+    tags.map((tag) => byEnd(periodsForTag(companyFacts, tag, unit))).filter((m): m is Map<string, Candidate> => m != null),
+  );
+  if (groups.every((g) => g.length === 0)) return null;
+  const out = new Map<string, Candidate>();
+  for (const [key, candidate] of total) {
+    if (candidate.fact.start) continue;
+    let restricted = 0;
+    let complete = true;
+    for (const maps of groups) {
+      if (maps.length === 0) continue;
+      const hit = maps.map((m) => m.get(candidate.fact.end)).find((c) => c != null);
+      if (!hit) {
+        complete = false;
+        break;
+      }
+      restricted += hit.fact.val;
+    }
+    if (!complete) continue;
+    out.set(key, { fact: { ...candidate.fact, val: candidate.fact.val - restricted }, restated: candidate.restated, tag: CASH_FROM_TOTAL });
+  }
+  return out.size > 0 ? out : null;
+}
+
 function isEmptySlice(slice: YearSlice): boolean {
   return !slice.annual && slice.quarters.size === 0 && slice.ytd.length === 0;
 }
@@ -379,6 +428,12 @@ export function normalizeCompanyFacts(
       const periods = periodsForTag(companyFacts, tag, unit);
       if (periods) perTag.set(tag, periods);
     }
+    // Cash worked out from the restricted-cash total (see cashFromTotal) ranks
+    // straight after the company's own cash tag: the same figure, where that
+    // tag is missing, ahead of the total that still includes restricted cash.
+    const derivedCash = item === "cash_and_equivalents" ? cashFromTotal(companyFacts, unit) : null;
+    if (derivedCash) perTag.set(CASH_FROM_TOTAL, derivedCash);
+    const order = derivedCash ? [ranked[0], CASH_FROM_TOTAL, ...ranked.slice(1)] : ranked;
 
     // —— One tag per line item per fiscal year ——
     // Tag choice is made for a whole year at a time, not period by period. A year
@@ -421,7 +476,7 @@ export function normalizeCompanyFacts(
         }
         if (merged.quarters.size > 0) chosen = { tag: ranked[0], slice: merged };
       } else {
-        for (const tag of ranked) {
+        for (const tag of order) {
           const periods = perTag.get(tag);
           if (!periods) continue;
           const slice = sliceYear(periods, year, isInstant);
@@ -431,6 +486,14 @@ export function normalizeCompanyFacts(
             break;
           }
           fallback ??= { tag, slice };
+        }
+        // A year whose own cash tag skips a date (Chevron's 2019 year-end)
+        // takes that date's cash from the restricted-cash total: the same
+        // figure, so the year doesn't mix definitions.
+        if (derivedCash && chosen && chosen.tag !== CASH_FROM_TOTAL) {
+          for (const [period, candidate] of sliceYear(derivedCash, year, true).quarters) {
+            if (!chosen.slice.quarters.has(period)) chosen.slice.quarters.set(period, candidate);
+          }
         }
       }
       // —— Same year, same total: quarters from either tag ——
@@ -475,7 +538,7 @@ export function normalizeCompanyFacts(
       };
 
       if (slice.annual) put(rowFrom(item, slice.annual, fiscalYear, "FY", unit));
-      for (const [period, candidate] of slice.quarters) put(rowFrom(item, candidate, fiscalYear, period, unit));
+      for (const [period, candidate] of slice.quarters) put(rowFrom(item, candidate, fiscalYear, period, unit, candidate.tag === CASH_FROM_TOTAL));
 
       if (!isInstant && !NON_ADDITIVE_ITEMS.has(item)) {
         // —— Unwind year-to-date quarters ——

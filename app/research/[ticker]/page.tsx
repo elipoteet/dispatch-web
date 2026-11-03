@@ -4,6 +4,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { loadCompanyPage } from "@/lib/research/company";
 import { whatStandsOut } from "@/lib/research/standsOut";
 import { keyStats } from "@/lib/research/keyStats";
+import { todayOnFilings } from "@/lib/research/valuation";
 import { descriptionToShow, generateDescription, needsDescription, readDescription } from "@/lib/research/description";
 import { filingDocumentUrl } from "@/lib/sec/client";
 import { chartSeries } from "@/lib/analysis/tickerChart";
@@ -69,6 +70,10 @@ export default async function OverviewPage({ params, searchParams }: Props) {
       })
     : null;
 
+  // Market value and P/E on the same footing as the Valuation tab's.
+  const now = fin
+    ? todayOnFilings({ rows: fin.rows, profile: company.profile, price: company.quote?.price ?? null, asOf: new Date().toISOString().slice(0, 10) })
+    : null;
   const stats = keyStats({
     rows: fin?.rows ?? [],
     filerKind: fin?.filerKind ?? "operating",
@@ -76,6 +81,7 @@ export default async function OverviewPage({ params, searchParams }: Props) {
     sharesOutstandingMillions: company.profile?.sharesOutstandingMillions ?? null,
     marketCapMillions: company.profile?.marketCapMillions ?? null,
     averageVolume: company.avgVolume,
+    today: now?.figures ?? null,
   });
 
   const series = company.daily ? chartSeries(company.daily) : null;
