@@ -32,7 +32,7 @@ Claude sessions cannot push to the repo until the Claude GitHub App is installed
 
 - **Leaderboard and scorecard came off the live site the same day** (master `59b25ae`), not at relaunch. The leaderboard pages, competition accounts and their cron are gone, and `/leaderboard` and `/competition` redirect to `/portfolio`. The memo lost its scorecard, composite, Buy/Sell rating and Verdict section, the rating-change alerts stopped, and the Time Machine no longer grades past ratings. Database tables and old rows are untouched.
 - **The portfolio simulator stays, and so does sign-in,** which it needs.
-- **The home page:** Eli asked Claude to choose. The design is in `docs/phase-nine.md`, "The home page": search first, what's in a file, example companies, tools, and three lines on how it works, with no live prices.
+- **The home page:** Eli asked Claude to choose. The design is in `docs/phase-nine/phase-nine.md`, "The home page": search first, what's in a file, example companies, tools, and three lines on how it works, with no live prices.
 
 ## Resolved on 31 October
 
@@ -40,6 +40,6 @@ Claude sessions cannot push to the repo until the Claude GitHub App is installed
 
 ## Repo notes (added when this was copied into the repo, 30 October)
 
-- This file is a copy of `claude/direction-2026-10-30.md` from the Claude Project. In this repo, `claude/phase-nine-build-brief.md` is `docs/phase-nine.md`.
+- This file is a copy of `claude/direction-2026-10-30.md` from the Claude Project. In this repo, `claude/phase-nine-build-brief.md` is `docs/phase-nine/phase-nine.md`.
 - The fresh branch is `feat/research-site`, cut from `master` at `d2cc717`. It carries `lib/sec/`, the chart data layer (`lib/analysis/chartRanges.ts`, `lib/analysis/tickerChart.ts`, the intraday fetch in `lib/providers.ts`, `app/api/ticker-intraday/`), `lib/ticker.ts`, and migrations 0006 to 0021 as a record of what the shared database holds. The on-screen chart component was left on `feat/research-v2`: it is styled for the social shell, and Stage 3 rebuilds it in the live site's look.
 - 0021 is confirmed pasted, including the later `source` column: on 30 October, `sec_company` held NVDA and JPM and `sec_financials` held 1,369 rows.

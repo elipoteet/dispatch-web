@@ -120,7 +120,7 @@ The eight ranges, sources and caches as per the budget table. Mark earnings date
 
 Done means: in a fresh incognito window, click every range on NVDA and confirm the network log shows no more Twelve Data calls than the table allows. Force the limiter to "used up" and confirm the fallback renders.
 
-**As built (1 November).** Recap in `docs/phase-nine-stage-3-recap.md`.
+**As built (1 November).** Recap in `docs/phase-nine/phase-nine-stage-3-recap.md`.
 - One daily request now covers 1M through 10Y: Twelve Data's `outputsize=5000` returns about twenty years. 1D and 1W share one 5-minute request. MAX is one monthly request. That's three requests at most per company per day, against the table's four.
 - Finnhub's free calendar has no past earnings dates, only upcoming ones. Past dates come from the company's 8-K filings under Item 2.02, and the next date from Finnhub. Markers appear on 3M, 1Y and 5Y, but only where the SEC dates reach back to the range's start. 10Y and MAX get none: too dense, and the SEC's recent-filings index doesn't reach that far for most companies.
 - Not yet confirmed: how delayed the free plan's intraday prices are. That needs a weekday session. Until then the 1D chart states the time its data runs through.
@@ -134,7 +134,7 @@ Done means: in a fresh incognito window, click every range on NVDA and confirm t
 
 Done means: the solver is unit-tested against a hand-built spreadsheet case. At NVDA's mockup inputs (market value $5.77T, free cash flow $96.7B, 10%, 3%, 10 years) it lands near 22%. Search the rendered HTML for "fair value", "target", "undervalued", "overvalued", "buy", "sell" and "hold". There must be no matches outside post bodies.
 
-**As built (1 November).** Recap in `docs/phase-nine-stage-4-recap.md`.
+**As built (1 November).** Recap in `docs/phase-nine/phase-nine-stage-4-recap.md`.
 - Split factors come from Twelve Data's unadjusted prices against its adjusted ones, because both providers' split feeds are paid. That's one request, spent only when a company's share counts jump.
 - Market value is cross-checked against Finnhub's market value, not its share count (Berkshire's classes).
 - Companies with several share classes have a shorter history, or none, and the page says why.
@@ -147,7 +147,7 @@ Next report date from Finnhub's calendar. Quarterly revenue and EPS bars from SE
 
 **Revised 31 October (no paid AI):** guidance has to be found by rules. A revenue outlook in a press release is usually one sentence with a recognisable shape ("Revenue is expected to be $78.0 billion, plus or minus 2%"; "revenue between $X and $Y"). Match only those shapes, quote the sentence beside the bar, and show nothing for a company that phrases it any other way. Coverage will be partial, and that is the honest trade. Decide in Stage 5 whether partial coverage is worth shipping.
 
-**As built (1 November).** Recap in `docs/phase-nine-stage-5-recap.md`.
+**As built (1 November).** Recap in `docs/phase-nine/phase-nine-stage-5-recap.md`.
 - Partial coverage shipped. On the latest releases of fifty large companies, the rules found the next quarter's revenue outlook for 15 and nothing for 35, with no false readings.
 - EPS is shown on today's share basis; a split had made one derived quarter negative.
 - The next report's quarter is counted from the newest release, because the 10-Q lags it.
@@ -157,7 +157,7 @@ Next report date from Finnhub's calendar. Quarterly revenue and EPS bars from SE
 
 Parse Form 4 XML found through the submissions file. Store purchases (code P) and sales (code S) by default. Grants, option exercises and tax withholding sit behind a "show all" toggle, since they're mostly noise. Flag trades made under a preset 10b5-1 plan; Form 4 has carried that checkbox since 2023. Summary row: total bought and sold over the last 12 months, and the share of sales made on preset plans. Link each row to its filing. Refresh through the daily cron for companies people have opened.
 
-**As built (2 November).** Recap in `docs/phase-nine-stage-6-recap.md`.
+**As built (2 November).** Recap in `docs/phase-nine/phase-nine-stage-6-recap.md`.
 - Migration 0023 (`insider_filings`, `insider_trades`) was pasted.
 - Every transaction is stored; the page filters to purchases and sales by default.
 - The plan flag comes from a trade's own footnote first and the filing's checkbox second, because the box is one per filing.
@@ -171,7 +171,7 @@ Parse Form 4 XML found through the submissions file. Store purchases (code P) an
 - 10-Qs can follow the same pattern later. Start with 10-Ks only.
 - **Revised 31 October (no paid AI):** no one-sentence summaries. Show the changes themselves: each added or removed risk paragraph's first sentence, and for a changed paragraph the sentences that differ, old and new side by side, each linked to its place in the filing. Matching and sorting stay rule-based, as planned. Less polished than a summary, but nothing on the page is anyone's paraphrase.
 
-**As built (2 November).** Recap in `docs/phase-nine-stage-7-recap.md`.
+**As built (2 November).** Recap in `docs/phase-nine/phase-nine-stage-7-recap.md`.
 - Migration 0024 (`filing_changes`) was pasted.
 - Paragraphs are matched by rarity-weighted word overlap and sorted into added, taken out, changed (sentences added or removed) and reworded.
 - Each sentence links to its place in the filing with a text fragment.
