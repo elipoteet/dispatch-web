@@ -16,6 +16,7 @@ import {
   type LineItem,
   type TaggedLineItem,
 } from "@/lib/sec/concepts";
+import { settleCashFlow, settleNetIncome, settleRevenue, type Settled } from "@/lib/sec/units";
 
 // One fact as the SEC serves it, inside facts[taxonomy][tag].units[unit].
 export type SecFact = {
@@ -373,6 +374,66 @@ function rowFrom(
   };
 }
 
+// —— Units errors in the filing ——
+// For each fiscal year, the annual figures each of a company's tags gives for
+// revenue, net income and operating cash flow, settled by lib/sec/units.ts
+// when two of them disagree by a units factor (Tigo Energy's 2025 revenue:
+// $103.5 million under one tag, $103.5 billion under another, in the same
+// 10-K). The answer is either a tag to use for the whole year, quarters
+// included, or null: the year is left blank for that line item. No entry means
+// nothing to settle, and the usual tag choice stands.
+//
+// Annual figures only. A units error confined to one quarter's 10-Q isn't
+// caught here; none was seen in the November 2026 checks.
+type UnitsDecision = string | null;
+
+function settleUnits(companyFacts: CompanyFacts, years: FiscalYearSpan[]): Map<TaggedLineItem, Map<number, UnitsDecision>> {
+  const out = new Map<TaggedLineItem, Map<number, UnitsDecision>>();
+  const prepared = new Map<TaggedLineItem, { tag: string; periods: Map<string, Candidate> }[]>();
+  const tagsFor = (item: TaggedLineItem) => {
+    let list = prepared.get(item);
+    if (!list) {
+      const unit = unitFor(item);
+      list = rankTags(companyFacts, item, unit)
+        .map((tag) => ({ tag, periods: periodsForTag(companyFacts, tag, unit) }))
+        .filter((t): t is { tag: string; periods: Map<string, Candidate> } => t.periods != null);
+      prepared.set(item, list);
+    }
+    return list;
+  };
+  const annuals = (item: TaggedLineItem, year: FiscalYearSpan) =>
+    tagsFor(item)
+      .map(({ tag, periods }) => ({ tag, annual: sliceYear(periods, year, false).annual }))
+      .filter((t) => t.annual != null)
+      .map((t) => ({ tag: t.tag, val: t.annual!.fact.val }));
+  const first = (item: TaggedLineItem, year: FiscalYearSpan) => annuals(item, year)[0]?.val ?? null;
+  const record = (item: TaggedLineItem, year: FiscalYearSpan, candidates: { tag: string }[], settled: Settled<{ tag: string }>) => {
+    let decision: UnitsDecision | undefined;
+    if (settled.inconsistent) decision = null;
+    else if (settled.picked && settled.picked.tag !== candidates[0]?.tag) decision = settled.picked.tag;
+    if (decision === undefined) return;
+    if (!out.has(item)) out.set(item, new Map());
+    out.get(item)!.set(year.fiscalYear, decision);
+  };
+
+  for (const year of years) {
+    const revenue = annuals("revenue", year);
+    if (revenue.length > 0) record("revenue", year, revenue, settleRevenue(revenue, first("gross_profit", year), first("cost_of_revenue", year)));
+    const cashFlow = annuals("operating_cash_flow", year);
+    if (cashFlow.length > 0) record("operating_cash_flow", year, cashFlow, settleCashFlow(cashFlow));
+    const income = annuals("net_income", year);
+    if (income.length > 0) {
+      record(
+        "net_income",
+        year,
+        income,
+        settleNetIncome(income, first("eps_diluted", year), first("shares_diluted", year), first("operating_income", year)),
+      );
+    }
+  }
+  return out;
+}
+
 export type NormalizeOptions = {
   sic?: string | number | null;
 };
@@ -416,6 +477,8 @@ export function normalizeCompanyFacts(
     if (projected) years.push(projected);
   }
 
+  const unitsDecisions = settleUnits(companyFacts, years);
+
   for (const item of items) {
     if (suppressed.has(item)) continue;
     const unit = unitFor(item);
@@ -455,6 +518,12 @@ export function normalizeCompanyFacts(
       let chosen: { tag: string; slice: YearSlice } | null = null;
       let fallback: { tag: string; slice: YearSlice } | null = null;
 
+      // A units error in the filing (settleUnits, below): either a tag forced
+      // for the year, or the year left blank for this line item.
+      const decision = unitsDecisions.get(item)?.get(year.fiscalYear);
+      if (decision === null) continue;
+      const yearOrder = decision ? [decision] : order;
+
       if (PER_DATE_ITEMS.has(item)) {
         // —— Debt: each balance-sheet date stands alone ——
         // One tag for the whole year lost three quarters of debt at most large
@@ -476,7 +545,7 @@ export function normalizeCompanyFacts(
         }
         if (merged.quarters.size > 0) chosen = { tag: ranked[0], slice: merged };
       } else {
-        for (const tag of order) {
+        for (const tag of yearOrder) {
           const periods = perTag.get(tag);
           if (!periods) continue;
           const slice = sliceYear(periods, year, isInstant);

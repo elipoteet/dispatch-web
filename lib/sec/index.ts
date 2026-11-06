@@ -62,8 +62,11 @@ export type CompanyFinancials = {
 // 7: diluted earnings per share (stage 5). 8: EPS stored as filed only, no
 // derived Q4 (stage 5; a split made it wrong). 9: cash worked out from the
 // restricted-cash total where the cash line's own tag is missing (Chevron's
-// 2019 and 2024; review of 2 November 2026).
-export const NORMALIZER_VERSION = 9;
+// 2019 and 2024; review of 2 November 2026). 10: a year whose revenue, net
+// income or operating cash flow tags disagree by a units factor is settled
+// from the filing's own arithmetic, or left blank (lib/sec/units.ts; Tigo
+// Energy's 2025 revenue, 5 November 2026).
+export const NORMALIZER_VERSION = 10;
 
 export function accessionStamp(accession: string): string {
   return `${accession}#n${NORMALIZER_VERSION}`;
