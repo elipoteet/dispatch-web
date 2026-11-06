@@ -184,11 +184,12 @@ describe("Johnson & Johnson (two R&D tags)", () => {
 });
 
 describe("Tigo Energy (a units error in the filing)", () => {
-  it("shows revenue as n/a, not $103.5 billion", () => {
-    const { m } = load(1855447);
-    expect(m.values.revenue).toBeNull();
-    expect(m.na.revenue).toBe("inconsistent");
-    expect(m.na.net_margin).toBe("inconsistent");
+  it("shows revenue as $103.5 million, the figure that is gross profit plus cost of revenue, as its research page does", () => {
+    const { a, m } = load(1855447);
+    expect(a.latest.values.revenue).toMatchObject({ val: 103_536_000, tag: "Revenues" });
+    expect(m.values.revenue).toBe(103_536_000);
+    expect(m.na.revenue).toBeUndefined();
+    expect(m.values.net_margin).toBeCloseTo(-1_880_000 / 103_536_000, 6);
   });
 });
 

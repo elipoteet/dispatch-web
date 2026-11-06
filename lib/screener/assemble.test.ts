@@ -4,10 +4,8 @@ import {
   annualReportValue,
   assembleCompany,
   collectFrame,
-  looksLikeUnitsError,
   rankedTags,
   fiscalYearsOnly,
-  resolveNetIncome,
   yearChain,
   type FrameCollection,
   type Picked,
@@ -160,20 +158,25 @@ describe("assembleCompany", () => {
   });
 });
 
-describe("units errors in the filing", () => {
-  it("recognises a thousand- or million-fold gap, not an ordinary one", () => {
-    expect(looksLikeUnitsError(103_536_000_000, 103_536_000)).toBe(true); // Tigo Energy's revenue
-    expect(looksLikeUnitsError(42_746_000, 42.8)).toBe(true); // Middlesex Water's net income
-    expect(looksLikeUnitsError(5_478_000_000, 5_942_000)).toBe(true); // Schwab: two concepts, one in the wrong units
-    expect(looksLikeUnitsError(3_040_725_000, 7_042_000)).toBe(false); // AvalonBay: rent isn't customer-contract revenue
-    expect(looksLikeUnitsError(16_978_000_000, 3_000_000)).toBe(false); // Fannie Mae 2024: preferred shares take the rest
-    // Fannie Mae 2025 lands inside the window by coincidence (1,596 times);
-    // resolveNetIncome below is what keeps that from becoming a wrong number.
-    expect(looksLikeUnitsError(14_364_000_000, 9_000_000)).toBe(true);
-    expect(looksLikeUnitsError(100, 0)).toBe(false);
+describe("units errors in the filing (the rules themselves: lib/sec/units.test.ts)", () => {
+  it("takes the revenue that is gross profit plus cost of revenue (Tigo Energy)", () => {
+    const r = assembleCompany(
+      company([
+        ["RevenueFromContractWithCustomerExcludingAssessedTax", [year(2024, 54_014_000_000), year(2025, 103_536_000_000)]],
+        ["Revenues", [year(2024, 54_014_000), year(2025, 103_536_000)]],
+        ["GrossProfit", [year(2024, -4_156_000), year(2025, 44_351_000)]],
+        ["CostOfRevenue", [year(2024, 58_170_000), year(2025, 59_185_000)]],
+        ["NetIncomeLoss", [year(2024, -62_746_000), year(2025, -1_880_000)]],
+      ]),
+      TODAY,
+    );
+    if (!r.ok) throw new Error();
+    expect(r.company.latest.values.revenue).toMatchObject({ val: 103_536_000, tag: "Revenues" });
+    expect(r.company.revenueHistory.map((h) => h?.val)).toEqual([103_536_000, 54_014_000]);
+    expect(r.company.revenueHistoryInconsistent).toEqual([]);
   });
 
-  it("makes the line item n/a for the year instead of picking one of the two", () => {
+  it("makes revenue n/a for the year when nothing in the filing settles it", () => {
     const r = assembleCompany(
       company([
         ["RevenueFromContractWithCustomerExcludingAssessedTax", [year(2024, 54_014_000_000), year(2025, 103_536_000_000)]],
@@ -201,80 +204,6 @@ describe("units errors in the filing", () => {
     );
     if (!r.ok) throw new Error();
     expect(r.company.latest.values.rnd).toMatchObject({ val: 14_665, tag: "ResearchAndDevelopmentExpenseExcludingAcquiredInProcessCost" });
-  });
-});
-
-describe("resolveNetIncome: checked against EPS x diluted shares from the 10-K", () => {
-  const ni = (tag: string, val: number): Picked => ({ val, end: "2026-05-31", tag, accn: "A" });
-  const eps = (val: number): Picked => ({ val, end: "2026-05-31", tag: "EarningsPerShareDiluted", accn: "K" });
-  const shares = (val: number): Picked => ({ val, end: "2026-05-31", tag: "WeightedAverageNumberOfDilutedSharesOutstanding", accn: "K" });
-
-  it("takes the best-ranked tag when everything agrees", () => {
-    const r = resolveNetIncome([ni("NetIncomeLoss", 120_067e6)], eps(4.9), shares(24_514e6));
-    expect(r).toEqual({ picked: ni("NetIncomeLoss", 120_067e6), inconsistent: false });
-  });
-
-  it("passes over a proxy statement's figure in millions for the 10-K's (FedEx, CY2025 frames)", () => {
-    const r = resolveNetIncome(
-      [ni("NetIncomeLoss", 4_433), ni("NetIncomeLossAvailableToCommonStockholdersBasic", 4_426_000_000)],
-      eps(18.19),
-      shares(243.3e6),
-    );
-    expect(r.picked?.tag).toBe("NetIncomeLossAvailableToCommonStockholdersBasic");
-    expect(r.inconsistent).toBe(false);
-  });
-
-  it("passes over a figure a thousand times too large (JAKKS Pacific)", () => {
-    const r = resolveNetIncome(
-      [ni("NetIncomeLoss", 9_871_000_000), ni("ProfitLoss", 9_871_000), ni("NetIncomeLossAvailableToCommonStockholdersBasic", 9_871_000)],
-      eps(0.88),
-      shares(11.2e6),
-    );
-    expect(r.picked).toMatchObject({ tag: "ProfitLoss", val: 9_871_000 });
-  });
-
-  it("won't take income to common as net income across a real gap (Fannie Mae)", () => {
-    const r = resolveNetIncome(
-      [ni("NetIncomeLoss", 14_364_000_000), ni("ProfitLoss", 14_364_000_000), ni("NetIncomeLossAvailableToCommonStockholdersBasic", 9_000_000)],
-      eps(0.0),
-      shares(5_867e6),
-    );
-    expect(r).toEqual({ picked: null, inconsistent: true });
-  });
-
-  it("catches a units error in a company's only tag when operating income agrees with EPS (Rocky Mountain Chocolate)", () => {
-    const oi = { val: -3_900_000, end: "2026-02-28", tag: "OperatingIncomeLoss", accn: "K" };
-    const r = resolveNetIncome([ni("NetIncomeLoss", -4_560)], eps(-0.56), shares(8_084_372), oi);
-    expect(r).toEqual({ picked: null, inconsistent: true });
-  });
-
-  it("keeps net income when it's the share count that's in thousands (Smith & Wesson)", () => {
-    const oi = { val: 30_000_000, end: "2026-04-30", tag: "OperatingIncomeLoss", accn: "K" };
-    const r = resolveNetIncome([ni("NetIncomeLoss", 18_481_000)], eps(0.41), shares(44_933), oi);
-    expect(r.picked?.val).toBe(18_481_000);
-  });
-
-  it("is n/a when the only tag disagrees with EPS and there's no operating income to ask", () => {
-    expect(resolveNetIncome([ni("NetIncomeLoss", 3_511)], eps(2.75), shares(1_276.9e6))).toEqual({ picked: null, inconsistent: true });
-  });
-
-  it("is n/a when tags disagree and there's no EPS to settle it", () => {
-    expect(resolveNetIncome([ni("NetIncomeLoss", 42.8), ni("NetIncomeLossAvailableToCommonStockholdersBasic", 42_746_000)], undefined, undefined)).toEqual({
-      picked: null,
-      inconsistent: true,
-    });
-  });
-
-  it("is n/a when the figures disagree in sign as well as units (TheRealReal)", () => {
-    const r = resolveNetIncome(
-      [ni("NetIncomeLoss", 41_799_000_000), ni("NetIncomeLossAvailableToCommonStockholdersBasic", -41_799_000)],
-      eps(-0.36),
-      shares(116e6),
-    );
-    // The figure that agrees with EPS is there, but the one ranked above it is
-    // a profit where the 10-K has a loss, not just the same number shifted, so
-    // nothing in the filing can be trusted to choose between them.
-    expect(r).toEqual({ picked: null, inconsistent: true });
   });
 });
 

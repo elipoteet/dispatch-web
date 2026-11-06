@@ -22,6 +22,7 @@
 import { CONCEPT_TAGS, SCREENER_CONCEPT_TAGS } from "@/lib/sec/concepts";
 import { SCREENER_INPUTS, reportCutoff, type FrameResponse, type FrameValue, type InputItem } from "@/lib/sec/frames";
 import type { SecFact } from "@/lib/sec/normalize";
+import { settleCashFlow, settleNetIncome, settleRevenue, type Settled } from "@/lib/sec/units";
 
 const DAY_MS = 86_400_000;
 
@@ -144,110 +145,48 @@ function pickCash(company: CompanyFrames, end: string): Picked | null {
   );
 }
 
-// —— Units errors in the filing itself ——
-// A handful of filings tag one figure in the wrong units: Tigo Energy filed
-// 2025 revenue as $103.5 million under Revenues and as $103.5 billion under
-// RevenueFromContractWithCustomerExcludingAssessedTax; Middlesex Water filed
-// net income of $42.7 million under one tag and $42.80 under another. When two
-// of a company's own tags for the same line item and year disagree by about a
-// thousand or a million times, one of them is a units error, and nothing in the
-// frames says which. That line item is then n/a for the year ("inconsistent"),
-// never the wrong number. Found across all filers' CY2024 to CY2026 frames,
-// 5 November 2026; the research file, which picks tags the same way, shows
-// these errors today.
+// —— Units errors in the filing ——
+// Revenue, net income and operating cash flow go through lib/sec/units.ts,
+// the same rules the research file's normaliser uses, so a figure the filing
+// contradicts is settled the same way in both places (Tigo Energy's revenue:
+// $103.5 million, not the $103.5 billion it also tagged), or left n/a
+// ("inconsistent").
 //
-// Only for revenue and operating cash flow, where tags for one line item
-// describe the same total (net income has its own, stronger check below,
-// resolveNetIncome). Other lists hold genuine parts of a whole
-// (Johnson & Johnson's plain R&D tag is 1/134th of its R&D), and a big gap
-// between whole and part is not an error. Gaps that aren't units-shaped are
-// left alone too: a REIT's revenue from customer contracts is a few hundredths
-// of its total revenue (AvalonBay 1/430th) because rent falls under a different
-// accounting rule, and coverage ranking already picks the total there.
-const UNITS_CHECKED: ReadonlySet<InputItem> = new Set<InputItem>(["revenue", "operating_cash_flow"]);
+// One trap is the frames' own: a frame keeps each company's last-filed value,
+// and the proxy statement (DEF 14A), filed weeks after the 10-K, restates net
+// income in its pay-versus-performance table, sometimes rounded or in other
+// units (Tesla's 2025: $3.855 billion in the proxy, $3.794 billion in the
+// 10-K; FedEx's: $4,433, in millions). The nightly job replaces such a figure
+// with the 10-K's own (annualReportValue, below); until then EPS x shares
+// catches the units errors among them.
+const SETTLED: ReadonlySet<InputItem> = new Set<InputItem>(["revenue", "net_income", "operating_cash_flow"]);
 
-export function looksLikeUnitsError(a: number, b: number): boolean {
-  if (a === 0 || b === 0) return false;
-  const r = Math.max(Math.abs(a), Math.abs(b)) / Math.min(Math.abs(a), Math.abs(b));
-  return (r >= 500 && r <= 2_000) || (r >= 500_000 && r <= 2_000_000);
-}
-
-function unitsConflict(company: CompanyFrames, item: InputItem, hit: Picked): boolean {
-  if (!UNITS_CHECKED.has(item)) return false;
-  for (const tag of SPEC.get(item)?.tags ?? []) {
-    if (tag === hit.tag) continue;
-    const other = valuesFor(company, tag, "duration").find((v) => v.end === hit.end);
-    if (other && looksLikeUnitsError(hit.val, other.val)) return true;
+// Every tag's value for one line item and period, best-ranked first.
+function candidatesFor(company: CompanyFrames, item: InputItem, end: string, ranked: string[]): Picked[] {
+  const out: Picked[] = [];
+  for (const tag of ranked) {
+    const hit = pick(company, item, end, [tag]);
+    if (hit) out.push(hit);
   }
-  return false;
+  return out;
 }
 
-// —— Net income, checked against the 10-K's own arithmetic ——
-// Net income is where units errors are common, and the reason is a frames
-// trap: a frame keeps each company's most recently filed value, and the proxy
-// statement (DEF 14A), filed weeks after the 10-K, restates five years of net
-// income in its pay-versus-performance table, often in the wrong units. In the
-// CY2025 frames FedEx's net income is $4,433 and Arista's $3,511 (both from
-// the proxy, in millions), where their 10-Ks say $4.43 billion and $3.51
-// billion. NVIDIA's frame value also comes from its proxy, correctly. The
-// research file reads 10-Ks and 10-Qs only, so it isn't affected.
-//
-// Earnings per share times diluted shares is net income to common
-// shareholders, and both come from the 10-K (proxies don't restate them). So:
-// - the company's tags agree, and agree with EPS x shares within units: take
-//   the best-ranked tag, as everywhere else;
-// - they disagree by a units factor, or the only tag disagrees with EPS x
-//   shares by one: take the best-ranked tag within 25% of EPS x shares
-//   (plus half a cent a share for EPS rounding), which is the one in the
-//   10-K's units, but only if every better-ranked tag it passes over is that
-//   same figure shifted by a thousand or a million (FedEx's $4,433 is its
-//   $4.426 billion in millions). A real gap between two concepts is not
-//   passed over: Fannie Mae's net income ($14.4 billion) and its income to
-//   common shareholders ($9 million, which its EPS reflects) are 1,600 times
-//   apart because the Treasury's preferred shares take the rest, and taking
-//   the $9 million as its net income would be wrong;
-// - otherwise, or with no EPS to check against: n/a ("inconsistent").
-// When the company's tags agree with each other but not with EPS x shares,
-// either net income or the share count is in the wrong units, and both
-// happen: Rocky Mountain Chocolate's net income is -$4,560 (in thousands),
-// while Smith & Wesson's share count is 44,933 (in thousands) beside a
-// correct net income. Operating income, from the same 10-K's income
-// statement, settles it: net income a units step from operating income too
-// is the odd one out (n/a); otherwise the share count is, and net income
-// stands. With no operating income to ask, n/a.
-// Found 5 November 2026: 82 of 5,364 companies had a units-shaped disagreement
-// between their own net income tags, and about 90 more between net income and
-// EPS x shares.
-type NetIncomeResult = { picked: Picked | null; inconsistent: boolean };
-
-function isShiftedCopy(bad: number, good: number): boolean {
-  return [1e3, 1e6, 1e-3, 1e-6].some((f) => Math.abs((bad * f) / good - 1) <= 0.25);
-}
-
-export function resolveNetIncome(
-  candidates: Picked[],
-  eps: Picked | undefined,
-  shares: Picked | undefined,
-  operatingIncome?: Picked,
-): NetIncomeResult {
-  if (candidates.length === 0) return { picked: null, inconsistent: false };
-  const expected = eps && shares && shares.val > 0 ? eps.val * shares.val : null;
-  const pairConflict = candidates.some((a) => candidates.some((b) => a !== b && looksLikeUnitsError(a.val, b.val)));
-  const epsConflict = expected != null && expected !== 0 && looksLikeUnitsError(candidates[0].val, expected);
-  if (!pairConflict && !epsConflict) return { picked: candidates[0], inconsistent: false };
-  if (!pairConflict) {
-    if (!operatingIncome) return { picked: null, inconsistent: true };
-    return looksLikeUnitsError(candidates[0].val, operatingIncome.val)
-      ? { picked: null, inconsistent: true }
-      : { picked: candidates[0], inconsistent: false };
-  }
-  if (expected == null) return { picked: null, inconsistent: true };
-  const tolerance = Math.max(Math.abs(expected) * 0.25, 0.005 * shares!.val);
-  const index = candidates.findIndex((c) => Math.abs(c.val - expected) <= tolerance);
-  if (index < 0) return { picked: null, inconsistent: true };
-  const chosen = candidates[index];
-  if (candidates.slice(0, index).some((c) => !isShiftedCopy(c.val, chosen.val))) return { picked: null, inconsistent: true };
-  return { picked: chosen, inconsistent: false };
+function settle(
+  company: CompanyFrames,
+  item: InputItem,
+  end: string,
+  ranked: string[],
+  values: Partial<Record<DurationItem, Picked>>,
+): Settled<Picked> {
+  const candidates = candidatesFor(company, item, end, ranked);
+  if (item === "revenue") return settleRevenue(candidates, values.gross_profit?.val ?? null, values.cost_of_revenue?.val ?? null);
+  if (item === "operating_cash_flow") return settleCashFlow(candidates);
+  return settleNetIncome(
+    candidates,
+    values.eps_diluted?.val ?? null,
+    values.shares_diluted?.val ?? null,
+    values.operating_income?.val ?? null,
+  );
 }
 
 // —— Years ——
@@ -366,8 +305,8 @@ export type CompanyYear = {
   periodStart: string | null;
   periodEnd: string;
   values: Partial<Record<DurationItem, Picked>>;
-  // Line items left out because the filing's own tags disagree by a units
-  // factor (see looksLikeUnitsError).
+  // Line items left out because the filing's own figures disagree by a
+  // units factor and nothing settles it (lib/sec/units.ts).
   inconsistent: DurationItem[];
 };
 
@@ -393,31 +332,23 @@ function yearValues(company: CompanyFrames, end: string, ranked: Map<DurationIte
   const values: Partial<Record<DurationItem, Picked>> = {};
   const inconsistent: DurationItem[] = [];
   let periodStart: string | null = null;
+  const noteStart = (hit: Picked) => {
+    periodStart ??= (company.byTag.get(hit.tag) ?? []).find((v) => v.end === end && isAnnual(v))?.start ?? null;
+  };
   for (const item of DURATION_ITEMS) {
-    if (item === "net_income") continue; // resolved below, once EPS and shares are in
+    if (SETTLED.has(item)) continue; // settled below, once the figures they're checked against are in
     const hit = pick(company, item, end, ranked.get(item));
     if (!hit) continue;
-    if (unitsConflict(company, item, hit)) {
-      inconsistent.push(item);
-      continue;
-    }
     values[item] = hit;
-    if (!periodStart) {
-      const tagValues = company.byTag.get(hit.tag) ?? [];
-      periodStart = tagValues.find((v) => v.end === end && isAnnual(v))?.start ?? null;
+    noteStart(hit);
+  }
+  for (const item of ["revenue", "operating_cash_flow", "net_income"] as const) {
+    const settled = settle(company, item, end, ranked.get(item) ?? [], values);
+    if (settled.picked) {
+      values[item] = settled.picked;
+      noteStart(settled.picked);
     }
-  }
-
-  const candidates: Picked[] = [];
-  for (const tag of ranked.get("net_income") ?? []) {
-    const hit = pick(company, "net_income", end, [tag]);
-    if (hit) candidates.push(hit);
-  }
-  const income = resolveNetIncome(candidates, values.eps_diluted, values.shares_diluted, values.operating_income);
-  if (income.picked) values.net_income = income.picked;
-  if (income.inconsistent) inconsistent.push("net_income");
-  if (!periodStart && income.picked) {
-    periodStart = (company.byTag.get(income.picked.tag) ?? []).find((v) => v.end === end && isAnnual(v))?.start ?? null;
+    if (settled.inconsistent) inconsistent.push(item);
   }
   return { periodStart, periodEnd: end, values, inconsistent };
 }
@@ -440,15 +371,16 @@ export function assembleCompany(company: CompanyFrames, today: string): Assemble
     if (hit) balance[item] = hit;
   }
 
-  const revenueRanked = ranked.get("revenue");
   const revenueHistoryInconsistent: number[] = [];
   const revenueHistory = chain.map((end, i) => {
-    const hit = pick(company, "revenue", end, revenueRanked);
-    if (hit && unitsConflict(company, "revenue", hit)) {
-      revenueHistoryInconsistent.push(i);
-      return null;
+    const checks: Partial<Record<DurationItem, Picked>> = {};
+    for (const item of ["gross_profit", "cost_of_revenue"] as const) {
+      const hit = pick(company, item, end, ranked.get(item));
+      if (hit) checks[item] = hit;
     }
-    return hit;
+    const settled = settle(company, "revenue", end, ranked.get("revenue") ?? [], checks);
+    if (settled.inconsistent) revenueHistoryInconsistent.push(i);
+    return settled.picked;
   });
 
   return {
