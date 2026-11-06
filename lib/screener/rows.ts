@@ -24,11 +24,14 @@ export function needsAnnualReportFix(year: CompanyYear | null): boolean {
 }
 
 // The 10-K's figure for one year, and the frames filing it replaced, so the
-// next night can reuse it while the frames still hold that same filing.
-export type NetIncomeFix = { frames: string | null; end: string; val: number; accn: string };
+// next night can reuse it while the frames still hold that same filing. val
+// is null when the company's 10-Ks have no figure under that tag (Caterpillar
+// files its 10-K net income under another one); the frames value then stands,
+// and remembering the answer saves asking again every night.
+export type NetIncomeFix = { frames: string | null; end: string; val: number | null; accn: string | null };
 
 function fixYear(year: CompanyYear, fix: NetIncomeFix | undefined, tag: string): CompanyYear {
-  if (!fix || fix.end !== year.periodEnd) return year;
+  if (!fix || fix.end !== year.periodEnd || fix.val == null || fix.accn == null) return year;
   const picked: Picked = { val: fix.val, end: fix.end, tag, accn: fix.accn };
   return { ...year, values: { ...year.values, net_income: picked }, inconsistent: year.inconsistent.filter((i) => i !== "net_income") };
 }

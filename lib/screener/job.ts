@@ -49,9 +49,6 @@ export type JobOptions = {
   // The function's whole allowance, less a margin.
   budgetMs: number;
   today: string;
-  // Test only: wait this long between staging and publishing, to show what a
-  // run cut off at that point leaves behind.
-  pauseBeforePublishMs?: number;
 };
 
 export type JobSummary = {
@@ -224,7 +221,7 @@ export async function runScreenerJob(options: JobOptions): Promise<JobSummary> {
         const one = (want: boolean, year: Assembled["latest"] | null): NetIncomeFix | undefined => {
           if (!want || !year?.periodStart) return undefined;
           const f = annualReportFact(facts, year.periodStart, year.periodEnd);
-          return f ? { frames: year.values.net_income?.accn ?? null, end: year.periodEnd, val: f.val, accn: f.accn } : undefined;
+          return { frames: year.values.net_income?.accn ?? null, end: year.periodEnd, val: f?.val ?? null, accn: f?.accn ?? null };
         };
         fixes.set(cik, { latest: one(wantLatest, a.latest), prior: one(wantPrior, a.prior) });
         summary.netIncome.fetched++;
@@ -260,7 +257,6 @@ export async function runScreenerJob(options: JobOptions): Promise<JobSummary> {
 
     const { count: showingNow } = await db.from("screener_metrics").select("cik", { count: "exact", head: true });
     const decision = publishDecision({ framesComplete: summary.frames.failed === 0, staged: rows.length, showingNow: showingNow ?? 0 });
-    if (options.pauseBeforePublishMs) await new Promise((r) => setTimeout(r, options.pauseBeforePublishMs));
     if (decision.publish) {
       const { data, error } = await db.rpc("screener_publish", { min_rows: minPublishRows(showingNow ?? 0) });
       if (error) throw new Error(`publishing: ${error.message}`);

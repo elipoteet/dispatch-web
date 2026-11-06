@@ -65,6 +65,12 @@ describe("applyNetIncomeFix", () => {
     expect(fixed.latest.values.net_income?.val).toBe(3_794_000_000);
   });
 
+  it("keeps the frames figure when the 10-K has none under that tag, and remembers that", () => {
+    const none: NetIncomeFix = { frames: "DEF14A-2026", end: "2025-12-31", val: null, accn: null };
+    expect(applyNetIncomeFix(company, "NetIncomeLoss", none).latest.values.net_income?.val).toBe(3_855_000_000);
+    expect(reusableFix(none, TESLA)).toBe(none);
+  });
+
   it("ignores a fix for another year", () => {
     expect(applyNetIncomeFix(company, "NetIncomeLoss", { ...fix, end: "2024-12-31" }).latest.values.net_income?.val).toBe(3_855_000_000);
   });

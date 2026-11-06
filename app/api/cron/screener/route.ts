@@ -16,15 +16,10 @@ export async function GET(request: Request) {
   if (!process.env.CRON_SECRET || auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  // Test only (Stage B): ?pauseBeforePublish=<seconds> holds the run between
-  // staging and publishing, to show a run cut off there changes nothing
-  // anyone can see. Removed once tested.
-  const pause = Number(new URL(request.url).searchParams.get("pauseBeforePublish") ?? 0);
   const summary = await runScreenerJob({
     startedAt: Date.now(),
     budgetMs: BUDGET_MS,
     today: new Date().toISOString().slice(0, 10),
-    pauseBeforePublishMs: Number.isFinite(pause) && pause > 0 ? Math.min(pause, 300) * 1000 : undefined,
   });
   console.log("[cron/screener]", JSON.stringify(summary));
   return NextResponse.json(summary, { status: summary.error ? 500 : 200 });
