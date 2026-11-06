@@ -180,3 +180,78 @@ export function suppressedItems(kind: FilerKind): { items: LineItem[]; reason: s
   }
   return null;
 }
+
+// —— Line items only the screener reads (phase eleven) ——
+// Kept out of CONCEPT_TAGS on purpose. normalizeCompanyFacts walks every list
+// in CONCEPT_TAGS three times (to build the fiscal calendar, to find the year
+// in progress, and to fill rows), so a new list there could move a company
+// page's numbers and would need a NORMALIZER_VERSION bump. These lists feed
+// only the screener's frames job (lib/sec/frames.ts), so the research file is
+// untouched. Same rules as above: most specific first, a missing tag is a
+// blank, never a zero.
+export type ScreenerLineItem =
+  | "rnd"
+  | "sga"
+  | "selling_marketing"
+  | "general_admin"
+  | "interest_expense"
+  | "dividends_paid"
+  | "current_assets"
+  | "current_liabilities";
+
+export const SCREENER_INSTANT_ITEMS: ReadonlySet<ScreenerLineItem> = new Set<ScreenerLineItem>([
+  "current_assets",
+  "current_liabilities",
+]);
+
+// Every list below was checked against the latest 10-K in the companyfacts of
+// the twenty companies in lib/sec/twentyCompanies.test.ts, plus McDonald's,
+// Realty Income and Rivian, and against the CY2025 frames for all filers
+// (5 November 2026).
+export const SCREENER_CONCEPT_TAGS: Record<ScreenerLineItem, readonly string[]> = {
+  // The narrower tag first. Johnson & Johnson files its income-statement R&D
+  // ($17.2B for 2024) as ...ExcludingAcquiredInProcessCost and a $1.8B
+  // component under the plain tag; Eli Lilly files only the narrower one.
+  // Only 18 filers used both in CY2025.
+  rnd: [
+    "ResearchAndDevelopmentExpenseExcludingAcquiredInProcessCost",
+    "ResearchAndDevelopmentExpense",
+    "ResearchAndDevelopmentExpenseSoftwareExcludingAcquiredInProcessCost",
+  ],
+  sga: ["SellingGeneralAndAdministrativeExpense"],
+  // Microsoft, Meta and Alphabet report the two halves of SG&A on separate
+  // lines and file no combined tag. The screener adds them only when both are
+  // filed for the same year, and labels the result as calculated. Amazon files
+  // only general and administrative, so its SG&A share is n/a, not a guess.
+  selling_marketing: ["SellingAndMarketingExpense"],
+  general_admin: ["GeneralAndAdministrativeExpense"],
+  // Most large companies moved to InterestExpenseNonoperating with the 2024
+  // taxonomy (NVIDIA, Microsoft, Alphabet, Tesla, Verizon). Costco, Coca-Cola,
+  // McDonald's, UnitedHealth and ExxonMobil still file InterestExpense;
+  // Chevron, Walmart and Meta file InterestExpenseDebt (Meta also files
+  // Nonoperating, $715M against $683M of debt interest; the first is its
+  // income-statement line). InterestExpenseOperating is last: it's how a REIT
+  // like Realty Income files interest, and banks, which also use it, are n/a
+  // for interest coverage anyway. Apple and Caterpillar file no standard
+  // interest line, so they are n/a.
+  //
+  // Known gap: the SEC's frames for InterestExpenseNonoperating only include
+  // 10-Ks filed from about mid-2026 (Microsoft's of July is in; NVIDIA's of
+  // February is not), though each company's own companyfacts carries the
+  // figure. Every other tag checked agrees with companyfacts exactly.
+  interest_expense: [
+    "InterestExpenseNonoperating",
+    "InterestExpense",
+    "InterestExpenseDebt",
+    "InterestAndDebtExpense",
+    "InterestExpenseOperating",
+  ],
+  // Dividends to common shareholders first. Johnson & Johnson files
+  // PaymentsOfOrdinaryDividends; NVIDIA, Apple and Alphabet file the plain
+  // PaymentsOfDividends.
+  dividends_paid: ["PaymentsOfDividendsCommonStock", "PaymentsOfDividends", "PaymentsOfOrdinaryDividends"],
+  // Banks and REITs present unclassified balance sheets and file neither, so
+  // their current ratio is n/a.
+  current_assets: ["AssetsCurrent"],
+  current_liabilities: ["LiabilitiesCurrent"],
+};

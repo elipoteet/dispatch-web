@@ -310,8 +310,8 @@ function sliceYear(periods: Map<string, Candidate>, year: FiscalYearSpan, isInst
 // Only for a company that files its restricted cash in these tags, and only on
 // a date where every one of them it uses has a value. Apple and NVIDIA keep
 // some restricted cash without tagging it, so for them the total isn't cash.
-const CASH_WITH_RESTRICTED = "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents";
-const RESTRICTED_CASH_TAGS = [
+export const CASH_WITH_RESTRICTED = "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents";
+export const RESTRICTED_CASH_TAGS = [
   ["RestrictedCashCurrent", "RestrictedCashAndCashEquivalentsCurrent"],
   ["RestrictedCashNoncurrent", "RestrictedCashAndCashEquivalentsNoncurrent"],
 ];
