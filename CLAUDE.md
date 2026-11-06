@@ -25,6 +25,7 @@ npx vitest run lib/sec/normalize.test.ts -t "name"  # one test by name
 - Vitest loads `.env.local` itself (`vitest.config.ts`), so tests that need keys don't silently skip.
 - `lib/sec/twentyCompanies.test.ts` hits the live SEC API (~20 s). If the SEC is unreachable it skips rather than fails.
 - `TWELVE_DATA_FORCE_BUSY=1` simulates a used-up Twelve Data allowance, for testing the fallbacks.
+- `SCREENER_FORCE_FAILURE=unavailable` (or `not-built`) makes the screener page show its inline failure message, for checking it on `next start`.
 - On Windows, Git Bash rewrites arguments that start with `/` (e.g. `/research/nvda`) into file paths. Use PowerShell for scripts that take URL paths.
 
 ## Architecture
@@ -61,6 +62,11 @@ npx vitest run lib/sec/normalize.test.ts -t "name"  # one test by name
   - `metrics.ts` computes every filter value, with a reason for every n/a.
   - New tag lists are `SCREENER_CONCEPT_TAGS`, kept out of `CONCEPT_TAGS` so research pages don't move.
   - `job.ts` (run by `/api/cron/screener`, daily) downloads every frames file, writes `screener_metrics`, and logs to `screener_runs`; `rows.ts` holds its pure rules. It works to a 280 s budget: company profiles (`screener_filers`) and 10-K net income fixes it doesn't reach carry over to the next run.
+- The page: `/screener` and `/screener/[screen]` (`app/screener/`, `components/screener/`).
+  - The whole screen lives in the link. `filters.ts` reads and writes it (pure, shared by the page and the browser's filter panel); nonsense in a link is ignored, never an error.
+  - `query.ts` filters, sorts and pages in the database with the public key, and returns a failure reason instead of throwing, so the page answers 200 with an inline message.
+  - The starting screens are defined in `screens.ts`; each has its own indexable page. Any other combination in the link is `noindex` with `/screener` as canonical.
+  - Links to a company's research file use `prefetch={false}`: prefetching a file loads its data.
 - Frames traps:
   - A frame keeps each company's *last-filed* value, so net income often comes from the proxy statement (rounded, restated, sometimes in the wrong units). The job swaps in the 10-K's own figure from the company's concept file (`needsAnnualReportFix`).
   - 10-Qs' trailing-twelve-month spans look like annual periods (`fiscalYearsOnly` drops spans that overlap a real fiscal year).
@@ -77,7 +83,7 @@ npx vitest run lib/sec/normalize.test.ts -t "name"  # one test by name
   - `lib/supabase/server.ts`: per request, with the user's session.
   - `client.ts`: in the browser.
   - `service.ts`: `createServiceRoleClient` bypasses row-level security, for SEC writes and the cron; `createPublicClient` does anonymous reads.
-- Migrations are SQL files in `supabase/migrations/` that Eli pastes into the Supabase dashboard by hand; there is no migration runner. Everything through `0026` (the screener's tables, pasted 5 November 2026) is applied, and the next is `0027`.
+- Migrations are SQL files in `supabase/migrations/` that Eli pastes into the Supabase dashboard by hand; there is no migration runner. Everything through `0028` (the screener's tables and its publish function, pasted 5 and 6 November 2026) is applied, and the next is `0029`.
 - The database still holds the social, leaderboard and paper-trading tables. Leave them in place, and don't alter a live table without Eli's sign-off (which is why the version stamps reuse an existing column).
 - The untracked top-level `migrations/` folder is a stray copy of the older migrations.
 
@@ -103,7 +109,7 @@ npx vitest run lib/sec/normalize.test.ts -t "name"  # one test by name
 
 ## Workflow
 
-- `master` auto-deploys to production on Vercel, and every pushed branch gets a preview deploy. Work on a branch (currently `feat/research-site`) and merge to `master` only when Eli explicitly says to go live.
+- `master` auto-deploys to production on Vercel, and every pushed branch gets a preview deploy. Work on a branch (currently `feat/screener`) and merge to `master` only when Eli explicitly says to go live.
 - Phased work follows a brief in its own `docs/phase-<name>/` folder. Each stage ends with a recap in that folder (`docs/phase-<name>/phase-<name>-stage-X-recap.md`), a push, and a stop for Eli to check the preview.
 - To find a commit's preview URL without the gh CLI: `GET https://api.github.com/repos/elipoteet/dispatch-web/deployments?sha=<sha>`, then read that deployment's statuses for `environment_url`.
 - Eli often has `next start -p 3000` running locally. Ask before rebuilding `.next` or restarting it.
