@@ -65,8 +65,9 @@ export type CompanyFinancials = {
 // 2019 and 2024; review of 2 November 2026). 10: a year whose revenue, net
 // income or operating cash flow tags disagree by a units factor is settled
 // from the filing's own arithmetic, or left blank (lib/sec/units.ts; Tigo
-// Energy's 2025 revenue, 5 November 2026).
-export const NORMALIZER_VERSION = 10;
+// Energy's 2025 revenue, 5 November 2026). 11: two more total-debt tags
+// (concepts.ts, total_debt; GM's debt, phase eleven Stage B).
+export const NORMALIZER_VERSION = 11;
 
 export function accessionStamp(accession: string): string {
   return `${accession}#n${NORMALIZER_VERSION}`;

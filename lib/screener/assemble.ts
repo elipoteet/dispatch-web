@@ -395,11 +395,15 @@ export function assembleCompany(company: CompanyFrames, today: string): Assemble
 // normaliser's rule (normalize.ts, resolvePeriod): the earliest such filing's
 // value, or the latest one's if a later 10-K or 10-Q changed it. Proxy
 // statements and 8-Ks don't count, exactly as on the research file.
-export function annualReportValue(facts: SecFact[], start: string, end: string): number | null {
+export function annualReportFact(facts: SecFact[], start: string, end: string): SecFact | null {
   const filed = facts
     .filter((f) => /^10-[KQ]/.test(f.form) && f.start === start && f.end === end)
     .sort((a, b) => (a.filed < b.filed ? -1 : 1));
   // Earliest unless restated, then latest: either way, the latest filing's
   // value, since an unrestated figure is the same in every filing.
-  return filed.length ? filed[filed.length - 1].val : null;
+  return filed.length ? filed[filed.length - 1] : null;
+}
+
+export function annualReportValue(facts: SecFact[], start: string, end: string): number | null {
+  return annualReportFact(facts, start, end)?.val ?? null;
 }

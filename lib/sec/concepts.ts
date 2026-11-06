@@ -121,9 +121,22 @@ export const CONCEPT_TAGS: Record<TaggedLineItem, readonly string[]> = {
   // JPMorgan all file it); the fallbacks are what Alphabet files instead.
   // LongTermDebtNoncurrent comes last because it leaves out debt due within a
   // year, so it understates slightly. Checked against companyfacts, November 2026.
+  //
+  // Phase eleven, Stage B: two more tags that mean total debt, current part
+  // included. GM files its whole debt, GM Financial's included ($131.6B at
+  // the end of 2025), only as ...IncludingCurrentMaturities; Air Products,
+  // CNH, Dick's, Hertz and LKQ use one or the other. Across all filers' 2025
+  // and 2026 year-ends they gave a debt figure to 17 more companies (5
+  // November 2026). Tags for one slice of debt (convertible notes, notes
+  // payable) were measured and left out: taking a slice as the total would
+  // understate it. Ford files no total at all, only Ford and Ford Credit
+  // separately, which the SEC's data services leave out; Deere tags its
+  // long-term borrowings with its own element. Both stay blank.
   total_debt: [
     "LongTermDebt",
     "DebtLongtermAndShorttermCombinedAmount",
+    "LongTermDebtAndCapitalLeaseObligationsIncludingCurrentMaturities",
+    "DebtAndCapitalLeaseObligations",
     "LongTermDebtAndCapitalLeaseObligations",
     "LongTermDebtNoncurrent",
   ],
