@@ -110,17 +110,17 @@ export default async function HomePage() {
 
         <section className="rf-home-section" aria-labelledby="rf-home-tools">
           <div>
-            <div className="rf-lbl rf-kicker">Coming next</div>
+            <div className="rf-lbl rf-kicker">Tools</div>
             <h2 className="rf-h2" id="rf-home-tools">
-              Tools
+              Beyond one company
             </h2>
           </div>
           <div className="rf-tools">
-            <div className="rf-tool">
-              <span className="rf-lbl">Coming</span>
+            <Link href="/screener" className="rf-tool is-live" prefetch={false}>
+              <span className="rf-lbl">Open</span>
               <span className="rf-file-name">Screener</span>
-              <span className="rf-file-text">Filter every filer by growth, margins, cash flow and size.</span>
-            </div>
+              <span className="rf-file-text">Filter about 4,700 companies by growth, margins, cash flow and debt, from their filings.</span>
+            </Link>
             <div className="rf-tool">
               <span className="rf-lbl">Coming</span>
               <span className="rf-file-name">Compare</span>

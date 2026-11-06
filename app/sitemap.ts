@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { HOME_EXAMPLES } from "@/lib/research/home";
+import { STARTING_SCREENS } from "@/lib/screener/screens";
 
 const SITE_URL = "https://www.dispatchresearch.com";
 
@@ -19,6 +20,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     { url: SITE_URL, changeFrequency: "weekly", priority: 1 },
     { url: `${SITE_URL}/research`, changeFrequency: "weekly", priority: 0.9 },
+    // The screener and each starting screen; a person's own screen (filters
+    // in the link) is noindex and stays out.
+    { url: `${SITE_URL}/screener`, changeFrequency: "daily", priority: 0.9 },
+    ...STARTING_SCREENS.map((s) => ({ url: `${SITE_URL}/screener/${s.slug}`, changeFrequency: "daily" as const, priority: 0.7 })),
     { url: `${SITE_URL}/give`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${SITE_URL}/about`, changeFrequency: "monthly", priority: 0.5 },
     ...HOME_EXAMPLES.flatMap((t) =>
