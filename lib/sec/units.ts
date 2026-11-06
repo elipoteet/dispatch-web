@@ -12,11 +12,26 @@
 // returns nothing at all rather than guess. A blank is fine; a wrong number is
 // not.
 
-export function looksLikeUnitsError(a: number, b: number): boolean {
+// Two figures a units step apart: one is very close to a thousand or a
+// million times the other. Within 2% by default, which is what the same
+// figure in two units looks like after rounding (Tigo: exactly 1,000; a
+// figure in millions against one in dollars: 998,738). That is deliberately
+// tight. Genuinely different figures can sit a few hundred or a couple of
+// thousand times apart (CarGurus' 2021 net income, $109.2 million, against its
+// income to common shareholders, -$154,000, after a charge for its CarOffer
+// stake: 709 times; IAC's 2017 revenue against its goods sales: 769 times;
+// Fannie Mae's: 1,596 times). A looser test, tried first, blanked those two
+// research-file figures in the check of every stored company.
+//
+// Comparisons with a different measure (EPS x shares, operating income) carry
+// rounding and real differences, so callers pass a looser tolerance for those.
+export function looksLikeUnitsError(a: number, b: number, tolerance = 0.02): boolean {
   if (a === 0 || b === 0) return false;
   const r = Math.max(Math.abs(a), Math.abs(b)) / Math.min(Math.abs(a), Math.abs(b));
-  return (r >= 500 && r <= 2_000) || (r >= 500_000 && r <= 2_000_000);
+  return [1_000, 1_000_000].some((step) => Math.abs(r / step - 1) <= tolerance);
 }
+
+const LOOSE = 0.1;
 
 export function hasUnitsConflict(values: number[]): boolean {
   return values.some((a, i) => values.some((b, j) => i !== j && looksLikeUnitsError(a, b)));
@@ -81,9 +96,9 @@ export function settleCashFlow<T extends { val: number }>(candidates: T[]): Sett
 // - The tags agree with each other but not with EPS x shares: either net
 //   income or the share count is in the wrong units, and both happen (Rocky
 //   Mountain Chocolate's net income filed as -$4,560; Smith & Wesson's share
-//   count as 44,933). Operating income settles it: net income a units step
-//   from operating income too is the odd one out (n/a); otherwise the share
-//   count is, and net income stands. With no operating income to ask, n/a.
+//   count as 44,933). Operating income settles it: net income stands only
+//   when it is in operating income's range and EPS x shares is far outside
+//   it. Otherwise, or with no operating income to ask, n/a.
 export function settleNetIncome<T extends { val: number }>(
   candidates: T[],
   eps: number | null,
@@ -93,13 +108,20 @@ export function settleNetIncome<T extends { val: number }>(
   if (candidates.length === 0) return { picked: null, inconsistent: false };
   const expected = eps != null && shares != null && shares > 0 ? eps * shares : null;
   const pairConflict = hasUnitsConflict(candidates.map((c) => c.val));
-  const epsConflict = expected != null && expected !== 0 && looksLikeUnitsError(candidates[0].val, expected);
+  const epsConflict = expected != null && expected !== 0 && looksLikeUnitsError(candidates[0].val, expected, LOOSE);
   if (!pairConflict && !epsConflict) return { picked: candidates[0], inconsistent: false };
   if (!pairConflict) {
-    if (operatingIncome == null) return { picked: null, inconsistent: true };
-    return looksLikeUnitsError(candidates[0].val, operatingIncome)
-      ? { picked: null, inconsistent: true }
-      : { picked: candidates[0], inconsistent: false };
+    // Which of the two is in the same range as operating income: within 30
+    // times of it counts as near, beyond 100 times as far. Net income near and
+    // EPS x shares far means the share count is in other units, and net
+    // income stands; the reverse means net income is; anything else, n/a.
+    if (operatingIncome == null || operatingIncome === 0) return { picked: null, inconsistent: true };
+    const gap = (x: number) => Math.abs(Math.log10(Math.abs(x) / Math.abs(operatingIncome)));
+    const near = (x: number) => gap(x) < Math.log10(30);
+    const far = (x: number) => gap(x) > 2;
+    const income = candidates[0].val;
+    if (near(income) && far(expected!)) return { picked: candidates[0], inconsistent: false };
+    return { picked: null, inconsistent: true };
   }
   if (expected == null) return { picked: null, inconsistent: true };
   const tolerance = Math.max(Math.abs(expected) * 0.25, 0.005 * shares!);

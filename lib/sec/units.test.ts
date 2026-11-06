@@ -6,11 +6,14 @@ import tygoFixture from "@/lib/sec/__fixtures__/tygo-facts.json";
 const v = (tag: string, val: number) => ({ tag, val });
 
 describe("looksLikeUnitsError", () => {
-  it("recognises a thousand- or million-fold gap, not an ordinary one", () => {
+  it("recognises the same figure in two units, not two different figures far apart", () => {
     expect(looksLikeUnitsError(103_536_000_000, 103_536_000)).toBe(true); // Tigo Energy's revenue
     expect(looksLikeUnitsError(42_746_000, 42.8)).toBe(true); // net income filed in millions
     expect(looksLikeUnitsError(3_040_725_000, 7_042_000)).toBe(false); // AvalonBay: rent isn't customer-contract revenue
     expect(looksLikeUnitsError(16_978_000_000, 3_000_000)).toBe(false); // Fannie Mae 2024
+    expect(looksLikeUnitsError(14_364_000_000, 9_000_000)).toBe(false); // Fannie Mae 2025: 1,596 times
+    expect(looksLikeUnitsError(109_244_000, -154_000)).toBe(false); // CarGurus 2021: 709 times, both real
+    expect(looksLikeUnitsError(3_307_239_000, 4_302_000)).toBe(false); // IAC 2017 revenue and its goods sales: 769 times
     expect(looksLikeUnitsError(100, 0)).toBe(false);
     expect(hasUnitsConflict([1, 2, 3])).toBe(false);
     expect(hasUnitsConflict([5, 5_000])).toBe(true);
@@ -35,7 +38,9 @@ describe("settleRevenue", () => {
 
 describe("settleCashFlow", () => {
   it("is n/a when its tags disagree by a units factor, the first tag otherwise", () => {
-    expect(settleCashFlow([v("A", -2_489_676), v("B", -2_075)]).inconsistent).toBe(true);
+    expect(settleCashFlow([v("A", -2_075_000), v("B", -2_075)]).inconsistent).toBe(true);
+    // 1,200 times apart is not the same figure in two units: left alone.
+    expect(settleCashFlow([v("A", -2_489_676), v("B", -2_075)]).picked?.tag).toBe("A");
     expect(settleCashFlow([v("A", 10), v("B", 11)]).picked?.tag).toBe("A");
   });
 });
@@ -46,8 +51,15 @@ describe("settleNetIncome", () => {
     expect(r.picked?.tag).toBe("NetIncomeLossAvailableToCommonStockholdersBasic");
   });
 
-  it("won't take income to common as net income across a real gap (Fannie Mae)", () => {
+  it("keeps net income across a real gap to income to common (Fannie Mae, 1,596 times)", () => {
     const r = settleNetIncome([v("NetIncomeLoss", 14_364_000_000), v("NetIncomeLossAvailableToCommonStockholdersBasic", 9_000_000)], 0.0, 5_867e6, null);
+    expect(r.picked?.val).toBe(14_364_000_000);
+  });
+
+  it("won't pass over a figure that isn't a shifted copy of the one EPS agrees with", () => {
+    // Net income $41.8 billion (a profit) against a $41.8 million loss in the
+    // same units step: not the same figure, so n/a rather than a choice.
+    const r = settleNetIncome([v("NetIncomeLoss", 41_799_000_000), v("NetIncomeLossAvailableToCommonStockholdersBasic", -41_799_000)], -0.36, 116e6, null);
     expect(r).toEqual({ picked: null, inconsistent: true });
   });
 
@@ -83,5 +95,22 @@ describe("the research file's normaliser, on Tigo Energy's real filings", () => 
 
   it("has no revenue figure anywhere near a billion dollars", () => {
     for (const r of rows.filter((x) => x.lineItem === "revenue")) expect(Math.abs(r.value)).toBeLessThan(1e9);
+  });
+});
+
+describe("figures that are far apart but both real stay as they are", () => {
+  it("CarGurus 2021: net income stands beside income to common of -$154,000 and EPS of $0.00", () => {
+    const r = settleNetIncome(
+      [v("NetIncomeLoss", 109_244_000), v("ProfitLoss", 110_373_000), v("NetIncomeLossAvailableToCommonStockholdersBasic", -154_000)],
+      0,
+      117_142_062,
+      148_268_000,
+    );
+    expect(r).toEqual({ picked: { tag: "NetIncomeLoss", val: 109_244_000 }, inconsistent: false });
+  });
+
+  it("IAC 2017: revenue stands beside its goods sales", () => {
+    const r = settleRevenue([v("Revenues", 3_307_239_000), v("SalesRevenueGoodsNet", 4_302_000)], null, 651_008_000);
+    expect(r.picked?.val).toBe(3_307_239_000);
   });
 });
