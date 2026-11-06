@@ -1,7 +1,8 @@
 -- Phase eleven — the screener. See docs/phase-eleven/phase-eleven.md.
 -- Written to be run by hand in the Supabase SQL editor, same as every migration
--- before this one. WRITTEN IN STAGE A AND NOT YET PASTED: Stage B builds the
--- job that fills these tables, and may still adjust a column before Eli pastes.
+-- before this one. Written in Stage A and pasted by Eli on 5 November 2026
+-- (all four tables and every screener_metrics column checked with the public
+-- key the same day). Any change Stage B needs goes in a new migration.
 --
 -- NEW OBJECTS ONLY. Nothing here alters, drops, or touches an existing table.
 -- Everything is `if not exists`, so the file can be pasted again safely.

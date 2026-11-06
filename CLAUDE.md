@@ -52,6 +52,19 @@ npx vitest run lib/sec/normalize.test.ts -t "name"  # one test by name
 - Tiingo is the price fallback. It is end-of-day only and not split-adjusted, which `splitAdjust` corrects.
 - Finnhub has a separate, larger quota and serves quotes, profiles, estimates, the earnings calendar and the home-page markets tape (`lib/research/markets.ts`). Anything that needs only a live quote must use Finnhub, never Twelve Data.
 
+### Screener: `lib/sec/frames.ts`, `lib/screener/` (phase eleven, in progress)
+- Built from the SEC's frames API (one file per tag per calendar period, every company), never from Twelve Data or Finnhub. Brief: `docs/phase-eleven/phase-eleven.md`; Stage A findings: `docs/phase-eleven/phase-eleven-stage-A-report.md`.
+- The pieces:
+  - `framePlan` says which files to fetch.
+  - `assemble.ts` turns them into each company's years, using the normaliser's tag rules.
+  - `metrics.ts` computes every filter value, with a reason for every n/a.
+  - New tag lists are `SCREENER_CONCEPT_TAGS`, kept out of `CONCEPT_TAGS` so research pages don't move.
+- Frames traps, all handled in `assemble.ts`:
+  - A frame keeps each company's *last-filed* value, so net income often comes from the proxy statement, sometimes in the wrong units.
+  - 10-Qs' trailing-twelve-month spans look like annual periods.
+  - Some filings tag one figure in two units.
+- Live checks are opt-in (`SCREENER_LIVE=1`); see the top of `lib/screener/*.live.test.ts`.
+
 ### Background work
 - A person's first visit to a tab can start storage work through `after()`: loading peers' SEC files, two years of insider filings, the 10-K comparison. It runs only when `isCrawler()` (`lib/research/crawler.ts`) is false, so crawlers can't fill the database. Headless browsers count as crawlers, so test this with a desktop User-Agent.
 - `/api/cron/alerts` runs daily (`vercel.json`). It first runs the watchlist RSI and moving-average alerts, which still use the old memo engine in `lib/analysis/` and wait 8 s between tickers to stay inside the Twelve Data allowance. It then refreshes insider filings and filing changes until a 50 s deadline.
@@ -61,7 +74,7 @@ npx vitest run lib/sec/normalize.test.ts -t "name"  # one test by name
   - `lib/supabase/server.ts`: per request, with the user's session.
   - `client.ts`: in the browser.
   - `service.ts`: `createServiceRoleClient` bypasses row-level security, for SEC writes and the cron; `createPublicClient` does anonymous reads.
-- Migrations are SQL files in `supabase/migrations/` that Eli pastes into the Supabase dashboard by hand; there is no migration runner. Everything through `0025` is applied, and the next is `0026`.
+- Migrations are SQL files in `supabase/migrations/` that Eli pastes into the Supabase dashboard by hand; there is no migration runner. Everything through `0026` (the screener's tables, pasted 5 November 2026) is applied, and the next is `0027`.
 - The database still holds the social, leaderboard and paper-trading tables. Leave them in place, and don't alter a live table without Eli's sign-off (which is why the version stamps reuse an existing column).
 - The untracked top-level `migrations/` folder is a stray copy of the older migrations.
 
