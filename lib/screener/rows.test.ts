@@ -5,7 +5,8 @@ import {
   profileRow,
   reusableFix,
   screenerRow,
-  shouldRemoveMissing,
+  minPublishRows,
+  publishDecision,
   type NetIncomeFix,
 } from "@/lib/screener/rows";
 import type { Assembled, CompanyYear, Picked } from "@/lib/screener/assemble";
@@ -127,11 +128,19 @@ describe("screenerRow", () => {
   });
 });
 
-describe("shouldRemoveMissing", () => {
-  it("removes departed companies only after a complete run that wrote nearly as many rows as before", () => {
-    expect(shouldRemoveMissing({ framesComplete: true, written: 4_600, previous: 4_650 })).toBe(true);
-    expect(shouldRemoveMissing({ framesComplete: false, written: 4_650, previous: 4_650 })).toBe(false);
-    expect(shouldRemoveMissing({ framesComplete: true, written: 1_000, previous: 4_650 })).toBe(false);
-    expect(shouldRemoveMissing({ framesComplete: true, written: 900, previous: 0 })).toBe(true);
+describe("publishDecision", () => {
+  it("publishes a complete run that staged nearly as many rows as are showing", () => {
+    expect(publishDecision({ framesComplete: true, staged: 4_600, showingNow: 4_650 })).toEqual({ publish: true, reason: null });
+    expect(publishDecision({ framesComplete: true, staged: 900, showingNow: 0 }).publish).toBe(true);
+  });
+
+  it("keeps the last complete set after a failed download or a short run", () => {
+    expect(publishDecision({ framesComplete: false, staged: 4_650, showingNow: 4_650 }).publish).toBe(false);
+    expect(publishDecision({ framesComplete: true, staged: 1_000, showingNow: 4_650 })).toEqual({ publish: false, reason: "only 1000 rows staged against 4650 showing" });
+  });
+
+  it("asks the database to check at least nine in ten again", () => {
+    expect(minPublishRows(4_650)).toBe(4_185);
+    expect(minPublishRows(0)).toBe(1);
   });
 });

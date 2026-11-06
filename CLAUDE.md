@@ -40,6 +40,7 @@ npx vitest run lib/sec/normalize.test.ts -t "name"  # one test by name
 - "Current" means `sec_company.latest_accession` equals the newest 10-K/10-Q accession **stamped with `NORMALIZER_VERSION`**. Bump `NORMALIZER_VERSION` whenever the normaliser's output changes; that forces exactly one refresh per stored company. `COMPARISON_VERSION` in `filingChanges.ts` does the same for the 10-K risk-factor comparison.
 - Every `data.sec.gov` request carries a User-Agent containing `SEC_CONTACT_EMAIL`. There is no fallback on purpose: if it's unset, the SEC layer skips every call and logs why.
 - Other pieces:
+  - Units errors in a filing (the same figure tagged in two units, e.g. Tigo Energy's revenue): `units.ts`, shared by the normaliser and the screener. A conflict is settled from the filing's own arithmetic or left blank, never guessed.
   - Insider trades: `form4.ts`, `insiders.ts`.
   - "What changed" in the 10-K: `tenK.ts`, `riskFactors.ts`, `filingChanges.ts`.
   - Earnings dates from 8-K Item 2.02, and rule-based guidance: `releases.ts`, `guidance.ts`.
@@ -59,14 +60,16 @@ npx vitest run lib/sec/normalize.test.ts -t "name"  # one test by name
   - `assemble.ts` turns them into each company's years, using the normaliser's tag rules.
   - `metrics.ts` computes every filter value, with a reason for every n/a.
   - New tag lists are `SCREENER_CONCEPT_TAGS`, kept out of `CONCEPT_TAGS` so research pages don't move.
-- Frames traps, all handled in `assemble.ts`:
-  - A frame keeps each company's *last-filed* value, so net income often comes from the proxy statement, sometimes in the wrong units.
-  - 10-Qs' trailing-twelve-month spans look like annual periods.
-  - Some filings tag one figure in two units.
+  - `job.ts` (run by `/api/cron/screener`, daily) downloads every frames file, writes `screener_metrics`, and logs to `screener_runs`; `rows.ts` holds its pure rules. It works to a 280 s budget: company profiles (`screener_filers`) and 10-K net income fixes it doesn't reach carry over to the next run.
+- Frames traps:
+  - A frame keeps each company's *last-filed* value, so net income often comes from the proxy statement (rounded, restated, sometimes in the wrong units). The job swaps in the 10-K's own figure from the company's concept file (`needsAnnualReportFix`).
+  - 10-Qs' trailing-twelve-month spans look like annual periods (`fiscalYearsOnly` drops spans that overlap a real fiscal year).
+  - Some filings tag one figure in two units (`lib/sec/units.ts`).
 - Live checks are opt-in (`SCREENER_LIVE=1`); see the top of `lib/screener/*.live.test.ts`.
 
 ### Background work
 - A person's first visit to a tab can start storage work through `after()`: loading peers' SEC files, two years of insider filings, the 10-K comparison. It runs only when `isCrawler()` (`lib/research/crawler.ts`) is false, so crawlers can't fill the database. Headless browsers count as crawlers, so test this with a desktop User-Agent.
+- `/api/cron/screener` runs daily at 09:00 UTC (`vercel.json`; see Screener above).
 - `/api/cron/alerts` runs daily (`vercel.json`). It first runs the watchlist RSI and moving-average alerts, which still use the old memo engine in `lib/analysis/` and wait 8 s between tickers to stay inside the Twelve Data allowance. It then refreshes insider filings and filing changes until a 50 s deadline.
 
 ### Supabase

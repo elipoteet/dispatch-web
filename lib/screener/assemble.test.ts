@@ -8,7 +8,6 @@ import {
   fiscalYearsOnly,
   yearChain,
   type FrameCollection,
-  type Picked,
 } from "@/lib/screener/assemble";
 import type { FrameEntry, FrameResponse } from "@/lib/sec/frames";
 

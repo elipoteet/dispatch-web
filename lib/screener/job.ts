@@ -10,9 +10,12 @@
 //   4. takes net income from the 10-K where the frames hold a proxy
 //      statement's figure (rows.ts, needsAnnualReportFix), reusing last
 //      night's answer while the frames still hold the same filing;
-//   5. writes a row per company it has a profile for, and removes rows for
-//      companies that have left the list (rows.ts, shouldRemoveMissing);
-//   6. logs what it did in screener_runs.
+//   5. builds a row per company it has a profile for;
+//   6. writes them all into screener_metrics_next and swaps the whole set
+//      into screener_metrics in one transaction (migration 0027), so the
+//      screener never shows a half-updated table, and only after a complete
+//      run (rows.ts, publishDecision);
+//   7. logs what it did in screener_runs.
 // Steps 3 and 4 carry over: the first nights fill in the backlog, after
 // which each night has only a handful of new companies and new filings.
 //
@@ -32,7 +35,8 @@ import {
   profileRow,
   reusableFix,
   screenerRow,
-  shouldRemoveMissing,
+  minPublishRows,
+  publishDecision,
   type NetIncomeFix,
   type ProfileRow,
 } from "@/lib/screener/rows";
@@ -45,12 +49,17 @@ export type JobOptions = {
   // The function's whole allowance, less a margin.
   budgetMs: number;
   today: string;
+  // Test only: wait this long between staging and publishing, to show what a
+  // run cut off at that point leaves behind.
+  pauseBeforePublishMs?: number;
 };
 
 export type JobSummary = {
   runId: number | null;
   frames: { requested: number; fetched: number; notFiled: number; failed: number; mb: number; seconds: number };
-  companies: { listed: number; written: number; removed: number | null };
+  // written: rows staged tonight; published: rows now showing, or null with
+  // notPublished saying why the last complete set was kept.
+  companies: { listed: number; written: number; published: number | null; removed: number | null; notPublished: string | null };
   skipped: Record<string, number>;
   profiles: { fetched: number; failed: number; missingAfter: number };
   netIncome: { needed: number; reused: number; fetched: number; pending: number };
@@ -85,7 +94,7 @@ export async function runScreenerJob(options: JobOptions): Promise<JobSummary> {
   const summary: JobSummary = {
     runId: null,
     frames: { requested: 0, fetched: 0, notFiled: 0, failed: 0, mb: 0, seconds: 0 },
-    companies: { listed: 0, written: 0, removed: null },
+    companies: { listed: 0, written: 0, published: null, removed: null, notPublished: null },
     skipped: {},
     profiles: { fetched: 0, failed: 0, missingAfter: 0 },
     netIncome: { needed: 0, reused: 0, fetched: 0, pending: 0 },
@@ -241,14 +250,24 @@ export async function runScreenerJob(options: JobOptions): Promise<JobSummary> {
     }
     summary.profiles.missingAfter = summary.skipped["awaiting industry and headquarters"] ?? 0;
 
-    const { count: before } = await db.from("screener_metrics").select("cik", { count: "exact", head: true });
-    await writeAll(db, "screener_metrics", rows, "cik");
+    // —— 6. Stage, then publish all at once (migration 0027) ——
+    // Nothing the site reads changes until screener_publish commits; a run
+    // cut off before then leaves last night's complete set showing.
+    const cleared = await db.from("screener_metrics_next").delete().neq("cik", "");
+    if (cleared.error) throw new Error(`clearing screener_metrics_next: ${cleared.error.message}`);
+    await writeAll(db, "screener_metrics_next", rows, "cik");
     summary.companies.written = rows.length;
 
-    if (shouldRemoveMissing({ framesComplete: summary.frames.failed === 0, written: rows.length, previous: before ?? 0 })) {
-      const { count, error } = await db.from("screener_metrics").delete({ count: "exact" }).lt("updated_at", runAt);
-      if (error) throw new Error(`removing departed companies: ${error.message}`);
-      summary.companies.removed = count ?? 0;
+    const { count: showingNow } = await db.from("screener_metrics").select("cik", { count: "exact", head: true });
+    const decision = publishDecision({ framesComplete: summary.frames.failed === 0, staged: rows.length, showingNow: showingNow ?? 0 });
+    if (options.pauseBeforePublishMs) await new Promise((r) => setTimeout(r, options.pauseBeforePublishMs));
+    if (decision.publish) {
+      const { data, error } = await db.rpc("screener_publish", { min_rows: minPublishRows(showingNow ?? 0) });
+      if (error) throw new Error(`publishing: ${error.message}`);
+      summary.companies.published = Number(data);
+      summary.companies.removed = Math.max(0, (showingNow ?? 0) - summary.companies.published);
+    } else {
+      summary.companies.notPublished = decision.reason;
     }
   } catch (err) {
     summary.error = err instanceof Error ? err.message : String(err);
@@ -269,6 +288,8 @@ export async function runScreenerJob(options: JobOptions): Promise<JobSummary> {
           ...summary.skipped,
           "frames files that failed": summary.frames.failed,
           "net income from the 10-K still to fetch": summary.netIncome.pending,
+          published: summary.companies.published,
+          "not published because": summary.companies.notPublished,
           "companies removed": summary.companies.removed,
         },
         seconds: summary.seconds,

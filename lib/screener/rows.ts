@@ -113,14 +113,25 @@ export function screenerRow(input: ScreenerRowInput): Record<string, unknown> {
   return row;
 }
 
-// —— Removing companies that left the list ——
-// Rows not rewritten tonight belong to companies that left: delisted, gone
-// past 18 months without an annual report, or dropped from the SEC's ticker
-// file. They're removed only after a run that read every frames file, and
-// only if it wrote at least nine in ten of the rows there were before, so an
-// SEC outage or a half-finished run never empties the screener.
-export function shouldRemoveMissing(run: { framesComplete: boolean; written: number; previous: number }): boolean {
-  if (!run.framesComplete) return false;
-  if (run.previous === 0) return true;
-  return run.written >= run.previous * 0.9;
+// —— Publishing ——
+// A run writes every row into screener_metrics_next and then swaps the whole
+// set in at once (migration 0027, screener_publish), so the screener shows
+// either last night's complete set or tonight's, never a mixture, and
+// companies that left the list (delisted, past 18 months without an annual
+// report, out of the SEC's ticker file) drop out with the swap.
+//
+// It publishes only after a run that read every frames file and staged at
+// least nine in ten of the rows showing now, so an SEC outage or a
+// half-finished run never empties the screener. The database checks the
+// staged count again (minPublishRows) before swapping.
+export function minPublishRows(showingNow: number): number {
+  return Math.max(1, Math.ceil(showingNow * 0.9));
+}
+
+export function publishDecision(run: { framesComplete: boolean; staged: number; showingNow: number }): { publish: boolean; reason: string | null } {
+  if (!run.framesComplete) return { publish: false, reason: "some frames files failed to download" };
+  if (run.staged < minPublishRows(run.showingNow)) {
+    return { publish: false, reason: `only ${run.staged} rows staged against ${run.showingNow} showing` };
+  }
+  return { publish: true, reason: null };
 }
