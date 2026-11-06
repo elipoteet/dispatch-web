@@ -111,6 +111,17 @@ describe("the main ten", () => {
     expect(r.values.gross_margin).toBeCloseTo(0.3);
   });
 
+  it("calls gross profit above revenue inconsistent, not a margin over 100%", () => {
+    // JAKKS Pacific, 2025: a quarter's revenue against the year's gross profit.
+    const r = run({ latest: { revenue: 113, gross_profit: 185 } });
+    expect(r.values.gross_margin).toBeNull();
+    expect(r.na.gross_margin).toBe("inconsistent");
+    // Gross profit equal to revenue (no cost of revenue) is a real 100%.
+    expect(run({ latest: { gross_profit: 1000 } }).values.gross_margin).toBe(1);
+    const fromCost = run({ latest: { gross_profit: MISSING, cost_of_revenue: -50 } });
+    expect(fromCost.na.gross_margin).toBe("inconsistent");
+  });
+
   it("has every measure, as a number or a reason", () => {
     for (const key of METRICS) {
       if (m.values[key] == null) expect(m.na[key]).toBeDefined();

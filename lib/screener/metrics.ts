@@ -169,6 +169,12 @@ export function computeMetrics(company: Assembled, kind: FilerKind): ScreenerMet
     let gross = v(L.gross_profit);
     if (gross == null && revenue != null && L.cost_of_revenue) gross = revenue - L.cost_of_revenue.val;
     results.gross_margin = overRevenue(gross, revenue);
+    // Gross profit can't exceed revenue. Where the filed figures say it does
+    // (JAKKS Pacific's 2025 "annual" revenue is one quarter's; eight companies
+    // on 6 November 2026), they disagree with each other, and which one is
+    // wrong can't be told from the frames: n/a, never a guess.
+    const gm = results.gross_margin.value;
+    if (gm != null && gm > 1 + 1e-9) results.gross_margin = na("inconsistent");
   }
   results.operating_margin = overRevenue(v(L.operating_income), revenue);
   results.net_margin = overRevenue(v(L.net_income), revenue);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   applyNetIncomeFix,
+  companyNameFor,
   needsAnnualReportFix,
   profileRow,
   reusableFix,
@@ -24,6 +25,29 @@ const TESLA = year({
   revenue: p(94_827_000_000, "10K-2026"),
   operating_cash_flow: p(15_000_000_000, "10K-2026"),
   net_income: p(3_855_000_000, "DEF14A-2026", "NetIncomeLoss"),
+});
+
+describe("companyNameFor", () => {
+  it("keeps the frames' name when it is the registrant's name written differently", () => {
+    expect(companyNameFor("A. O. Smith Corporation", "SMITH A O CORP")).toBe("A. O. Smith Corporation");
+    expect(companyNameFor("W. R. BERKLEY CORP", "BERKLEY W R CORP")).toBe("W. R. BERKLEY CORP");
+    expect(companyNameFor("McDONALD’S CORPORATION", "MCDONALDS CORP")).toBe("McDONALD’S CORPORATION");
+    expect(companyNameFor("COLGATE-PALMOLIVE COMPANY", "COLGATE PALMOLIVE CO")).toBe("COLGATE-PALMOLIVE COMPANY");
+    expect(companyNameFor("ELI LILLY AND COMPANY", "ELI LILLY & Co")).toBe("ELI LILLY AND COMPANY");
+    expect(companyNameFor("The TJX Companies, Inc.", "TJX COMPANIES INC /DE/")).toBe("The TJX Companies, Inc.");
+    expect(companyNameFor("Vantage Corp", "Vantage Corp (Singapore)")).toBe("Vantage Corp");
+  });
+
+  it("takes the registrant's name over a co-filer's or an old one", () => {
+    expect(companyNameFor("BofA Finance LLC", "BANK OF AMERICA CORP /DE/")).toBe("BANK OF AMERICA CORP /DE/");
+    expect(companyNameFor("SKK Holdings Limited", "Rantizo")).toBe("Rantizo");
+    expect(companyNameFor("FRANKLIN RESOURCES, INC.", "FRANKLIN TEMPLETON INC")).toBe("FRANKLIN TEMPLETON INC");
+  });
+
+  it("falls back to the frames' name with no profile", () => {
+    expect(companyNameFor("NVIDIA CORP", null)).toBe("NVIDIA CORP");
+    expect(companyNameFor("NVIDIA CORP", "  ")).toBe("NVIDIA CORP");
+  });
 });
 
 describe("needsAnnualReportFix", () => {

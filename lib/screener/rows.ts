@@ -74,6 +74,35 @@ export function profileRow(p: FilerProfile, fetchedAt: string): ProfileRow {
   };
 }
 
+// —— The company's name ——
+// A frame labels each value with the name on the filing it came from, which
+// can be an old name (Rantizo still "SKK Holdings Limited") or a co-filer's
+// (Bank of America's figures arrive as "BofA Finance LLC"). The submissions
+// profile has the registrant's current name, but often in the SEC's index
+// form ("SMITH A O CORP", "BERKLEY W R CORP"). So the frames' name is kept
+// only when it is the profile's name written differently: the same letters
+// once case, punctuation, word order, "&"/"and", a state tag ("/DE/") and the
+// legal form are set aside. Otherwise the profile's name wins.
+const LEGAL_WORDS = /\b(the|corporation|corp|incorporated|inc|company|co|limited|ltd|llc|plc|public)\b/g;
+
+function nameLetters(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\s*[/\\(][^/\\()]*[/\\)]?\s*$/, "")
+    .replace(/&/g, " and ")
+    .replace(/[’'.]/g, "")
+    .replace(LEGAL_WORDS, " ")
+    .replace(/[^a-z0-9]/g, "")
+    .split("")
+    .sort()
+    .join("");
+}
+
+export function companyNameFor(framesName: string, profileName: string | null | undefined): string {
+  if (!profileName?.trim()) return framesName;
+  return nameLetters(framesName) === nameLetters(profileName) ? framesName : profileName.trim();
+}
+
 export type ScreenerRowInput = {
   company: Assembled;
   ticker: string;
@@ -96,7 +125,7 @@ export function screenerRow(input: ScreenerRowInput): Record<string, unknown> {
     cik: String(a.cik).padStart(10, "0"),
     ticker: input.ticker,
     exchange: input.exchange,
-    name: a.name,
+    name: companyNameFor(a.name, profile.name),
     sector: sectorFromSic(profile.sic),
     sic: profile.sic,
     filer_kind: input.kind,
