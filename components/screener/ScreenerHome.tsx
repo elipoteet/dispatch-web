@@ -1,15 +1,17 @@
 import Link from "next/link";
 import { dayLabel, filterLines } from "@/lib/screener/filters";
 import { loadOverview } from "@/lib/screener/query";
-import { STARTING_SCREENS } from "@/lib/screener/screens";
+import { SCREEN_GROUPS, STARTING_SCREENS } from "@/lib/screener/screens";
+import { BUILD_YOUR_OWN_HREF } from "@/components/screener/ScreenerResults";
 
-// The screener's opening view, as the mockup: what it is, the numbered
-// starting screens with live counts, a way to build your own, and three
-// things to know.
+// The screener's opening view: what it is, the starting screens grouped under
+// the question each answers (the addendum, 7 November 2026), each card with
+// its title, why investors look, its filters in plain words and a live
+// count; then a way to build your own, and three things to know.
 export async function ScreenerHome() {
   const overview = await loadOverview();
   const counts = overview.ok ? overview.data.counts : null;
-  const about = overview.ok ? `about ${(Math.round(overview.data.total / 100) * 100).toLocaleString("en-US")}` : "about 4,700";
+  const about = overview.ok ? `about ${(Math.round(overview.data.total / 100) * 100).toLocaleString("en-US")}` : "about 4,600";
   const updated = overview.ok ? dayLabel(overview.data.updated) : null;
 
   return (
@@ -19,8 +21,7 @@ export async function ScreenerHome() {
           <div className="rf-lbl rf-kicker">Screener</div>
           <h1 className="rf-page-title">Find companies by what they report</h1>
           <p className="rf-page-lede">
-            Filter {about} U.S.-listed companies by the figures in their SEC filings: growth, margins, cash flow, debt and share count. It
-            finds companies to read about, not which ones to own.
+            {`Filter ${about} U.S.-listed companies by the figures in their SEC filings: growth, margins, returns, cash flow, debt and dividends. It finds companies to read about, not which ones to own.`}
           </p>
         </header>
 
@@ -36,34 +37,49 @@ export async function ScreenerHome() {
           <div>
             <div className="rf-lbl rf-kicker">Starting screens</div>
             <h2 className="rf-h2" id="scr-start">
-              Pick a starting point
+              Start with a question
             </h2>
-            <p className="rf-dek">Each is a set of filters you can open, sort and change.</p>
+            <p className="rf-dek">Each screen is a set of filters you can open, sort and change.</p>
           </div>
-          <ol className="rf-scr-cards">
-            {STARTING_SCREENS.map((s, i) => {
-              const n = counts?.[s.slug];
-              return (
-                <li key={s.slug}>
-                  <Link href={`/screener/${s.slug}`} className="rf-scr-card" prefetch={false}>
-                    <span className="rf-scr-card-n">{String(i + 1).padStart(2, "0")}</span>
-                    <span className="rf-scr-card-title">{s.title}</span>
-                    <span className="rf-scr-card-filters">
-                      {filterLines(s.filters, "card").map((line) => (
-                        <span key={line}>{line}</span>
-                      ))}
-                    </span>
-                    <span className="rf-scr-card-foot">
-                      <span>{n != null ? `${n.toLocaleString("en-US")} ${n === 1 ? "company" : "companies"}` : " "}</span>
-                      <span aria-hidden="true" className="rf-scr-card-arrow">
-                        →
-                      </span>
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ol>
+          {SCREEN_GROUPS.map((g) => {
+            const screens = STARTING_SCREENS.filter((s) => s.group === g.key);
+            if (!screens.length) return null;
+            return (
+              <section key={g.key} className="rf-scr-question" aria-labelledby={`scr-q-${g.key}`}>
+                <h3 className="rf-scr-q" id={`scr-q-${g.key}`}>
+                  <span className="rf-lbl">{g.label}</span>
+                  <span className="rf-scr-q-text">{g.question}</span>
+                </h3>
+                <ol className="rf-scr-cards" start={STARTING_SCREENS.indexOf(screens[0]) + 1}>
+                  {screens.map((s) => {
+                    // Numbered through all the groups, in the list's order.
+                    const n = STARTING_SCREENS.indexOf(s) + 1;
+                    const count = counts?.[s.slug];
+                    return (
+                      <li key={s.slug}>
+                        <Link href={`/screener/${s.slug}`} className="rf-scr-card" prefetch={false}>
+                          <span className="rf-scr-card-n">{String(n).padStart(2, "0")}</span>
+                          <span className="rf-scr-card-title">{s.title}</span>
+                          {s.why && <span className="rf-scr-card-why">{s.why}</span>}
+                          <span className="rf-scr-card-filters">
+                            {filterLines(s.filters).map((line) => (
+                              <span key={line.key}>{line.text}</span>
+                            ))}
+                          </span>
+                          <span className="rf-scr-card-foot">
+                            <span>{count != null ? `${count.toLocaleString("en-US")} ${count === 1 ? "company" : "companies"}` : " "}</span>
+                            <span aria-hidden="true" className="rf-scr-card-arrow">
+                              →
+                            </span>
+                          </span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </section>
+            );
+          })}
         </section>
 
         <section className="rf-scr-section rf-scr-build" aria-labelledby="scr-build">
@@ -72,9 +88,12 @@ export async function ScreenerHome() {
             <h2 className="rf-h2" id="scr-build">
               Set your own filters
             </h2>
-            <p className="rf-dek">Start from every company and narrow by revenue, growth, margins, free cash flow, net cash, share count and sector.</p>
+            <p className="rf-dek">
+              Start from every company with revenue of $100 million or more, then narrow by growth, margins, returns, cash flow, debt,
+              dividends, sector and headquarters. Each filter says what it measures and where the middle company sits.
+            </p>
           </div>
-          <Link href="/screener?edit=1" className="rf-btn rf-btn-solid" prefetch={false}>
+          <Link href={BUILD_YOUR_OWN_HREF} className="rf-btn rf-btn-solid" prefetch={false}>
             Open the filters
           </Link>
         </section>
@@ -90,19 +109,18 @@ export async function ScreenerHome() {
             <li>
               <strong>From the filings.</strong>
               <span>
-                Every figure comes from the annual reports companies file with the SEC, updated nightly. Free cash flow is the one we
-                calculate: operating cash flow minus capital spending.
+                Every figure comes from the annual reports companies file with the SEC, updated nightly. Free cash flow, net cash and return on
+                invested capital are calculated by The Dispatch, and each filter says how.
               </span>
             </li>
             <li>
               <strong>Facts, not rankings.</strong>
-              <span>Results sort by the column you choose, revenue by default. Nothing here scores a company or rates one above another.</span>
+              <span>Results sort by the column you choose. Nothing here scores a company or rates one above another.</span>
             </li>
             <li>
               <strong>No price filters yet.</strong>
               <span>
-                P/E, dividend yield, market value and price moves need share prices, so they aren&rsquo;t here. Each company&rsquo;s file has
-                them on its Valuation tab.
+                {"P/E, dividend yield, market value and price moves need share prices, so they aren’t here. Each result links to what its price assumes, on the company’s Valuation tab."}
               </span>
             </li>
           </ol>

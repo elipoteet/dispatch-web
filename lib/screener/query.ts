@@ -8,7 +8,7 @@
 
 import { unstable_cache } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/service";
-import { RANGE_FILTERS, conditions, rangeFilter, type Filters, type View } from "@/lib/screener/filters";
+import { NO_FILTERS, RANGE_FILTERS, conditions, filterLines, rangeFilter, type Filters, type View } from "@/lib/screener/filters";
 import { STARTING_SCREENS } from "@/lib/screener/screens";
 
 const TABLE = "screener_metrics";
@@ -21,6 +21,7 @@ export type ResultRow = {
   ticker: string;
   name: string;
   sector: string | null;
+  state: string | null;
   periodEnd: string;
   // By filter param ("growth1y"), as stored: fractions and dollars.
   values: Record<string, number | null>;
@@ -28,18 +29,27 @@ export type ResultRow = {
 
 export type Results = { ok: true; rows: ResultRow[]; total: number } | Failure;
 
-const SELECT = ["cik", "ticker", "name", "sector", "period_end", ...RANGE_FILTERS.map((f) => f.column)].join(",");
+const SELECT = ["cik", "ticker", "name", "sector", "state", "period_end", ...RANGE_FILTERS.map((f) => f.column)].join(",");
 
-// The two queries below: matching rows, and a bare count.
+// The two queries below: matching rows, and a bare count. Each condition is
+// applied with its own method, so the query keeps its type.
 function listQuery(filters: Filters) {
   let q = createPublicClient().from(TABLE).select(SELECT, { count: "exact" });
-  for (const c of conditions(filters)) q = c.op === "in" ? q.in(c.column, c.values) : c.op === "gte" ? q.gte(c.column, c.value) : q.lte(c.column, c.value);
+  for (const c of conditions(filters)) {
+    if (c.op === "in") q = q.in(c.column, c.values);
+    else if (c.op === "is") q = q.eq(c.column, c.value);
+    else q = c.op === "gte" ? q.gte(c.column, c.value) : q.lte(c.column, c.value);
+  }
   return q;
 }
 
 function countQuery(filters: Filters) {
   let q = createPublicClient().from(TABLE).select("cik", { count: "exact", head: true });
-  for (const c of conditions(filters)) q = c.op === "in" ? q.in(c.column, c.values) : c.op === "gte" ? q.gte(c.column, c.value) : q.lte(c.column, c.value);
+  for (const c of conditions(filters)) {
+    if (c.op === "in") q = q.in(c.column, c.values);
+    else if (c.op === "is") q = q.eq(c.column, c.value);
+    else q = c.op === "gte" ? q.gte(c.column, c.value) : q.lte(c.column, c.value);
+  }
   return q;
 }
 
@@ -58,6 +68,7 @@ function toRow(raw: Record<string, unknown>): ResultRow {
     // Written for display by the nightly job (lib/screener/names.ts).
     name: String(raw.name ?? raw.ticker),
     sector: raw.sector == null ? null : String(raw.sector),
+    state: raw.state == null ? null : String(raw.state),
     periodEnd: String(raw.period_end ?? ""),
     values,
   };
@@ -100,7 +111,7 @@ export async function loadResults(view: View): Promise<Results> {
     const { data, count: total, error } = await q;
     if (error) return failure("results", error);
     // Nothing matches: a tight screen, or a table the job hasn't filled yet.
-    if (!total && (await count({ ranges: {}, sectors: [] })) === 0) return { ok: false, reason: "not-built" };
+    if (!total && (await count(NO_FILTERS)) === 0) return { ok: false, reason: "not-built" };
     return { ok: true, total: total ?? 0, rows: ((data ?? []) as unknown as Record<string, unknown>[]).map(toRow) };
   } catch (e) {
     return failure("results", e);
@@ -112,13 +123,15 @@ export async function loadResults(view: View): Promise<Results> {
 export type Alone = { key: string; alone: number };
 
 export async function filtersAlone(filters: Filters): Promise<Alone[] | null> {
-  const keys = [...RANGE_FILTERS.filter((f) => filters.ranges[f.param]).map((f) => f.param), ...(filters.sectors.length ? ["sector"] : [])];
+  const keys = filterLines(filters).map((l) => l.key);
+  const alone = (key: string): Filters => {
+    if (key === "sector") return { ...NO_FILTERS, sectors: filters.sectors };
+    if (key === "state") return { ...NO_FILTERS, states: filters.states };
+    if (key === "dividend") return { ...NO_FILTERS, dividend: true };
+    return { ...NO_FILTERS, ranges: { [key]: filters.ranges[key] } };
+  };
   try {
-    const counts = await Promise.all(
-      keys.map((key) =>
-        count(key === "sector" ? { ranges: {}, sectors: filters.sectors } : { ranges: { [key]: filters.ranges[key] }, sectors: [] }),
-      ),
-    );
+    const counts = await Promise.all(keys.map((key) => count(alone(key))));
     return keys.map((key, i) => ({ key, alone: counts[i] })).sort((a, b) => a.alone - b.alone);
   } catch (e) {
     failure("filters alone", e);
@@ -138,7 +151,7 @@ export type Overview = {
 async function readOverview(): Promise<Overview> {
   const db = createPublicClient();
   const [total, latest, ...counts] = await Promise.all([
-    count({ ranges: {}, sectors: [] }),
+    count(NO_FILTERS),
     db.from(TABLE).select("updated_at").order("updated_at", { ascending: false }).limit(1).abortSignal(AbortSignal.timeout(TIMEOUT_MS)),
     ...STARTING_SCREENS.map((s) => count(s.filters)),
   ]);
@@ -147,9 +160,31 @@ async function readOverview(): Promise<Overview> {
   return { total, updated, counts: Object.fromEntries(STARTING_SCREENS.map((s, i) => [s.slug, counts[i]])) };
 }
 
-// The table changes once a night, so the opening view's eight reads are
-// shared for fifteen minutes. A failed read isn't cached.
-const cachedOverview = unstable_cache(readOverview, ["screener-overview", "v1"], { revalidate: 900 });
+// The table changes once a night, so the opening view's reads are shared for
+// fifteen minutes. A failed read isn't cached.
+const cachedOverview = unstable_cache(readOverview, ["screener-overview", "v2"], { revalidate: 900 });
+
+// —— Where the middle company sits, by measure (migration 0029) ——
+// metric column -> median, as stored (fractions, dollars). Shared for
+// fifteen minutes like the counts. Missing or unreadable: an empty map, and
+// the filter panel simply leaves the line out.
+async function readMedians(): Promise<Record<string, number>> {
+  const { data, error } = await createPublicClient().from("screener_medians").select("metric,median").abortSignal(AbortSignal.timeout(TIMEOUT_MS));
+  if (error) throw new Error(`screener medians: ${error.message}`);
+  return Object.fromEntries(((data ?? []) as { metric: string; median: number }[]).map((r) => [r.metric, Number(r.median)]));
+}
+
+const cachedMedians = unstable_cache(readMedians, ["screener-medians", "v1"], { revalidate: 900 });
+
+export async function loadMedians(): Promise<Record<string, number>> {
+  if (forcedFailure()) return {};
+  try {
+    return await cachedMedians();
+  } catch (e) {
+    failure("medians", e);
+    return {};
+  }
+}
 
 export async function loadOverview(): Promise<{ ok: true; data: Overview } | Failure> {
   const forced = forcedFailure();

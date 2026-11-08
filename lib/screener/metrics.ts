@@ -327,6 +327,13 @@ export function computeMetrics(company: Assembled, kind: FilerKind, sic: string 
   else if (sharesBasis === null) results.share_change_1y = L.shares_diluted && P.shares_diluted ? na("base") : na("missing");
   else if (!sharesBasis) results.share_change_1y = na("split");
   else results.share_change_1y = growth(v(L.shares_diluted), v(P.shares_diluted));
+  // A share count can't fall by half or more in a year through buybacks. A
+  // drop that size is a change in what's counted (Brilliant Earth's diluted
+  // count fell 85% in 2025 when its other share class stopped counting) or a
+  // reverse split, so it's n/a and can't pass for a buyback. Rises stay:
+  // a deal paid in shares can double a count.
+  const sc = results.share_change_1y.value;
+  if (sc != null && sc <= -0.5) results.share_change_1y = na("split");
 
   // —— Profitability ——
   const netIncome = v(L.net_income);
@@ -392,11 +399,17 @@ export function computeMetrics(company: Assembled, kind: FilerKind, sic: string 
   // —— Return on invested capital (main ten) ——
   // Invested capital is debt plus equity less cash and short-term
   // investments, at year end. n/a for banks, insurers and REITs, whose
-  // capital is their deposits, float or properties.
+  // capital is their deposits, float or properties. n/a too when equity is
+  // zero or below, as for return on equity and debt to equity: a company
+  // that owes more than it owns has no meaningful capital base, and the
+  // ratio runs to the thousands (McKesson 1,348%, Unisys 1,550% on 7
+  // November 2026).
   if (kind !== "operating") {
     results.roic = na("not-applicable");
   } else if (operatingIncome == null || equity == null || debt == null || cash == null) {
     results.roic = na("missing");
+  } else if (equity <= 0) {
+    results.roic = na("base");
   } else {
     const invested = debt.value + equity - cash.value;
     tax = taxRate(L);

@@ -119,7 +119,7 @@ export default async function HomePage() {
             <Link href="/screener" className="rf-tool is-live" prefetch={false}>
               <span className="rf-lbl">Open</span>
               <span className="rf-file-name">Screener</span>
-              <span className="rf-file-text">Filter about 4,700 companies by growth, margins, cash flow and debt, from their filings.</span>
+              <span className="rf-file-text">Filter about 4,600 companies by growth, margins, returns, cash flow and debt, from their filings.</span>
             </Link>
             <div className="rf-tool">
               <span className="rf-lbl">Coming</span>

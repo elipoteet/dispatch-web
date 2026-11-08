@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { parseView } from "@/lib/screener/filters";
-import { startingScreen } from "@/lib/screener/screens";
+import { describeScreen, parseView } from "@/lib/screener/filters";
+import { screenDescription, startingScreen } from "@/lib/screener/screens";
 import { ScreenerResults } from "@/components/screener/ScreenerResults";
 
 // A starting screen's own page, /screener/{slug} (lib/screener/screens.ts).
-// Indexable, with its own title and description. Its filters are fixed; the
-// link may add only a sort and how many rows to show, and changing a filter
-// moves to /screener with the filters spelled out.
+// Indexable, with a title and description from its name and why line, and
+// sorted by its own measure. Its filters are fixed; the link may add only a
+// sort and how many rows to show, and changing a filter moves to /screener
+// with the filters spelled out. Stage C's retired addresses redirect to
+// /screener (next.config.ts).
 
 type Props = {
   params: Promise<{ screen: string }>;
@@ -20,17 +22,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // here (docs/claude-project-context.md, gotcha 2).
   if (!screen) return { title: "Screen not found", robots: { index: false, follow: false } };
   const url = `/screener/${screen.slug}`;
+  const description = screenDescription(screen, describeScreen(screen.filters));
   return {
     title: `${screen.title} — Screener`,
-    description: screen.description,
+    description,
     alternates: { canonical: url },
-    openGraph: { url, title: screen.title, description: screen.description },
+    openGraph: { url, title: screen.title, description },
   };
 }
 
 export default async function StartingScreenPage({ params, searchParams }: Props) {
   const screen = startingScreen((await params).screen);
   if (!screen) notFound();
-  const asked = parseView(await searchParams);
+  const asked = parseView(await searchParams, { sort: screen.sort, order: screen.order });
   return <ScreenerResults view={{ ...asked, filters: screen.filters, edit: false }} screen={screen} />;
 }

@@ -182,7 +182,9 @@ export function screenerRow(input: ScreenerRowInput): Record<string, unknown> {
 // —— Where the middle company sits ——
 // For each measure, the median across every company the run publishes that
 // has a value for it (n/a left out), so the filter panel can say "Half of
-// companies: above 38%". For "pays a dividend", the share that do.
+// companies: above 38%". For "pays a dividend", the share of every company
+// that does: a company with no dividend line paid none it reported, and
+// counting only those with a line said 95%.
 export type Median = { metric: string; median: number; companies: number };
 
 export function medians(rows: Record<string, unknown>[], keys: readonly string[]): Median[] {
@@ -194,8 +196,10 @@ export function medians(rows: Record<string, unknown>[], keys: readonly string[]
     const median = values.length % 2 ? values[mid] : (values[mid - 1] + values[mid]) / 2;
     out.push({ metric: key, median, companies: values.length });
   }
-  const dividends = rows.map((r) => r.pays_dividend).filter((x): x is boolean => typeof x === "boolean");
-  if (dividends.length) out.push({ metric: "pays_dividend", median: dividends.filter(Boolean).length / dividends.length, companies: dividends.length });
+  if (rows.length) {
+    const paying = rows.filter((r) => r.pays_dividend === true).length;
+    out.push({ metric: "pays_dividend", median: paying / rows.length, companies: rows.length });
+  }
   return out;
 }
 

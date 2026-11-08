@@ -12,7 +12,7 @@ type Props = { searchParams: Promise<Record<string, string | string[] | undefine
 
 const TITLE = "Screener: find companies by what they report";
 const DESCRIPTION =
-  "Filter about 4,700 U.S.-listed companies by what they report to the SEC: revenue growth, margins, free cash flow, net cash and share count. Free, no account needed.";
+  "Filter about 4,600 U.S.-listed companies by what they report to the SEC: growth, margins, return on capital, free cash flow, net cash, dividends and more. Free, no account needed.";
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const view = parseView(await searchParams);

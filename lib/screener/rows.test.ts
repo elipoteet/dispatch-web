@@ -162,7 +162,7 @@ describe("commodity and crypto funds", () => {
 });
 
 describe("medians", () => {
-  it("is the middle value among companies with one, n/a left out, and the share paying a dividend", () => {
+  it("is the middle value among companies with one, n/a left out, and the share of all companies paying a dividend", () => {
     const rows = [
       { gross_margin: 0.1, pays_dividend: true },
       { gross_margin: 0.3, pays_dividend: false },
@@ -172,7 +172,7 @@ describe("medians", () => {
     ];
     expect(medians(rows, ["gross_margin", "roic"])).toEqual([
       { metric: "gross_margin", median: 0.4, companies: 4 },
-      { metric: "pays_dividend", median: 0.75, companies: 4 },
+      { metric: "pays_dividend", median: 0.6, companies: 5 },
     ]);
   });
 });

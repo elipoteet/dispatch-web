@@ -470,6 +470,17 @@ describe("return on invested capital", () => {
     expect(run({ latest: { operating_income: MISSING } }).na.roic).toBe("missing");
     expect(run({ balance: { total_debt: MISSING } }).na.roic).toBe("missing");
     expect(run({ balance: { cash_and_equivalents: 2000 } }).na.roic).toBe("base");
+    // Owes more than it owns (McKesson): no meaningful capital base.
+    expect(run({ balance: { total_equity: -100 } }).na.roic).toBe("base");
+  });
+});
+
+describe("share count change", () => {
+  it("can't show a fall of half or more as a buyback", () => {
+    expect(run({ latest: { shares_diluted: 15 }, prior: { shares_diluted: 100 } }).na.share_change_1y).toBe("split");
+    expect(run({ latest: { shares_diluted: 94 }, prior: { shares_diluted: 100 } }).values.share_change_1y).toBeCloseTo(-0.06);
+    // A deal paid in shares can double the count.
+    expect(run({ latest: { shares_diluted: 250 }, prior: { shares_diluted: 100 } }).values.share_change_1y).toBeCloseTo(1.5);
   });
 });
 
