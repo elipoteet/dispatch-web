@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { tickerByCik } from "@/lib/screener/tickers";
+import { tickerByCik, withPredecessors } from "@/lib/screener/tickers";
 import type { TickerExchangeFile } from "@/lib/sec/client";
 
 // Rows in the order the SEC's company_tickers_exchange.json lists them
@@ -47,5 +47,18 @@ describe("tickerByCik", () => {
       data: [["NVDA", "Nasdaq", 1045810, "NVIDIA CORP"] as unknown as [number, string, string, string | null]],
     };
     expect(tickerByCik(reordered).get(1045810)).toEqual({ ticker: "NVDA", exchange: "Nasdaq", name: "NVIDIA CORP" });
+  });
+});
+
+describe("a ticker that moved to a new holding company", () => {
+  const xom = { ticker: "XOM", exchange: "NYSE", name: "ExxonMobil Holdings Corp" };
+  const listed = new Map([[2115436, xom]]);
+
+  it("goes to the old company while only the old one has annual figures", () => {
+    expect(withPredecessors(listed, (cik) => cik === 34088).get(34088)).toEqual(xom);
+  });
+
+  it("stays with the new company once it files its own", () => {
+    expect(withPredecessors(listed, () => true).has(34088)).toBe(false);
   });
 });

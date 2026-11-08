@@ -8,7 +8,7 @@
 
 import { unstable_cache } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/service";
-import { RANGE_FILTERS, companyName, conditions, rangeFilter, type Filters, type View } from "@/lib/screener/filters";
+import { RANGE_FILTERS, conditions, rangeFilter, type Filters, type View } from "@/lib/screener/filters";
 import { STARTING_SCREENS } from "@/lib/screener/screens";
 
 const TABLE = "screener_metrics";
@@ -55,7 +55,8 @@ function toRow(raw: Record<string, unknown>): ResultRow {
   return {
     cik: String(raw.cik),
     ticker: String(raw.ticker),
-    name: companyName(String(raw.name ?? raw.ticker)),
+    // Written for display by the nightly job (lib/screener/names.ts).
+    name: String(raw.name ?? raw.ticker),
     sector: raw.sector == null ? null : String(raw.sector),
     periodEnd: String(raw.period_end ?? ""),
     values,

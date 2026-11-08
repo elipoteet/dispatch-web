@@ -6,7 +6,6 @@ import {
   boxText,
   cardText,
   chipText,
-  companyName,
   conditions,
   dayLabel,
   filterLines,
@@ -194,25 +193,6 @@ describe("words", () => {
     expect(formatFigure(f("growth1y"), 0.00002)).toBe("0.0%");
     expect(formatFigure(f("gross"), null)).toBe("n/a");
     expect(formatFigure(f("gross"), Number.NaN)).toBe("n/a");
-  });
-
-  it("names companies as a reader would", () => {
-    expect(companyName("AIR PRODUCTS AND CHEMICALS, INC.")).toBe("Air Products and Chemicals");
-    expect(companyName("BANK OF AMERICA CORP /DE/")).toBe("Bank of America");
-    expect(companyName("Alphabet Inc.")).toBe("Alphabet");
-    expect(companyName("The Trade Desk, Inc.")).toBe("Trade Desk");
-    expect(companyName("Bank Of The Ozarks")).toBe("Bank Of The Ozarks");
-    expect(companyName("PACIFIC GAS & ELECTRIC Co")).toBe("Pacific Gas & Electric");
-    expect(companyName("CVS HEALTH Corp")).toBe("CVS Health");
-    expect(companyName("McKESSON CORP")).toBe("McKesson");
-    expect(companyName("McDONALD’S CORPORATION")).toBe("McDonald’s");
-    expect(companyName("RxSIGHT, INC.")).toBe("RxSIGHT");
-    expect(companyName("BALL Corp")).toBe("Ball");
-    expect(companyName("Walt Disney Co/")).toBe("Walt Disney");
-    expect(companyName("Troops, Inc. /Cayman Islands/")).toBe("Troops");
-    expect(companyName("Azora Therapeutics, Inc. (DE)")).toBe("Azora Therapeutics");
-    expect(companyName("STURM,     RUGER & COMPANY, INC.")).toBe("Sturm, Ruger");
-    expect(companyName("HUTCHMED (China) Ltd")).toBe("Hutchmed (China)");
   });
 
   it("dates", () => {

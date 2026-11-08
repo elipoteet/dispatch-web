@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  FIX_RULE,
+  applyAnnualReportFix,
   applyNetIncomeFix,
-  companyNameFor,
+  isCommodityOrCryptoFund,
+  medians,
   needsAnnualReportFix,
+  type AnnualFix,
   profileRow,
   reusableFix,
   screenerRow,
@@ -10,7 +14,7 @@ import {
   publishDecision,
   type NetIncomeFix,
 } from "@/lib/screener/rows";
-import type { Assembled, CompanyYear, Picked } from "@/lib/screener/assemble";
+import { annualReportFact, type Assembled, type CompanyYear, type Picked } from "@/lib/screener/assemble";
 import { computeMetrics, METRICS } from "@/lib/screener/metrics";
 
 const p = (val: number, accn: string, tag = "Tag", end = "2025-12-31"): Picked => ({ val, end, tag, accn });
@@ -25,29 +29,6 @@ const TESLA = year({
   revenue: p(94_827_000_000, "10K-2026"),
   operating_cash_flow: p(15_000_000_000, "10K-2026"),
   net_income: p(3_855_000_000, "DEF14A-2026", "NetIncomeLoss"),
-});
-
-describe("companyNameFor", () => {
-  it("keeps the frames' name when it is the registrant's name written differently", () => {
-    expect(companyNameFor("A. O. Smith Corporation", "SMITH A O CORP")).toBe("A. O. Smith Corporation");
-    expect(companyNameFor("W. R. BERKLEY CORP", "BERKLEY W R CORP")).toBe("W. R. BERKLEY CORP");
-    expect(companyNameFor("McDONALD’S CORPORATION", "MCDONALDS CORP")).toBe("McDONALD’S CORPORATION");
-    expect(companyNameFor("COLGATE-PALMOLIVE COMPANY", "COLGATE PALMOLIVE CO")).toBe("COLGATE-PALMOLIVE COMPANY");
-    expect(companyNameFor("ELI LILLY AND COMPANY", "ELI LILLY & Co")).toBe("ELI LILLY AND COMPANY");
-    expect(companyNameFor("The TJX Companies, Inc.", "TJX COMPANIES INC /DE/")).toBe("The TJX Companies, Inc.");
-    expect(companyNameFor("Vantage Corp", "Vantage Corp (Singapore)")).toBe("Vantage Corp");
-  });
-
-  it("takes the registrant's name over a co-filer's or an old one", () => {
-    expect(companyNameFor("BofA Finance LLC", "BANK OF AMERICA CORP /DE/")).toBe("BANK OF AMERICA CORP /DE/");
-    expect(companyNameFor("SKK Holdings Limited", "Rantizo")).toBe("Rantizo");
-    expect(companyNameFor("FRANKLIN RESOURCES, INC.", "FRANKLIN TEMPLETON INC")).toBe("FRANKLIN TEMPLETON INC");
-  });
-
-  it("falls back to the frames' name with no profile", () => {
-    expect(companyNameFor("NVIDIA CORP", null)).toBe("NVIDIA CORP");
-    expect(companyNameFor("NVIDIA CORP", "  ")).toBe("NVIDIA CORP");
-  });
 });
 
 describe("needsAnnualReportFix", () => {
@@ -74,6 +55,7 @@ describe("applyNetIncomeFix", () => {
     balance: {},
     revenueHistory: [],
     revenueHistoryInconsistent: [],
+    threeYearsBack: null,
   };
   const fix: NetIncomeFix = { frames: "DEF14A-2026", end: "2025-12-31", val: 3_794_000_000, accn: "10K-2026" };
 
@@ -101,13 +83,97 @@ describe("applyNetIncomeFix", () => {
 });
 
 describe("reusableFix", () => {
-  const fix: NetIncomeFix = { frames: "DEF14A-2026", end: "2025-12-31", val: 3_794_000_000, accn: "10K-2026" };
+  const fix: NetIncomeFix = { frames: "DEF14A-2026", end: "2025-12-31", val: 3_794_000_000, accn: "10K-2026", rule: FIX_RULE };
   it("reuses last night's answer while the frames still hold the same filing", () => {
     expect(reusableFix(fix, TESLA)).toBe(fix);
   });
   it("asks again once the frames hold a newer filing or year", () => {
     expect(reusableFix(fix, year({ net_income: p(1, "DEF14A-2027") }))).toBeUndefined();
     expect(reusableFix(fix, year({ net_income: p(1, "DEF14A-2026") }, [], "2026-12-31"))).toBeUndefined();
+  });
+  it("asks again for a fix from before the 10-K-first rule that didn't come from the year's own 10-K", () => {
+    const old = { frames: "DEF14A-2026", end: "2025-12-31", val: 1, accn: "10Q-2026" };
+    expect(reusableFix(old, TESLA)).toBeUndefined();
+    expect(reusableFix({ ...old, accn: "10K-2026" }, TESLA)).toEqual({ ...old, accn: "10K-2026" });
+  });
+});
+
+// JAKKS Pacific, 2025: revenue from its first-quarter 2026 10-Q, which tagged
+// the first quarter of 2025 with the whole year's dates.
+const JAKKS = year({
+  revenue: p(113_253_000, "10Q-2026", "RevenueFromContractWithCustomerExcludingAssessedTax"),
+  operating_cash_flow: p(50_000_000, "10K-2026"),
+  net_income: p(20_000_000, "10K-2026"),
+});
+
+describe("revenue from the 10-K", () => {
+  it("is needed when revenue came from another filing than cash flow, or was left n/a", () => {
+    expect(needsAnnualReportFix(JAKKS, "revenue")).toBe(true);
+    expect(needsAnnualReportFix(JAKKS, "net_income")).toBe(false);
+    expect(needsAnnualReportFix(year({ net_income: p(1, "K") }, ["revenue"]), "revenue")).toBe(true);
+    // No cash flow: net income's filing is home.
+    expect(needsAnnualReportFix(year({ revenue: p(1, "K"), net_income: p(1, "K") }), "revenue")).toBe(false);
+  });
+
+  it("replaces the year's revenue and the matching entries of the revenue history", () => {
+    const prior = year({ revenue: p(683_000_000, "10K-2025", "RevenueFromContractWithCustomerExcludingAssessedTax", "2024-12-31") }, [], "2024-12-31");
+    const company: Assembled = {
+      cik: 1009829,
+      name: "JAKKS PACIFIC INC",
+      latest: JAKKS,
+      prior,
+      balance: {},
+      revenueHistory: [JAKKS.values.revenue!, prior.values.revenue!, p(711_000_000, "10K-2024", "R", "2023-12-31")],
+      revenueHistoryInconsistent: [],
+      threeYearsBack: null,
+    };
+    const fix: AnnualFix = { frames: "10Q-2026", end: "2025-12-31", val: 570_671_000, accn: "10K-2026", rule: FIX_RULE };
+    const fixed = applyAnnualReportFix(company, "revenue", "RevenueFromContractWithCustomerExcludingAssessedTax", fix);
+    expect(fixed.latest.values.revenue?.val).toBe(570_671_000);
+    expect(fixed.revenueHistory.map((r) => r?.val)).toEqual([570_671_000, 683_000_000, 711_000_000]);
+    expect(computeMetrics(fixed, "operating").values.revenue_growth_1y).toBeCloseTo(570_671_000 / 683_000_000 - 1);
+    expect(company.revenueHistory[0]?.val).toBe(113_253_000); // the original is untouched
+  });
+});
+
+describe("annualReportFact", () => {
+  it("takes the 10-K's figure over a later 10-Q that tagged the same dates", () => {
+    const facts = [
+      { start: "2025-01-01", end: "2025-12-31", val: 570_671_000, accn: "10K-2026", form: "10-K", filed: "2026-03-01", fy: 2025, fp: "FY" },
+      { start: "2025-01-01", end: "2025-12-31", val: 113_253_000, accn: "10Q-2026", form: "10-Q", filed: "2026-05-01", fy: 2026, fp: "Q1" },
+    ];
+    expect(annualReportFact(facts, "2025-01-01", "2025-12-31")?.val).toBe(570_671_000);
+    expect(annualReportFact([facts[1]], "2025-01-01", "2025-12-31")?.val).toBe(113_253_000);
+    expect(annualReportFact([{ ...facts[0], form: "DEF 14A" }], "2025-01-01", "2025-12-31")).toBeNull();
+  });
+});
+
+describe("commodity and crypto funds", () => {
+  it("are left out by industry code and name; businesses with the same code stay", () => {
+    expect(isCommodityOrCryptoFund("6221", "SPDR® GOLD TRUST")).toBe(true);
+    expect(isCommodityOrCryptoFund("6221", "iShares Bitcoin Trust ETF")).toBe(true);
+    expect(isCommodityOrCryptoFund("6221", "United States Oil Fund, LP")).toBe(true);
+    expect(isCommodityOrCryptoFund("6199", "Fidelity® Ethereum Fund")).toBe(true);
+    expect(isCommodityOrCryptoFund("6221", "Uranium Royalty Corp.")).toBe(false);
+    expect(isCommodityOrCryptoFund("6221", "Antalpha Platform Holding Co")).toBe(false);
+    expect(isCommodityOrCryptoFund("6798", "Vornado Realty Trust")).toBe(false);
+    expect(isCommodityOrCryptoFund(null, "Blackstone Secured Lending Fund")).toBe(false);
+  });
+});
+
+describe("medians", () => {
+  it("is the middle value among companies with one, n/a left out, and the share paying a dividend", () => {
+    const rows = [
+      { gross_margin: 0.1, pays_dividend: true },
+      { gross_margin: 0.3, pays_dividend: false },
+      { gross_margin: null, pays_dividend: null },
+      { gross_margin: 0.5, pays_dividend: true },
+      { gross_margin: 0.7, pays_dividend: true },
+    ];
+    expect(medians(rows, ["gross_margin", "roic"])).toEqual([
+      { metric: "gross_margin", median: 0.4, companies: 4 },
+      { metric: "pays_dividend", median: 0.75, companies: 4 },
+    ]);
   });
 });
 
@@ -129,6 +195,7 @@ describe("screenerRow", () => {
     balance: { cash_and_equivalents: p(10_605e6, "Q", "CashAndCashEquivalentsAtCarryingValue", "2026-01-25") },
     revenueHistory: [],
     revenueHistoryInconsistent: [],
+    threeYearsBack: null,
   };
   const profile = profileRow(
     { cik: "0001045810", name: "NVIDIA CORP", sic: "3674", sicDescription: "Semiconductors", state: "CA", fiscalYearEnd: "0131", entityType: "operating", tickers: ["NVDA"], exchanges: ["Nasdaq"] },
@@ -155,6 +222,10 @@ describe("screenerRow", () => {
       free_cash_flow: 96_676e6,
     });
     expect((row.sources as Record<string, unknown>).revenue).toEqual(["Revenues", "K"]);
+  });
+
+  it("writes the name as the company writes it", () => {
+    expect(row.name).toBe("NVIDIA");
   });
 });
 

@@ -3,19 +3,21 @@
 //
 // Each run, within one Vercel function's five minutes:
 //   1. downloads every frames file (lib/sec/frames.ts, framePlan "full":
-//      about 330 files, 70 MB, a minute or two) and the SEC's ticker file;
+//      about 460 files, 80 MB, a minute or two) and the SEC's ticker file;
 //   2. builds each exchange-listed company's years (assemble.ts);
 //   3. looks up industry and headquarters for companies it hasn't seen
 //      (screener_filers), one at a time, until its time for that runs out;
-//   4. takes net income from the 10-K where the frames hold a proxy
-//      statement's figure (rows.ts, needsAnnualReportFix), reusing last
+//   4. takes revenue and net income from the 10-K where the frames hold
+//      another filing's figure (rows.ts, needsAnnualReportFix), reusing last
 //      night's answer while the frames still hold the same filing;
-//   5. builds a row per company it has a profile for;
-//   6. writes them all into screener_metrics_next and swaps the whole set
-//      into screener_metrics in one transaction (migration 0027), so the
-//      screener never shows a half-updated table, and only after a complete
-//      run (rows.ts, publishDecision);
-//   7. logs what it did in screener_runs.
+//   5. builds a row per company it has a profile for, leaving out commodity
+//      and crypto funds, and works out each measure's median;
+//   6. writes the rows into screener_metrics_next and the medians into
+//      screener_medians_next, and swaps both into place in one transaction
+//      (migrations 0027 and 0029), so the screener never shows a
+//      half-updated table, and only after a complete run (rows.ts,
+//      publishDecision);
+//   7. logs what it did in screener_runs, medians included.
 // Steps 3 and 4 carry over: the first nights fill in the backlog, after
 // which each night has only a handful of new companies and new filings.
 //
@@ -26,18 +28,23 @@ import { createServiceRoleClient } from "@/lib/supabase/service";
 import { fetchCompanyConcept, fetchFilerProfile, fetchFrame, fetchTickerExchangeFile, padCik } from "@/lib/sec/client";
 import { framePlan, type FrameRequest } from "@/lib/sec/frames";
 import { filerKindFromSic } from "@/lib/sec/concepts";
-import { annualReportFact, assembleCompany, collectFrame, type Assembled, type FrameCollection } from "@/lib/screener/assemble";
-import { computeMetrics } from "@/lib/screener/metrics";
-import { EXCHANGES, tickerByCik } from "@/lib/screener/tickers";
+import { annualReportFact, assembleCompany, collectFrame, type Assembled, type CompanyYear, type FrameCollection } from "@/lib/screener/assemble";
+import { computeMetrics, METRICS } from "@/lib/screener/metrics";
+import { EXCHANGES, tickerByCik, withPredecessors } from "@/lib/screener/tickers";
 import {
-  applyNetIncomeFix,
+  FIX_RULE,
+  applyAnnualReportFix,
+  isCommodityOrCryptoFund,
+  medians,
   needsAnnualReportFix,
   profileRow,
   reusableFix,
   screenerRow,
   minPublishRows,
   publishDecision,
-  type NetIncomeFix,
+  type AnnualFix,
+  type FixedItem,
+  type Median,
   type ProfileRow,
 } from "@/lib/screener/rows";
 
@@ -49,7 +56,14 @@ export type JobOptions = {
   // The function's whole allowance, less a margin.
   budgetMs: number;
   today: string;
+  // Builds every row and hands them to onRows without writing anything:
+  // no run log, no frames log, no profiles, nothing staged or published.
+  // For checking a change on the whole universe before it goes live.
+  dryRun?: boolean;
+  onRows?: (rows: Record<string, unknown>[], medians: Median[]) => void;
 };
+
+type FixCounts = { needed: number; reused: number; fetched: number; pending: number };
 
 export type JobSummary = {
   runId: number | null;
@@ -59,7 +73,8 @@ export type JobSummary = {
   companies: { listed: number; written: number; published: number | null; removed: number | null; notPublished: string | null };
   skipped: Record<string, number>;
   profiles: { fetched: number; failed: number; missingAfter: number };
-  netIncome: { needed: number; reused: number; fetched: number; pending: number };
+  netIncome: FixCounts;
+  revenue: FixCounts;
   seconds: number;
   error: string | null;
 };
@@ -83,8 +98,11 @@ async function writeAll(db: Db, table: string, rows: object[], onConflict: strin
   }
 }
 
+type Fixes = { latest?: AnnualFix; prior?: AnnualFix };
+type StoredFix = { latest: AnnualFix | null; prior: AnnualFix | null } | undefined;
+
 export async function runScreenerJob(options: JobOptions): Promise<JobSummary> {
-  const { startedAt, budgetMs, today } = options;
+  const { startedAt, budgetMs, today, dryRun = false } = options;
   const elapsed = () => Date.now() - startedAt;
   const runAt = new Date(startedAt).toISOString();
   const db = createServiceRoleClient();
@@ -95,13 +113,17 @@ export async function runScreenerJob(options: JobOptions): Promise<JobSummary> {
     skipped: {},
     profiles: { fetched: 0, failed: 0, missingAfter: 0 },
     netIncome: { needed: 0, reused: 0, fetched: 0, pending: 0 },
+    revenue: { needed: 0, reused: 0, fetched: 0, pending: 0 },
     seconds: 0,
     error: null,
   };
   const skip = (reason: string) => (summary.skipped[reason] = (summary.skipped[reason] ?? 0) + 1);
+  let runMedians: Median[] = [];
 
-  const { data: run } = await db.from("screener_runs").insert({ mode: "nightly", started_at: runAt }).select("id").single();
-  summary.runId = (run as { id: number } | null)?.id ?? null;
+  if (!dryRun) {
+    const { data: run } = await db.from("screener_runs").insert({ mode: "nightly", started_at: runAt }).select("id").single();
+    summary.runId = (run as { id: number } | null)?.id ?? null;
+  }
 
   try {
     // —— 1. Frames and tickers ——
@@ -136,9 +158,12 @@ export async function runScreenerJob(options: JobOptions): Promise<JobSummary> {
     );
     summary.frames.mb = +(bytes / 1_048_576).toFixed(1);
     summary.frames.seconds = elapsed() / 1000;
-    await writeAll(db, "screener_frames", frameRows, "frame");
+    if (!dryRun) await writeAll(db, "screener_frames", frameRows, "frame");
 
-    const listed = tickerByCik(await fetchTickerExchangeFile());
+    const listed = withPredecessors(tickerByCik(await fetchTickerExchangeFile()), (cik) => {
+      const c = collection.get(cik);
+      return c != null && assembleCompany(c, today).ok;
+    });
 
     // —— 2. Each exchange-listed company's years ——
     const universe: { company: Assembled; ticker: string; exchange: string | null }[] = [];
@@ -164,7 +189,7 @@ export async function runScreenerJob(options: JobOptions): Promise<JobSummary> {
     // —— 3. Industry and headquarters ——
     const profiles = new Map<string, ProfileRow>();
     for (const p of await readAll<ProfileRow>(db, "screener_filers", "*")) profiles.set(p.cik, p);
-    const profileDeadline = budgetMs - 75_000;
+    const profileDeadline = budgetMs - 90_000;
     const fresh: ProfileRow[] = [];
     for (const u of universe) {
       const cik = padCik(u.company.cik);
@@ -179,58 +204,59 @@ export async function runScreenerJob(options: JobOptions): Promise<JobSummary> {
       } catch {
         summary.profiles.failed++;
       }
-      if (fresh.length >= 100) await writeAll(db, "screener_filers", fresh.splice(0), "cik");
+      if (!dryRun && fresh.length >= 100) await writeAll(db, "screener_filers", fresh.splice(0), "cik");
     }
-    await writeAll(db, "screener_filers", fresh, "cik");
+    if (!dryRun) await writeAll(db, "screener_filers", fresh, "cik");
 
-    // —— 4. Net income from the 10-K ——
-    const previous = new Map<string, { latest?: NetIncomeFix; prior?: NetIncomeFix }>();
-    for (const r of await readAll<{ cik: string; sources: { net_income_10k?: { latest: NetIncomeFix | null; prior: NetIncomeFix | null } } }>(
-      db,
-      "screener_metrics",
-      "cik,sources",
-    )) {
-      const f = r.sources?.net_income_10k;
-      if (f) previous.set(r.cik, { latest: f.latest ?? undefined, prior: f.prior ?? undefined });
+    // —— 4. Revenue and net income from the 10-K ——
+    const previous = new Map<string, Partial<Record<FixedItem, StoredFix>>>();
+    for (const r of await readAll<{ cik: string; sources: { net_income_10k?: StoredFix; revenue_10k?: StoredFix } }>(db, "screener_metrics", "cik,sources")) {
+      previous.set(r.cik, { net_income: r.sources?.net_income_10k, revenue: r.sources?.revenue_10k });
     }
-    const fixes = new Map<string, { latest?: NetIncomeFix; prior?: NetIncomeFix }>();
+    const fixes: Record<FixedItem, Map<string, Fixes>> = { net_income: new Map(), revenue: new Map() };
     const fixDeadline = budgetMs - 35_000;
-    for (const u of universe) {
-      const cik = padCik(u.company.cik);
-      if (!profiles.has(cik)) continue;
-      const a = u.company;
-      const wantLatest = needsAnnualReportFix(a.latest);
-      const wantPrior = needsAnnualReportFix(a.prior);
-      if (!wantLatest && !wantPrior) continue;
-      summary.netIncome.needed++;
-      const before = previous.get(cik);
-      const reused = { latest: wantLatest ? reusableFix(before?.latest, a.latest) : undefined, prior: wantPrior ? reusableFix(before?.prior, a.prior) : undefined };
-      if ((!wantLatest || reused.latest) && (!wantPrior || reused.prior)) {
-        fixes.set(cik, reused);
-        summary.netIncome.reused++;
-        continue;
-      }
-      if (elapsed() > fixDeadline) {
-        summary.netIncome.pending++;
-        continue;
-      }
-      const tag = a.latest.values.net_income?.tag ?? "NetIncomeLoss";
-      try {
-        const concept = await fetchCompanyConcept(cik, tag);
-        const facts = concept ? Object.values(concept.units).flat() : [];
-        const one = (want: boolean, year: Assembled["latest"] | null): NetIncomeFix | undefined => {
-          if (!want || !year?.periodStart) return undefined;
-          const f = annualReportFact(facts, year.periodStart, year.periodEnd);
-          return { frames: year.values.net_income?.accn ?? null, end: year.periodEnd, val: f?.val ?? null, accn: f?.accn ?? null };
+    for (const item of ["revenue", "net_income"] as const) {
+      const counts = item === "revenue" ? summary.revenue : summary.netIncome;
+      for (const u of universe) {
+        const cik = padCik(u.company.cik);
+        if (!profiles.has(cik)) continue;
+        const a = u.company;
+        const wantLatest = needsAnnualReportFix(a.latest, item);
+        const wantPrior = needsAnnualReportFix(a.prior, item);
+        if (!wantLatest && !wantPrior) continue;
+        counts.needed++;
+        const before = previous.get(cik)?.[item];
+        const reused: Fixes = {
+          latest: wantLatest ? reusableFix(before?.latest ?? undefined, a.latest, item) : undefined,
+          prior: wantPrior ? reusableFix(before?.prior ?? undefined, a.prior, item) : undefined,
         };
-        fixes.set(cik, { latest: one(wantLatest, a.latest), prior: one(wantPrior, a.prior) });
-        summary.netIncome.fetched++;
-      } catch {
-        summary.netIncome.pending++;
+        if ((!wantLatest || reused.latest) && (!wantPrior || reused.prior)) {
+          fixes[item].set(cik, reused);
+          counts.reused++;
+          continue;
+        }
+        if (elapsed() > fixDeadline) {
+          counts.pending++;
+          continue;
+        }
+        const tag = a.latest.values[item]?.tag ?? (item === "revenue" ? "Revenues" : "NetIncomeLoss");
+        try {
+          const concept = await fetchCompanyConcept(cik, tag);
+          const facts = concept ? Object.values(concept.units).flat() : [];
+          const one = (want: boolean, year: CompanyYear | null): AnnualFix | undefined => {
+            if (!want || !year?.periodStart) return undefined;
+            const f = annualReportFact(facts, year.periodStart, year.periodEnd);
+            return { frames: year.values[item]?.accn ?? null, end: year.periodEnd, val: f?.val ?? null, accn: f?.accn ?? null, rule: FIX_RULE };
+          };
+          fixes[item].set(cik, { latest: one(wantLatest, a.latest), prior: one(wantPrior, a.prior) });
+          counts.fetched++;
+        } catch {
+          counts.pending++;
+        }
       }
     }
 
-    // —— 5. Rows ——
+    // —— 5. Rows, and where the middle company sits ——
     const rows: Record<string, unknown>[] = [];
     for (const u of universe) {
       const cik = padCik(u.company.cik);
@@ -239,38 +265,68 @@ export async function runScreenerJob(options: JobOptions): Promise<JobSummary> {
         skip("awaiting industry and headquarters");
         continue;
       }
-      const fix = fixes.get(cik) ?? {};
-      const tag = u.company.latest.values.net_income?.tag ?? "NetIncomeLoss";
-      const company = applyNetIncomeFix(u.company, tag, fix.latest, fix.prior);
+      if (isCommodityOrCryptoFund(profile.sic, profile.name ?? u.company.name)) {
+        skip("commodity or crypto fund");
+        continue;
+      }
+      const revenueFix = fixes.revenue.get(cik) ?? {};
+      const incomeFix = fixes.net_income.get(cik) ?? {};
+      let company = applyAnnualReportFix(u.company, "revenue", u.company.latest.values.revenue?.tag ?? "Revenues", revenueFix.latest, revenueFix.prior);
+      company = applyAnnualReportFix(company, "net_income", u.company.latest.values.net_income?.tag ?? "NetIncomeLoss", incomeFix.latest, incomeFix.prior);
       const kind = filerKindFromSic(profile.sic);
-      rows.push(screenerRow({ company, ticker: u.ticker, exchange: u.exchange, profile, kind, metrics: computeMetrics(company, kind), fixes: fix, updatedAt: runAt }));
+      rows.push(
+        screenerRow({
+          company,
+          ticker: u.ticker,
+          exchange: u.exchange,
+          profile,
+          kind,
+          metrics: computeMetrics(company, kind, profile.sic),
+          fixes: incomeFix,
+          revenueFixes: revenueFix,
+          updatedAt: runAt,
+        }),
+      );
     }
     summary.profiles.missingAfter = summary.skipped["awaiting industry and headquarters"] ?? 0;
-
-    // —— 6. Stage, then publish all at once (migration 0027) ——
-    // Nothing the site reads changes until screener_publish commits; a run
-    // cut off before then leaves last night's complete set showing.
-    const cleared = await db.from("screener_metrics_next").delete().neq("cik", "");
-    if (cleared.error) throw new Error(`clearing screener_metrics_next: ${cleared.error.message}`);
-    await writeAll(db, "screener_metrics_next", rows, "cik");
+    runMedians = medians(rows, METRICS);
     summary.companies.written = rows.length;
 
-    const { count: showingNow } = await db.from("screener_metrics").select("cik", { count: "exact", head: true });
-    const decision = publishDecision({ framesComplete: summary.frames.failed === 0, staged: rows.length, showingNow: showingNow ?? 0 });
-    if (decision.publish) {
-      const { data, error } = await db.rpc("screener_publish", { min_rows: minPublishRows(showingNow ?? 0) });
-      if (error) throw new Error(`publishing: ${error.message}`);
-      summary.companies.published = Number(data);
-      summary.companies.removed = Math.max(0, (showingNow ?? 0) - summary.companies.published);
+    if (dryRun) {
+      options.onRows?.(rows, runMedians);
     } else {
-      summary.companies.notPublished = decision.reason;
+      // —— 6. Stage, then publish all at once (migrations 0027 and 0029) ——
+      // Nothing the site reads changes until screener_publish commits; a run
+      // cut off before then leaves last night's complete set showing.
+      for (const table of ["screener_metrics_next", "screener_medians_next"]) {
+        const cleared = await db.from(table).delete().neq(table === "screener_metrics_next" ? "cik" : "metric", "");
+        if (cleared.error) throw new Error(`clearing ${table}: ${cleared.error.message}`);
+      }
+      await writeAll(db, "screener_metrics_next", rows, "cik");
+      await writeAll(
+        db,
+        "screener_medians_next",
+        runMedians.map((m) => ({ metric: m.metric, median: m.median, companies: m.companies, run_id: summary.runId, computed_at: runAt })),
+        "metric",
+      );
+
+      const { count: showingNow } = await db.from("screener_metrics").select("cik", { count: "exact", head: true });
+      const decision = publishDecision({ framesComplete: summary.frames.failed === 0, staged: rows.length, showingNow: showingNow ?? 0 });
+      if (decision.publish) {
+        const { data, error } = await db.rpc("screener_publish", { min_rows: minPublishRows(showingNow ?? 0) });
+        if (error) throw new Error(`publishing: ${error.message}`);
+        summary.companies.published = Number(data);
+        summary.companies.removed = Math.max(0, (showingNow ?? 0) - summary.companies.published);
+      } else {
+        summary.companies.notPublished = decision.reason;
+      }
     }
   } catch (err) {
     summary.error = err instanceof Error ? err.message : String(err);
   }
 
   summary.seconds = elapsed() / 1000;
-  if (summary.runId != null) {
+  if (!dryRun && summary.runId != null) {
     await db
       .from("screener_runs")
       .update({
@@ -284,10 +340,12 @@ export async function runScreenerJob(options: JobOptions): Promise<JobSummary> {
           ...summary.skipped,
           "frames files that failed": summary.frames.failed,
           "net income from the 10-K still to fetch": summary.netIncome.pending,
+          "revenue from the 10-K still to fetch": summary.revenue.pending,
           published: summary.companies.published,
           "not published because": summary.companies.notPublished,
           "companies removed": summary.companies.removed,
         },
+        medians: Object.fromEntries(runMedians.map((m) => [m.metric, { median: m.median, companies: m.companies }])),
         seconds: summary.seconds,
         error: summary.error,
       })

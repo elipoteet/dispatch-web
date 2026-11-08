@@ -14,7 +14,8 @@
 
 import { suppressedItems, type FilerKind } from "@/lib/sec/concepts";
 import { MAX_ORDINARY_CHANGE } from "@/lib/research/splits";
-import type { Assembled, DurationItem, Picked } from "@/lib/screener/assemble";
+import type { Assembled, BalanceItem, DurationItem, Picked } from "@/lib/screener/assemble";
+import { sectorFromSic } from "@/lib/screener/sectors";
 
 export const MAIN_METRICS = [
   "revenue",
@@ -24,6 +25,7 @@ export const MAIN_METRICS = [
   "operating_margin",
   "net_margin",
   "fcf_margin",
+  "roic",
   "net_cash",
   "share_change_1y",
 ] as const;
@@ -44,6 +46,9 @@ export const MORE_METRICS = [
   "revenue_growth_5y",
   "revenue_growth_10y",
   "revenue_growth_years",
+  "operating_margin_change_3y",
+  "growth_plus_fcf_margin",
+  "cash_conversion",
 ] as const;
 
 export type MetricKey = (typeof MAIN_METRICS)[number] | (typeof MORE_METRICS)[number];
@@ -58,7 +63,9 @@ export const METRICS: readonly MetricKey[] = [...MAIN_METRICS, ...MORE_METRICS];
 //   history         not enough consecutive years
 //   inconsistent    the filing's own figures for an input disagree by a units
 //                   factor (assemble.ts, looksLikeUnitsError)
-export type NaReason = "not-applicable" | "missing" | "base" | "split" | "history" | "inconsistent";
+//   partial-cost    gross margin only: the cost line the company files covers
+//                   only part of what its sales cost (see grossMarginIsPartial)
+export type NaReason = "not-applicable" | "missing" | "base" | "split" | "history" | "inconsistent" | "partial-cost";
 
 // Which reported line items each measure reads, for telling "not filed" from
 // "filed inconsistently". "latest" and "prior" are the two years compared.
@@ -77,6 +84,9 @@ const INPUTS: Partial<Record<MetricKey, { latest?: DurationItem[]; prior?: Durat
   sga_to_revenue: { latest: ["revenue"] },
   dividends_to_fcf: { latest: ["operating_cash_flow"] },
   buybacks_to_fcf: { latest: ["operating_cash_flow"] },
+  roic: { latest: ["revenue"] },
+  growth_plus_fcf_margin: { latest: ["revenue", "operating_cash_flow"], prior: ["revenue"] },
+  cash_conversion: { latest: ["operating_cash_flow", "net_income"] },
 };
 
 export type ScreenerMetrics = {
@@ -85,8 +95,19 @@ export type ScreenerMetrics = {
   // Dollar figures kept for display and for the starting screens.
   freeCashFlow: number | null;
   netIncome: number | null;
+  // How net cash and return on invested capital were put together, kept with
+  // the row's sources so any figure can be traced (rows.ts).
+  workings: {
+    cash: Figure | null;
+    debt: Figure | null;
+    // The tax rate used for ROIC, and whether it was the default 21%.
+    taxRate: { rate: number; default: boolean } | null;
+  };
   na: Partial<Record<MetricKey | "pays_dividend", NaReason>>;
 };
+
+// A sum, with what went into it.
+export type Figure = { value: number; how: string };
 
 type Result = { value: number | null; na?: NaReason };
 const ok = (value: number): Result => ({ value });
@@ -148,7 +169,107 @@ export function sameShareBasis(now: Picked | undefined, before: Picked | undefin
   return r <= MAX_ORDINARY_CHANGE && 1 / r <= MAX_ORDINARY_CHANGE;
 }
 
-export function computeMetrics(company: Assembled, kind: FilerKind): ScreenerMetrics {
+// —— Net cash, both sides (7 November 2026) ——
+type Balance = Partial<Record<BalanceItem, Picked>>;
+
+function near(a: number, b: number): boolean {
+  return Math.abs(a - b) <= Math.max(1, Math.abs(b) * 0.001);
+}
+
+// Cash and short-term investments: the company's own total where it files
+// one, otherwise its cash plus one short-term investment line. Concepts.ts
+// says why one line and never a sum. A company with no short-term
+// investment line holds none on its balance sheet, so its cash stands alone.
+export function cashAndInvestments(B: Balance): Figure | null {
+  if (B.cash_and_short_term_investments) return { value: B.cash_and_short_term_investments.val, how: B.cash_and_short_term_investments.tag };
+  if (!B.cash_and_equivalents) return null;
+  const st = B.short_term_investments;
+  return st
+    ? { value: B.cash_and_equivalents.val + st.val, how: `${B.cash_and_equivalents.tag} + ${st.tag}` }
+    : { value: B.cash_and_equivalents.val, how: B.cash_and_equivalents.tag };
+}
+
+const NONCURRENT_DEBT_TAGS = new Set(["LongTermDebtNoncurrent", "LongTermDebtAndCapitalLeaseObligations"]);
+
+// All debt: the long-term debt the research file reads (concepts.ts,
+// total_debt), plus what's due within a year that it leaves out, counted
+// once.
+// - A combined long- and short-term figure already has everything.
+// - Where the figure is long-term debt INCLUDING the part due this year
+//   (LongTermDebt: NVIDIA, Apple, Microsoft), add only short-term
+//   borrowings: debt due within a year less current maturities where both are
+//   filed (NVIDIA: $1.0B less $1.0B, nothing to add), otherwise one
+//   short-term borrowing line (Apple's $2.0B of commercial paper).
+// - Where it EXCLUDES that part, by its tag, or because it equals the
+//   noncurrent figure while some long-term debt falls due this year (Chevron
+//   files $39.8B under both), add all debt due within a year (Chevron's
+//   $10.9B "Short-term debt").
+// Finance leases outside these tags aren't counted, as before.
+export function totalDebt(B: Balance): Figure | null {
+  const base = B.total_debt;
+  if (!base) return null;
+  if (base.tag === "DebtLongtermAndShorttermCombinedAmount") return { value: base.val, how: base.tag };
+  const current = B.debt_current;
+  const maturities = B.long_term_debt_current;
+  const borrowings = B.short_term_borrowings;
+  const noncurrent = B.long_term_debt_noncurrent;
+  const excludesCurrent =
+    NONCURRENT_DEBT_TAGS.has(base.tag) || (noncurrent != null && near(noncurrent.val, base.val) && (maturities?.val ?? 0) > 0);
+  if (excludesCurrent) {
+    if (current) return { value: base.val + current.val, how: `${base.tag} + ${current.tag}` };
+    const parts = [maturities, borrowings].filter((p): p is Picked => p != null);
+    return { value: base.val + parts.reduce((s, p) => s + p.val, 0), how: [base.tag, ...parts.map((p) => p.tag)].join(" + ") };
+  }
+  if (current && maturities) {
+    const shortTerm = Math.max(0, current.val - maturities.val);
+    return { value: base.val + shortTerm, how: `${base.tag} + (${current.tag} - ${maturities.tag})` };
+  }
+  if (borrowings) return { value: base.val + borrowings.val, how: `${base.tag} + ${borrowings.tag}` };
+  return { value: base.val, how: base.tag };
+}
+
+// —— Gross margin that's believable but wrong (7 November 2026) ——
+// Where a company files no gross profit line, the screener works gross margin
+// out from the one cost line it tags as cost of revenue. At some companies
+// that line is only part of what the sales cost: supplies at a hospital
+// (Community Health Systems, 85%), gathering and processing at a gas producer
+// (EQT, 82%), fuel at a utility (CenterPoint, 100%), food at a restaurant.
+// The tell is what's left between gross profit and operating profit: at a
+// software or drug company it's almost all selling, admin and research,
+// which those companies file (Vertex: 51 points of gap, 47 explained); at the
+// others it's salaries, operations and depreciation, which aren't. So a
+// worked-out gross margin is n/a when more than 25 points of revenue sit
+// between it and operating profit (pretax profit where operating profit
+// isn't filed) and selling, admin and research explain under a third of
+// them. A gross margin the company reports itself always stands.
+export const PARTIAL_COST_GAP = 0.25;
+
+export function grossMarginIsPartial(L: Partial<Record<DurationItem, Picked>>, revenue: number, grossMargin: number): boolean {
+  if (L.gross_profit) return false;
+  const profit = L.operating_income?.val ?? L.pretax_income?.val;
+  if (profit == null || revenue <= 0) return false;
+  const gap = grossMargin - profit / revenue;
+  if (gap <= PARTIAL_COST_GAP) return false;
+  const sga = L.sga ? L.sga.val : (L.selling_marketing?.val ?? 0) + (L.general_admin?.val ?? 0);
+  const explained = (sga + (L.rnd?.val ?? 0) + Math.max(0, L.impairment?.val ?? 0)) / revenue;
+  return explained < gap / 3;
+}
+
+// —— Return on invested capital ——
+// After-tax operating income over invested capital. The tax rate is the
+// company's own (income tax over pretax income) held between 0% and 35%;
+// with a pretax loss or no tax line it's 21%, the U.S. federal rate.
+export const DEFAULT_TAX_RATE = 0.21;
+export const MAX_TAX_RATE = 0.35;
+
+export function taxRate(L: Partial<Record<DurationItem, Picked>>): { rate: number; default: boolean } {
+  const tax = L.income_tax?.val;
+  const pretax = L.pretax_income?.val;
+  if (tax == null || pretax == null || pretax <= 0) return { rate: DEFAULT_TAX_RATE, default: true };
+  return { rate: Math.min(MAX_TAX_RATE, Math.max(0, tax / pretax)), default: false };
+}
+
+export function computeMetrics(company: Assembled, kind: FilerKind, sic: string | null = null): ScreenerMetrics {
   const suppressed = new Set(suppressedItems(kind)?.items ?? []);
   const isFinancial = kind === "financial";
   const L = company.latest.values;
@@ -156,6 +277,9 @@ export function computeMetrics(company: Assembled, kind: FilerKind): ScreenerMet
   const B = company.balance;
   const revenue = v(L.revenue);
   const results = {} as Record<MetricKey, Result>;
+  const cash = cashAndInvestments(B);
+  const debt = totalDebt(B);
+  let tax: { rate: number; default: boolean } | null = null;
 
   // —— Main ten (sector is stored separately) ——
   results.revenue = revenue == null ? na("missing") : ok(revenue);
@@ -175,6 +299,12 @@ export function computeMetrics(company: Assembled, kind: FilerKind): ScreenerMet
     // wrong can't be told from the frames: n/a, never a guess.
     const gm = results.gross_margin.value;
     if (gm != null && gm > 1 + 1e-9) results.gross_margin = na("inconsistent");
+    else if (gm != null && revenue != null && grossMarginIsPartial(L, revenue, gm)) results.gross_margin = na("partial-cost");
+    // A utility's cost of revenue is its fuel and purchased power, leaving
+    // out operations, maintenance and depreciation, so a gross margin worked
+    // out from it doesn't describe the business, like gross margin at a bank.
+    // A utility that reports gross profit itself (Ormat) keeps it.
+    else if (gm != null && !L.gross_profit && sectorFromSic(sic) === "Utilities") results.gross_margin = na("not-applicable");
   }
   results.operating_margin = overRevenue(v(L.operating_income), revenue);
   results.net_margin = overRevenue(v(L.net_income), revenue);
@@ -189,8 +319,8 @@ export function computeMetrics(company: Assembled, kind: FilerKind): ScreenerMet
   results.fcf_margin = fcfApplies ? overRevenue(fcf, revenue) : na("not-applicable");
 
   if (isFinancial) results.net_cash = na("not-applicable");
-  else if (!B.cash_and_equivalents || !B.total_debt) results.net_cash = na("missing");
-  else results.net_cash = ok(B.cash_and_equivalents.val - B.total_debt.val);
+  else if (!cash || !debt) results.net_cash = na("missing");
+  else results.net_cash = ok(cash.value - debt.value);
 
   const sharesBasis = sameShareBasis(L.shares_diluted, P.shares_diluted);
   if (!company.prior) results.share_change_1y = na("history");
@@ -236,11 +366,10 @@ export function computeMetrics(company: Assembled, kind: FilerKind): ScreenerMet
   results.buybacks_to_fcf = overFcf(v(L.buybacks));
 
   // —— Balance sheet health ——
-  const debt = v(B.total_debt);
   if (isFinancial) results.debt_to_equity = na("not-applicable");
   else if (debt == null || equity == null) results.debt_to_equity = na("missing");
   else if (equity <= 0) results.debt_to_equity = na("base");
-  else results.debt_to_equity = ok(debt / equity);
+  else results.debt_to_equity = ok(debt.value / equity);
 
   const currentAssets = v(B.current_assets);
   const currentLiabilities = v(B.current_liabilities);
@@ -260,6 +389,48 @@ export function computeMetrics(company: Assembled, kind: FilerKind): ScreenerMet
   results.revenue_growth_10y = cagr(company.revenueHistory, badYears, 10);
   results.revenue_growth_years = yearsOfGrowth(company.revenueHistory, badYears);
 
+  // —— Return on invested capital (main ten) ——
+  // Invested capital is debt plus equity less cash and short-term
+  // investments, at year end. n/a for banks, insurers and REITs, whose
+  // capital is their deposits, float or properties.
+  if (kind !== "operating") {
+    results.roic = na("not-applicable");
+  } else if (operatingIncome == null || equity == null || debt == null || cash == null) {
+    results.roic = na("missing");
+  } else {
+    const invested = debt.value + equity - cash.value;
+    tax = taxRate(L);
+    results.roic = invested <= 0 ? na("base") : ok((operatingIncome * (1 - tax.rate)) / invested);
+  }
+
+  // —— Operating margin, now against three fiscal years earlier, in points ——
+  const back = company.threeYearsBack;
+  if (!back) {
+    results.operating_margin_change_3y = na("history");
+  } else {
+    const then = overRevenue(v(back.operating_income), v(back.revenue));
+    const now = results.operating_margin;
+    if (now.value == null) results.operating_margin_change_3y = na(now.na ?? "missing");
+    else if (then.value == null) results.operating_margin_change_3y = na(then.na ?? "missing");
+    else results.operating_margin_change_3y = ok(now.value - then.value);
+  }
+
+  // —— Growth plus free cash flow margin ("Rule of 40") ——
+  const g = results.revenue_growth_1y;
+  const fm = results.fcf_margin;
+  if (g.value == null) results.growth_plus_fcf_margin = na(g.na ?? "missing");
+  else if (fm.value == null) results.growth_plus_fcf_margin = na(fm.na ?? "missing");
+  else results.growth_plus_fcf_margin = ok(g.value + fm.value);
+
+  // —— Cash conversion: operating cash flow over net income ——
+  // n/a for banks and insurers, whose operating cash flow swings on deposits
+  // and loans (concepts.ts), and when net income is zero or below.
+  const ocf = v(L.operating_cash_flow);
+  if (isFinancial) results.cash_conversion = na("not-applicable");
+  else if (ocf == null || netIncome == null) results.cash_conversion = na("missing");
+  else if (netIncome <= 0) results.cash_conversion = na("base");
+  else results.cash_conversion = ok(ocf / netIncome);
+
   const latestBad = new Set(company.latest.inconsistent);
   const priorBad = new Set(company.prior?.inconsistent ?? []);
   const values = {} as Record<MetricKey, number | null>;
@@ -275,5 +446,5 @@ export function computeMetrics(company: Assembled, kind: FilerKind): ScreenerMet
   }
   if (paysDividend == null) reasons.pays_dividend = "missing";
 
-  return { values, paysDividend, freeCashFlow: fcf, netIncome, na: reasons };
+  return { values, paysDividend, freeCashFlow: fcf, netIncome, workings: { cash, debt, taxRate: tax }, na: reasons };
 }

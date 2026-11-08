@@ -210,11 +210,30 @@ export type ScreenerLineItem =
   | "interest_expense"
   | "dividends_paid"
   | "current_assets"
-  | "current_liabilities";
+  | "current_liabilities"
+  // Net cash, both sides (7 November 2026): cash plus short-term
+  // investments, and debt plus short-term borrowings and commercial paper.
+  | "cash_and_short_term_investments"
+  | "short_term_investments"
+  | "debt_current"
+  | "long_term_debt_current"
+  | "short_term_borrowings"
+  | "long_term_debt_noncurrent"
+  // Return on invested capital's tax rate.
+  | "income_tax"
+  | "pretax_income"
+  // Write-downs, for telling a gross margin's gap from a one-off loss.
+  | "impairment";
 
 export const SCREENER_INSTANT_ITEMS: ReadonlySet<ScreenerLineItem> = new Set<ScreenerLineItem>([
   "current_assets",
   "current_liabilities",
+  "cash_and_short_term_investments",
+  "short_term_investments",
+  "debt_current",
+  "long_term_debt_current",
+  "short_term_borrowings",
+  "long_term_debt_noncurrent",
 ]);
 
 // Every list below was checked against the latest 10-K in the companyfacts of
@@ -236,7 +255,10 @@ export const SCREENER_CONCEPT_TAGS: Record<ScreenerLineItem, readonly string[]> 
   // lines and file no combined tag. The screener adds them only when both are
   // filed for the same year, and labels the result as calculated. Amazon files
   // only general and administrative, so its SG&A share is n/a, not a guess.
-  selling_marketing: ["SellingAndMarketingExpense"],
+  // MarketingExpense added 7 November 2026: Tripadvisor ($791M) and Amazon
+  // ($47.1B) file their selling costs as marketing, alongside general and
+  // administrative.
+  selling_marketing: ["SellingAndMarketingExpense", "MarketingExpense"],
   general_admin: ["GeneralAndAdministrativeExpense"],
   // Most large companies moved to InterestExpenseNonoperating with the 2024
   // taxonomy (NVIDIA, Microsoft, Alphabet, Tesla, Verizon). Costco, Coca-Cola,
@@ -267,4 +289,57 @@ export const SCREENER_CONCEPT_TAGS: Record<ScreenerLineItem, readonly string[]> 
   // their current ratio is n/a.
   current_assets: ["AssetsCurrent"],
   current_liabilities: ["LiabilitiesCurrent"],
+
+  // —— Net cash, both sides (checked 7 November 2026 against the year-end
+  // 2025 frames for every screener company, and the latest 10-K balance
+  // sheets of NVIDIA, Alphabet, Microsoft, Apple, Meta and Chevron) ——
+  //
+  // The company's own total of cash and short-term investments, where it
+  // files one (Alphabet $126.8B, Microsoft $76.8B; 218 companies).
+  cash_and_short_term_investments: ["CashCashEquivalentsAndShortTermInvestments"],
+  // Otherwise cash plus ONE of these, never a sum: where a company files two,
+  // they are usually the same line (61 of 112), and adding them never once
+  // matched a company's own total. Apple and Meta file
+  // MarketableSecuritiesCurrent; Microsoft ShortTermInvestments. Left out:
+  // the general AvailableForSaleSecuritiesDebtSecurities, which isn't
+  // "current" and would count Duke Energy's nuclear decommissioning fund and
+  // Caterpillar's insurance holdings as cash. NVIDIA tags its marketable
+  // securities ($52.0B) with its own element, which the frames don't carry,
+  // so its cash side is its cash alone.
+  short_term_investments: [
+    "ShortTermInvestments",
+    "MarketableSecuritiesCurrent",
+    "AvailableForSaleSecuritiesDebtSecuritiesCurrent",
+    "HeldToMaturitySecuritiesCurrent",
+    "OtherShortTermInvestments",
+  ],
+  // All debt due within a year: short-term borrowings and the current part of
+  // long-term debt together (Chevron's "Short-term debt", $10.9B).
+  debt_current: ["DebtCurrent"],
+  // The current part of long-term debt alone, which LongTermDebt already
+  // includes (NVIDIA $1.0B, Apple $9.9B).
+  long_term_debt_current: ["LongTermDebtCurrent", "LongTermDebtAndCapitalLeaseObligationsCurrent"],
+  // Borrowings first made for under a year. One tag, never a sum, for the
+  // same reason as short-term investments: ShortTermBorrowings often already
+  // includes commercial paper. Apple files only CommercialPaper ($2.0B).
+  short_term_borrowings: ["ShortTermBorrowings", "CommercialPaper", "OtherShortTermBorrowings", "ShortTermBankLoansAndNotesPayable"],
+  // Long-term debt excluding the part due within a year. Read only to tell
+  // whether the total-debt figure already includes current maturities:
+  // Chevron files the same $39.8B under the "including current maturities"
+  // tag and this one, so its $10.9B of short-term debt is on top.
+  long_term_debt_noncurrent: ["LongTermDebtNoncurrent", "LongTermDebtAndCapitalLeaseObligations"],
+
+  // —— Return on invested capital's tax rate: income tax over pretax income.
+  // 4,049 screener companies file the tax line and 3,760 the first pretax
+  // tag in CY2025; the second (before equity-method income) adds 346.
+  income_tax: ["IncomeTaxExpenseBenefit"],
+  // A year's write-down of goodwill or other assets, one tag (Bumble's $656M
+  // goodwill impairment in 2025). Read only by the gross margin check
+  // (metrics.ts, grossMarginIsPartial), so a one-off loss isn't mistaken for
+  // costs the cost of revenue left out.
+  impairment: ["GoodwillImpairmentLoss", "AssetImpairmentCharges", "GoodwillAndIntangibleAssetImpairment", "ImpairmentOfIntangibleAssetsExcludingGoodwill"],
+  pretax_income: [
+    "IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest",
+    "IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments",
+  ],
 };

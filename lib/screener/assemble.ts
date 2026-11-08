@@ -280,26 +280,41 @@ export function yearChain(ends: string[]): string[] {
   }
 }
 
-export type DurationItem = Exclude<
-  InputItem,
+export type BalanceItem =
   | "cash_and_equivalents"
   | "total_assets"
   | "total_equity"
   | "total_debt"
   | "current_assets"
   | "current_liabilities"
-  | "cash_with_restricted"
-  | "restricted_cash_current"
-  | "restricted_cash_noncurrent"
->;
+  | "cash_and_short_term_investments"
+  | "short_term_investments"
+  | "debt_current"
+  | "long_term_debt_current"
+  | "short_term_borrowings"
+  | "long_term_debt_noncurrent";
+
+const BALANCE_ITEMS: BalanceItem[] = [
+  "cash_and_equivalents",
+  "total_assets",
+  "total_equity",
+  "total_debt",
+  "current_assets",
+  "current_liabilities",
+  "cash_and_short_term_investments",
+  "short_term_investments",
+  "debt_current",
+  "long_term_debt_current",
+  "short_term_borrowings",
+  "long_term_debt_noncurrent",
+];
+
+export type DurationItem = Exclude<InputItem, BalanceItem | "cash_with_restricted" | "restricted_cash_current" | "restricted_cash_noncurrent">;
 
 const DURATION_ITEMS: DurationItem[] = [
   ...(Object.keys(CONCEPT_TAGS) as InputItem[]),
   ...(Object.keys(SCREENER_CONCEPT_TAGS) as InputItem[]),
 ].filter((item): item is DurationItem => SPEC.get(item)?.kind === "duration");
-
-export type BalanceItem = "cash_and_equivalents" | "total_assets" | "total_equity" | "total_debt" | "current_assets" | "current_liabilities";
-const BALANCE_ITEMS: BalanceItem[] = ["cash_and_equivalents", "total_assets", "total_equity", "total_debt", "current_assets", "current_liabilities"];
 
 export type CompanyYear = {
   periodStart: string | null;
@@ -322,6 +337,10 @@ export type Assembled = {
   // then in revenueHistoryInconsistent).
   revenueHistory: (Picked | null)[];
   revenueHistoryInconsistent: number[];
+  // Three fiscal years before the latest, for the change in operating margin:
+  // that year's revenue (revenueHistory[3]) and operating income. Null when
+  // the chain of consecutive years doesn't reach back that far.
+  threeYearsBack: { periodEnd: string; revenue: Picked | null; operating_income: Picked | null } | null;
 };
 
 export type AssembleResult =
@@ -383,25 +402,31 @@ export function assembleCompany(company: CompanyFrames, today: string): Assemble
     return settled.picked;
   });
 
+  const threeYearsBack = chain[3]
+    ? { periodEnd: chain[3], revenue: revenueHistory[3] ?? null, operating_income: pick(company, "operating_income", chain[3], ranked.get("operating_income")) }
+    : null;
+
   return {
     ok: true,
-    company: { cik: company.cik, name: company.name, latest, prior, balance, revenueHistory, revenueHistoryInconsistent },
+    company: { cik: company.cik, name: company.name, latest, prior, balance, revenueHistory, revenueHistoryInconsistent, threeYearsBack },
   };
 }
 
 // —— A figure as the annual report states it ——
 // From a company's full history for one tag (client.ts, fetchCompanyConcept),
-// the value for exactly this period from its 10-Ks and 10-Qs only, by the
-// normaliser's rule (normalize.ts, resolvePeriod): the earliest such filing's
-// value, or the latest one's if a later 10-K or 10-Q changed it. Proxy
-// statements and 8-Ks don't count, exactly as on the research file.
+// the value for exactly this period from its 10-Ks: the latest 10-K's, which
+// is the original figure unless a later 10-K restated it. Only when no 10-K
+// has the period does a 10-Q's count. Proxy statements and 8-Ks never do.
+//
+// 10-K first since 7 November 2026: JAKKS Pacific's first-quarter 2026 10-Q
+// tagged its first quarter of 2025 with the whole year's dates, and as the
+// latest filing it had been winning over the 10-K.
 export function annualReportFact(facts: SecFact[], start: string, end: string): SecFact | null {
-  const filed = facts
-    .filter((f) => /^10-[KQ]/.test(f.form) && f.start === start && f.end === end)
-    .sort((a, b) => (a.filed < b.filed ? -1 : 1));
-  // Earliest unless restated, then latest: either way, the latest filing's
-  // value, since an unrestated figure is the same in every filing.
-  return filed.length ? filed[filed.length - 1] : null;
+  const latest = (form: RegExp) => {
+    const filed = facts.filter((f) => form.test(f.form) && f.start === start && f.end === end).sort((a, b) => (a.filed < b.filed ? -1 : 1));
+    return filed.length ? filed[filed.length - 1] : null;
+  };
+  return latest(/^10-K/) ?? latest(/^10-Q/);
 }
 
 export function annualReportValue(facts: SecFact[], start: string, end: string): number | null {

@@ -77,13 +77,19 @@ describe("framePlan", () => {
     expect(nightly.length).toBeLessThan(full.length / 2);
   });
 
-  it("covers every input", () => {
-    const items = new Set(full.map((r) => r.item));
-    for (const spec of SCREENER_INPUTS) {
-      // Cash's restricted-inclusive total is fetched under cash's own item.
-      if (spec.item === "cash_with_restricted") continue;
-      expect(items.has(spec.item)).toBe(true);
-    }
+  it("covers every tag of every input, each fetched once", () => {
+    // A tag two items share (cash's restricted-inclusive total; the noncurrent
+    // debt tags, also total-debt fallbacks) is fetched under the first.
+    const tags = new Set(full.map((r) => r.tag));
+    for (const spec of SCREENER_INPUTS) for (const tag of spec.tags) expect(tags.has(tag)).toBe(true);
+    const keys = full.map((r) => `${r.tag}|${r.unit}|${r.period}`);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it("reads operating income four years back, for the change in operating margin", () => {
+    const periods = full.filter((r) => r.tag === "OperatingIncomeLoss").map((r) => r.period);
+    expect(periods).toContain("CY2021");
+    expect(full.filter((r) => r.tag === "NetIncomeLoss").map((r) => r.period)).not.toContain("CY2021");
   });
 });
 

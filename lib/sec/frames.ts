@@ -67,8 +67,10 @@ export type InputSpec = {
   unit: FrameUnit;
   kind: "duration" | "instant";
   // "long": ten years of history (revenue, for multi-year growth and "years in
-  // a row"). "short": the latest year and the one before.
-  history: "long" | "short";
+  // a row"). "medium": the latest year and the three before it (operating
+  // income, for the change in operating margin over three years). "short":
+  // the latest year and the one before.
+  history: "long" | "medium" | "short";
 };
 
 function frameUnit(item: LineItem): FrameUnit {
@@ -83,7 +85,7 @@ export const SCREENER_INPUTS: readonly InputSpec[] = [
       tags: CONCEPT_TAGS[item],
       unit: frameUnit(item),
       kind: INSTANT_ITEMS.has(item) ? "instant" : "duration",
-      history: item === "revenue" ? "long" : "short",
+      history: item === "revenue" ? "long" : item === "operating_income" ? "medium" : "short",
     }),
   ),
   ...(Object.keys(SCREENER_CONCEPT_TAGS) as ScreenerLineItem[]).map(
@@ -148,7 +150,8 @@ export type RefreshMode = "full" | "nightly";
 // The oldest "latest year" the screener can hold is the one that ended 18
 // months ago. A year ending in May 2025 runs mostly through 2024, so it sits in
 // CY2024: with today in 2026, latest years live in CY2024 to CY2026. Short
-// history then needs one year more (CY2023 to CY2026); long history needs ten
+// history then needs one year more (CY2023 to CY2026), medium three more
+// (CY2021 to CY2026); long history needs ten
 // more (CY2014 to CY2026) for ten-year growth and "years in a row".
 //
 // "nightly" is what a new filing can change from one day to the next: the
@@ -168,7 +171,8 @@ export function framePlan(today: string, mode: RefreshMode): FrameRequest[] {
     if (spec.kind === "instant") {
       periods = mode === "full" ? instants : instants.slice(-3);
     } else {
-      const first = mode === "nightly" ? year - 1 : spec.history === "long" ? year - 12 : year - 3;
+      const back = spec.history === "long" ? 12 : spec.history === "medium" ? 5 : 3;
+      const first = mode === "nightly" ? year - 1 : year - back;
       periods = [];
       for (let y = first; y <= year; y++) periods.push(durationPeriod(y));
     }

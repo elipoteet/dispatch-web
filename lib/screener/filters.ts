@@ -10,7 +10,7 @@
 // percents ("20" is 20%) and dollar figures with a suffix ("1b", "250m").
 // Anything in a link that doesn't parse is ignored, never an error.
 
-import { formatMoney, shortName, titleCaseName } from "@/lib/research/format";
+import { formatMoney } from "@/lib/research/format";
 import { SECTORS, type Sector } from "@/lib/screener/sectors";
 
 export type Unit = "money" | "percent";
@@ -400,31 +400,4 @@ export function dayLabel(iso: string | null | undefined): string | null {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "America/New_York" });
-}
-
-// The SEC's names are often in capitals ("AIR PRODUCTS AND CHEMICALS, INC.",
-// "PACIFIC GAS & ELECTRIC Co"). Title-cased as the research file does it,
-// then the small words lowered, a trailing place tag ("/DE/", "(Cayman
-// Islands)") and the legal form dropped: "Air Products and Chemicals".
-// Words a company writes in mixed case (McKesson's "McKESSON") are left alone,
-// as are capitals of three letters or fewer, or with no vowel (CVS, SPDR).
-const SMALL_WORDS = /(?<=\s)(And|Of|The|For|In|On|At|By|To|Or)(?=\s)/g;
-const PLACE_TAG = /\s*[/\\(][^/\\()]*[/\\)]?\s*$/;
-
-function quieter(word: string): string {
-  // "McKESSON", "McDONALD’S" → "McKesson", "McDonald’s".
-  if (/^Mc[A-Z]{3,}/.test(word)) return `Mc${word.charAt(2)}${word.slice(3).toLowerCase()}`;
-  const letters = word.replace(/[^A-Za-z]/g, "");
-  if (letters.length < 4 || letters !== letters.toUpperCase() || !/[AEIOUY]/.test(letters)) return word;
-  return word.charAt(0) + word.slice(1).toLowerCase();
-}
-
-export function companyName(raw: string): string {
-  const cleaned = raw.replace(/\s+/g, " ").replace(PLACE_TAG, "").replace(/[/\\]+$/, "").trim() || raw.trim();
-  const words = cleaned.split(" ").filter((w) => /[A-Za-z]{2}/.test(w));
-  const shouting = words.filter((w) => w.replace(/[^A-Za-z]/g, "") === w.replace(/[^A-Za-z]/g, "").toUpperCase()).length;
-  // Mostly capitals is read as all capitals ("PACIFIC GAS & ELECTRIC Co").
-  let name = shouting * 2 > words.length ? titleCaseName(cleaned.toUpperCase()) : cleaned.split(" ").map(quieter).join(" ");
-  if (name !== cleaned) name = name.replace(SMALL_WORDS, (w) => w.toLowerCase());
-  return shortName(name);
 }

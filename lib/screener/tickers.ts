@@ -42,3 +42,25 @@ export function tickerByCik(file: TickerExchangeFile): Map<number, ListedTicker>
   }
   return out;
 }
+
+// —— A ticker that moved to a new holding company ——
+// When a company reorganises under a new holding company, the SEC's ticker
+// file moves the symbol to the new company at once, while the annual
+// figures stay with the old one until the new one files its first 10-K. In
+// between, the company would vanish from the screener. ExxonMobil did this
+// in 2026: XOM now points to ExxonMobil Holdings Corp (CIK 2115436), whose
+// first annual report isn't out, while Exxon Mobil Corporation (34088) filed
+// the 2025 10-K. Checked 7 November 2026 across every filer with $5 billion of
+// 2025 revenue and no ticker: the only such case. new CIK -> old CIK.
+export const SUCCESSIONS: ReadonlyMap<number, number> = new Map([[2115436, 34088]]);
+
+// Lends the new company's ticker to the old one while only the old one has
+// annual figures; once the new one files, the ticker is its own again.
+export function withPredecessors(listed: Map<number, ListedTicker>, hasFigures: (cik: number) => boolean): Map<number, ListedTicker> {
+  const out = new Map(listed);
+  for (const [successor, predecessor] of SUCCESSIONS) {
+    const t = listed.get(successor);
+    if (t && !hasFigures(successor) && !listed.has(predecessor)) out.set(predecessor, t);
+  }
+  return out;
+}
