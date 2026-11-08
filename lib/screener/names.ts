@@ -81,6 +81,15 @@ export const NAME_OVERRIDES: Readonly<Record<string, string>> = {
   "0001158463": "JetBlue Airways",
   "0001097864": "ON Semiconductor",
   "0001138118": "CBRE Group",
+  // Initials that read as a word, found in a check of every company with
+  // $500M+ of revenue (7 November 2026).
+  "0001408198": "MSCI",
+  "0000016058": "CACI International",
+  "0000040211": "GATX",
+  "0000046619": "HEICO",
+  "0000105634": "EMCOR Group",
+  "0000712034": "ACCO Brands",
+  "0000003197": "CECO Environmental",
 };
 
 // —— 3. Capitals read as a person would ——
@@ -89,7 +98,8 @@ export const NAME_OVERRIDES: Readonly<Record<string, string>> = {
 const ORDINARY_SHORT = new Set(
   (
     "A AN AND AT BY FOR IN OF ON OR THE TO " +
-    "ACE AGE AID AIM AIR ALL ARC ARK ARM ART BAR BAY BED BIG BIO BIT BOX BUS BUY CAN CAP CAR CO COW CUP CUT DAY DOG DOT DRY " +
+    // And a few first names (Eli Lilly, Cal-Maine, Bel Fuse).
+    "ACE AGE AID AIM AIR ALL ARC ARK ARM ART BAR BAY BED BEL BIG BIO BIT BOX BUS BUY CAL CAN CAP CAR CO COW CUP CUT DAY DOG DOT DRY ELI " +
     "EAT END EYE FAN FAR FIT FLY FOX FUN GAP GAS GEM GO HOT HUB ICE INC INK ION JET JOY KEY KID LAB LAS LAW LOG LTD MAN MAP MED " +
     "MIX NET NEW NOW NUT OAK OIL OLD ONE OUR OUT OWN PAN PAY PET PRO RAY RED RIO ROW RUN SEA SET SKY SUN TAX TEA TEN " +
     "TOP TOY TWO VAN WAY WEB WIN ZOO"

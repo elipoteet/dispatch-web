@@ -62,7 +62,7 @@ export async function ScreenerHome() {
                           <span className="rf-scr-card-title">{s.title}</span>
                           {s.why && <span className="rf-scr-card-why">{s.why}</span>}
                           <span className="rf-scr-card-filters">
-                            {filterLines(s.filters).map((line) => (
+                            {filterLines(s.filters, { plain: true }).map((line) => (
                               <span key={line.key}>{line.text}</span>
                             ))}
                           </span>

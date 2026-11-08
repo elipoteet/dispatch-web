@@ -261,6 +261,14 @@ describe("words", () => {
   it("says where the middle company sits", () => {
     expect(medianText(f("roic"), 0.0912)).toBe("Half of companies: above 9.1%");
     expect(medianText(f("revenue"), 412_300_000)).toBe("Half of companies: above $412.3M");
+    expect(medianText(f("years"), 1)).toBe("Half of companies: 1 year or more");
+  });
+
+  it("says a card's filters the way a person would", () => {
+    const losing = startingScreen("fast-growth-still-losing-money")!.filters;
+    expect(filterLines(losing, { plain: true }).map((l) => l.text)).toEqual(["Revenue: at least $100M", "Revenue growth, 1 year: 30% or more", "A net loss"]);
+    const cash = startingScreen("more-cash-than-debt")!.filters;
+    expect(filterLines(cash, { plain: true }).map((l) => l.text)).toEqual(["Revenue: at least $1B", "Positive free cash flow", "More cash than debt"]);
   });
 
   it("dates", () => {

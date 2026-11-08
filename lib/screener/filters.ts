@@ -475,12 +475,15 @@ export function stateChipText(states: readonly string[]): string {
 export const DIVIDEND_CHIP = "Pays a dividend";
 
 // Every active filter as a line of plain words: chips, and a starting
-// screen's card.
-export function filterLines(filters: Filters): { key: string; text: string }[] {
+// screen's card. On a card ("plain"), a filter a person would say in words
+// is said that way: "A net loss", not "Net margin: 0% or less".
+export function filterLines(filters: Filters, opts: { plain?: boolean } = {}): { key: string; text: string }[] {
   const lines: { key: string; text: string }[] = [];
   for (const f of RANGE_FILTERS) {
     const r = filters.ranges[f.param];
-    if (r) lines.push({ key: f.param, text: chipText(f, r) });
+    if (!r) continue;
+    const said = opts.plain ? spokenClause(f, r) : null;
+    lines.push({ key: f.param, text: said ? said.charAt(0).toUpperCase() + said.slice(1) : chipText(f, r) });
   }
   if (filters.dividend) lines.push({ key: "dividend", text: DIVIDEND_CHIP });
   if (filters.sectors.length) lines.push({ key: "sector", text: sectorChipText(filters.sectors) });
@@ -488,10 +491,9 @@ export function filterLines(filters: Filters): { key: string; text: string }[] {
   return lines;
 }
 
-// One range in a sentence: "a return on invested capital of 25% or more",
-// "revenue of at least $500 million", and a few said the way a person would
-// ("a net loss", "more cash than debt", "a share count down 6% or more").
-function clause(f: RangeFilter, r: Range): string {
+// A few ranges said the way a person would ("a net loss", "more cash than
+// debt", "a share count down 6% or more"); null for the rest.
+function spokenClause(f: RangeFilter, r: Range): string | null {
   const onlyMin = r.min != null && r.max == null;
   const onlyMax = r.max != null && r.min == null;
   if (f.param === "net" && onlyMax && (r.max as number) <= 0) return "a net loss";
@@ -503,6 +505,14 @@ function clause(f: RangeFilter, r: Range): string {
   if (f.param === "growth1y" && onlyMax && (r.max as number) < 0) return `revenue down ${-(r.max as number)}% or more over the year`;
   if (f.param === "marginchange" && onlyMin && (r.min as number) > 0) return `an operating margin up ${r.min} points or more over three years`;
   if (f.param === "years" && onlyMin) return `revenue growth in each of the last ${r.min} years`;
+  return null;
+}
+
+// One range in a sentence: "a return on invested capital of 25% or more",
+// "revenue of at least $500 million", or the spoken form above.
+function clause(f: RangeFilter, r: Range): string {
+  const said = spokenClause(f, r);
+  if (said) return said;
   if (f.param === "divfcf" || f.param === "buyfcf") return `${f.phrase} of ${rangePhrase(f, r)} of free cash flow`;
   if (f.unit === "money") {
     const w = (v: number) => moneyWords(v);
@@ -560,7 +570,9 @@ export function formatFigure(f: RangeFilter, value: number | null): string {
 // Where the middle company sits, under a filter's name: "Half of companies:
 // above 38.2%". For "pays a dividend", the share that do.
 export function medianText(f: RangeFilter, median: number): string {
-  return `Half of companies: above ${formatFigure({ ...f, signed: f.signed }, median)}`;
+  // A count's middle is a whole number many companies share: "1 year or more".
+  if (f.unit === "count") return `Half of companies: ${boundLabel("count", Math.round(median))} or more`;
+  return `Half of companies: above ${formatFigure(f, median)}`;
 }
 
 export function dividendShareText(share: number): string {

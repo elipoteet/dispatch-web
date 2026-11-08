@@ -51,6 +51,9 @@ describe("names written as a person would", () => {
     expect(companyName("HP INC")).toBe("HP");
     expect(companyName("STURM,     RUGER & COMPANY, INC.")).toBe("Sturm, Ruger");
     expect(companyName("AMAZON.COM, INC.")).toBe("Amazon.com");
+    expect(companyName("ELI LILLY AND COMPANY")).toBe("Eli Lilly");
+    expect(companyName("CAL-MAINE FOODS, INC.")).toBe("Cal-Maine Foods");
+    expect(displayName("0001408198", "MSCI INC.", "MSCI Inc.")).toBe("MSCI");
   });
 
   it("leaves mixed case alone apart from a capitalised word", () => {

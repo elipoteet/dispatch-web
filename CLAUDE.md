@@ -61,14 +61,19 @@ npx vitest run lib/sec/normalize.test.ts -t "name"  # one test by name
   - `assemble.ts` turns them into each company's years, using the normaliser's tag rules.
   - `metrics.ts` computes every filter value, with a reason for every n/a.
   - New tag lists are `SCREENER_CONCEPT_TAGS`, kept out of `CONCEPT_TAGS` so research pages don't move.
-  - `job.ts` (run by `/api/cron/screener`, daily) downloads every frames file, writes `screener_metrics`, and logs to `screener_runs`; `rows.ts` holds its pure rules. It works to a 280 s budget: company profiles (`screener_filers`) and 10-K net income fixes it doesn't reach carry over to the next run.
+  - `job.ts` (run by `/api/cron/screener`, daily) downloads every frames file, writes `screener_metrics` and `screener_medians`, and logs to `screener_runs`; `rows.ts` holds its pure rules. It works to a 280 s budget (a normal night is about 100 s): company profiles (`screener_filers`) and 10-K revenue and net income fixes it doesn't reach carry over to the next run.
+  - `runScreenerJob({ dryRun: true, onRows })` builds every row without writing anything; run it with `npx tsx --env-file=.env.local` to check a change on the whole universe first.
+  - `names.ts`: the job writes each company's display name (the mixed-case SEC name where one exists, plus `NAME_OVERRIDES` for names the SEC holds only in capitals); the page shows it as stored.
+  - Left out: no ticker, over the counter, no annual report in 18 months, and commodity and crypto funds (`rows.ts`, `isCommodityOrCryptoFund`). `tickers.ts`, `SUCCESSIONS` lends a moved ticker to the old company while the new holding company has no annual report (ExxonMobil, 2026).
 - The page: `/screener` and `/screener/[screen]` (`app/screener/`, `components/screener/`).
   - The whole screen lives in the link. `filters.ts` reads and writes it (pure, shared by the page and the browser's filter panel); nonsense in a link is ignored, never an error.
   - `query.ts` filters, sorts and pages in the database with the public key, and returns a failure reason instead of throwing, so the page answers 200 with an inline message.
-  - The starting screens are defined in `screens.ts`; each has its own indexable page. Any other combination in the link is `noindex` with `/screener` as canonical.
+  - The starting screens are defined in `screens.ts` (thirteen, from `docs/phase-eleven/phase-eleven-screens.md`, each sorted by its own measure); each has its own indexable page, and retired ones redirect in `next.config.ts`. Any other combination in the link is `noindex` with `/screener` as canonical.
+  - Every filter's plain name, one-line definition and unit live in `filters.ts` (`RANGE_FILTERS`); a new measure needs a column (a migration), a `METRICS` entry and a filter there.
   - Links to a company's research file use `prefetch={false}`: prefetching a file loads its data.
 - Frames traps:
-  - A frame keeps each company's *last-filed* value, so net income often comes from the proxy statement (rounded, restated, sometimes in the wrong units). The job swaps in the 10-K's own figure from the company's concept file (`needsAnnualReportFix`).
+  - A frame keeps each company's *last-filed* value, so net income often comes from the proxy statement (rounded, restated, sometimes in the wrong units), and revenue can come from a later 10-Q that mis-tagged a quarter as the year (JAKKS Pacific). The job swaps in the 10-K's own figure from the company's concept file, 10-K first (`needsAnnualReportFix`, `annualReportFact`).
+  - A frame's `entityName` is the 10-K cover's name, often in capitals, an old name, or a co-filer's ("BofA Finance LLC" for Bank of America); see `names.ts`.
   - 10-Qs' trailing-twelve-month spans look like annual periods (`fiscalYearsOnly` drops spans that overlap a real fiscal year).
   - Some filings tag one figure in two units (`lib/sec/units.ts`).
 - Live checks are opt-in (`SCREENER_LIVE=1`); see the top of `lib/screener/*.live.test.ts`.
@@ -83,7 +88,7 @@ npx vitest run lib/sec/normalize.test.ts -t "name"  # one test by name
   - `lib/supabase/server.ts`: per request, with the user's session.
   - `client.ts`: in the browser.
   - `service.ts`: `createServiceRoleClient` bypasses row-level security, for SEC writes and the cron; `createPublicClient` does anonymous reads.
-- Migrations are SQL files in `supabase/migrations/` that Eli pastes into the Supabase dashboard by hand; there is no migration runner. Everything through `0028` (the screener's tables and its publish function, pasted 5 and 6 November 2026) is applied, and the next is `0029`.
+- Migrations are SQL files in `supabase/migrations/` that Eli pastes into the Supabase dashboard by hand; there is no migration runner. Everything through `0029` (the screener's tables, publish function, new measures and medians, pasted 5 to 7 November 2026) is applied, and the next is `0030`.
 - The database still holds the social, leaderboard and paper-trading tables. Leave them in place, and don't alter a live table without Eli's sign-off (which is why the version stamps reuse an existing column).
 - The untracked top-level `migrations/` folder is a stray copy of the older migrations.
 
