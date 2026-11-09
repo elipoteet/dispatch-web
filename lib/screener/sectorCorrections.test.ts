@@ -8,6 +8,7 @@ describe("hand-checked sectors", () => {
     expect(sectorFor("0001141391", "7389")).toBe("Financials"); // Mastercard
     expect(sectorFor("0000707549", "3559")).toBe("Technology"); // Lam Research
     expect(sectorFor("0001405495", "6794")).toBe("Technology"); // InterDigital
+    expect(sectorFor("0002099039", "7389")).toBe("Financials"); // Wise
     expect(sectorFor("0001099590", "7389")).toBe("Consumer discretionary"); // MercadoLibre
     expect(sectorFor("0001324424", "4700")).toBe("Consumer discretionary"); // Expedia
     expect(sectorFor("0001559720", "7340")).toBe("Consumer discretionary"); // Airbnb

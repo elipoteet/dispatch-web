@@ -351,8 +351,14 @@ export const MAX_TAX_RATE = 0.35;
 // down by buybacks and cash piles, and the ratio measures how small that base
 // has become rather than the business (Eli, 9 November 2026). So above 100%,
 // ROIC is n/a unless invested capital is at least a quarter of total assets.
+//
+// And at any value, ROIC is n/a when invested capital is under a tenth of
+// total assets (Eli, 9 November 2026): Expedia (89%, 7% of assets) and Live
+// Nation (61%, 6%) are as distorted as NetApp; they only got through by being
+// under 100%. The rule rests on the size of the base, not the result.
 export const ROIC_CEILING = 1;
 export const MIN_CAPITAL_SHARE_ABOVE_CEILING = 0.25;
+export const MIN_CAPITAL_SHARE = 0.1;
 
 export function taxRate(L: Partial<Record<DurationItem, Picked>>): { rate: number; default: boolean } {
   const tax = L.income_tax?.val;
@@ -506,6 +512,16 @@ export function computeMetrics(company: Assembled, kind: FilerKind, context: Met
   // ratio runs to the thousands (McKesson 1,348%, Unisys 1,550% on 7
   // November 2026).
   //
+  // n/a as well for a company holding its customers' money (customerMoney.ts;
+  // Eli's question, 9 November 2026), for two reasons. Its operating profit
+  // includes interest earned on that money, which isn't in its invested
+  // capital: ADP's 70.5% partly measured the float, not ADP's capital. And
+  // the cash subtracted can't be told apart from customers' money without
+  // reading each balance sheet: Asure's $12.8M of securities sit inside its
+  // funds held for clients, and Wise's cash is mostly customers' balances.
+  // The other fifteen with a figure used their own cash, but the first reason
+  // holds for them too, as at a bank.
+  //
   // Where a company files no operating income line (ExxonMobil, Chevron,
   // Johnson & Johnson, Eli Lilly: 277 companies on 7 November 2026), the
   // profit is pretax income plus interest expense, Eli's choice of 9
@@ -517,7 +533,7 @@ export function computeMetrics(company: Assembled, kind: FilerKind, context: Met
     profit = L.pretax_income.val + L.interest_expense.val;
     roicBasis = "pretax income plus interest expense";
   }
-  if (kind !== "operating") {
+  if (kind !== "operating" || customerMoney) {
     results.roic = na("not-applicable");
   } else if (otherUnits) {
     results.roic = na("inconsistent");
@@ -531,6 +547,7 @@ export function computeMetrics(company: Assembled, kind: FilerKind, context: Met
     const roic = invested > 0 ? (profit * (1 - tax.rate)) / invested : null;
     if (roic == null) results.roic = na("base");
     else if (roic > ROIC_CEILING && !(assets != null && invested >= assets * MIN_CAPITAL_SHARE_ABOVE_CEILING)) results.roic = na("base");
+    else if (assets != null && invested < assets * MIN_CAPITAL_SHARE) results.roic = na("base");
     else results.roic = ok(roic);
   }
   if (results.roic.value == null) roicBasis = null;

@@ -165,7 +165,7 @@ export async function ScreenerResults({ view, screen }: { view: View; screen: St
           </p>
           <p>
             <strong>n/a</strong>
-            {" means the measure doesn’t fit the business (gross margin at a bank), a figure wasn’t filed, or it can’t be worked out (growth from a loss). Companies that hold their customers’ money, in payments and payroll, are n/a for free cash flow and net cash, as banks are: their cash flow and cash include that money. A company with n/a drops out of any filter on that measure; a missing figure is never counted as zero."}
+            {" means the measure doesn’t fit the business (gross margin at a bank), a figure wasn’t filed, or it can’t be worked out (growth from a loss). Companies that hold their customers’ money, in payments and payroll, are n/a for free cash flow, net cash and return on invested capital, as banks are: their cash flow, cash and profit include that money. A company with n/a drops out of any filter on that measure; a missing figure is never counted as zero."}
           </p>
           <p>
             <strong>Coverage.</strong>

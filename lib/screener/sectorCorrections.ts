@@ -11,8 +11,9 @@
 //
 // Every company with revenue over $5 billion in the screener on 9 November
 // 2026 (704 of them) was checked by hand against that classification, and
-// these are the ones SIC gets wrong. InterDigital, under $5 billion, is here
-// because Eli named it. A company whose classification was unclear stays where
+// these are the ones SIC gets wrong. InterDigital and Wise, under $5 billion,
+// are here because Eli named them (Wise on 9 November 2026: it holds its
+// customers' money and is treated like a bank, customerMoney.ts). A company whose classification was unclear stays where
 // SIC puts it: the government IT contractors (Leidos, CACI, SAIC, Parsons),
 // Roper, Teledyne, Veralto, Toast, Boise Cascade, Gold.com, Arko and Murphy
 // USA.
@@ -43,6 +44,7 @@ export const SECTOR_CORRECTIONS: ReadonlyMap<string, SectorCorrection> = new Map
   ["0000097745", { ticker: "TMO", sector: "Health care" }], // Thermo Fisher Scientific; SIC 3829 gave Technology
   ["0000313616", { ticker: "DHR", sector: "Health care" }], // Danaher; SIC 3823 gave Technology
   // —— Financials ——
+  ["0002099039", { ticker: "WSE", sector: "Financials" }], // Wise Group; SIC 7389 gave Industrials
   ["0001403161", { ticker: "V", sector: "Financials" }], // Visa; SIC 7389 gave Industrials
   ["0001633917", { ticker: "PYPL", sector: "Financials" }], // PayPal; SIC 7389 gave Industrials
   ["0001141391", { ticker: "MA", sector: "Financials" }], // Mastercard; SIC 7389 gave Industrials

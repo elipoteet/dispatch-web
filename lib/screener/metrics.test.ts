@@ -565,8 +565,15 @@ describe("return on invested capital (9 November 2026)", () => {
     expect(tinyBase.na.roic).toBe("base");
     // Without total assets there's nothing to vouch for a figure over 100%.
     expect(run({ latest: { operating_income: 2000 }, balance: { total_assets: MISSING } }).values.roic).toBeNull();
-    // Up to 100% the capital base isn't questioned.
-    expect(run({ balance: { total_assets: 100_000 } }).values.roic).toBeCloseTo((200 * 0.79) / 800);
+    // Up to 100%, a base of at least a tenth of total assets stands.
+    expect(run({ balance: { total_assets: 8_000 } }).values.roic).toBeCloseTo((200 * 0.79) / 800);
+  });
+
+  it("is n/a at any value when invested capital is under a tenth of total assets (Expedia, 7%)", () => {
+    const m = run({ balance: { total_assets: 8_001 } });
+    expect(m.values.roic).toBeNull();
+    expect(m.na.roic).toBe("base");
+    expect(m.workings.roicBasis).toBeNull();
   });
 });
 
@@ -591,8 +598,8 @@ describe("revenue growth from under $10 million (9 November 2026)", () => {
 describe("companies holding their customers' money (9 November 2026)", () => {
   const m = run({}, "operating", "7389", { holdsCustomerMoney: true });
 
-  it("are n/a for free cash flow and net cash, and what's built on them, as banks are", () => {
-    for (const key of ["fcf_margin", "net_cash", "dividends_to_fcf", "buybacks_to_fcf", "growth_plus_fcf_margin", "cash_conversion"] as const) {
+  it("are n/a for free cash flow, net cash and ROIC, and what's built on them, as banks are", () => {
+    for (const key of ["fcf_margin", "net_cash", "dividends_to_fcf", "buybacks_to_fcf", "growth_plus_fcf_margin", "cash_conversion", "roic"] as const) {
       expect(m.values[key]).toBeNull();
       expect(m.na[key]).toBe("not-applicable");
     }
@@ -602,7 +609,7 @@ describe("companies holding their customers' money (9 November 2026)", () => {
   it("keep everything else", () => {
     expect(m.values.revenue_growth_1y).toBeCloseTo(0.25);
     expect(m.values.net_margin).toBeCloseTo(0.15);
-    expect(m.values.roic).toBeCloseTo((200 * 0.79) / 800);
+    expect(m.values.roe).toBeCloseTo(0.15);
     expect(m.values.debt_to_equity).toBeCloseTo(0.3);
   });
 });

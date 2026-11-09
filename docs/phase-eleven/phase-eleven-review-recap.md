@@ -240,3 +240,66 @@ The fix: debt tagged "including current maturities" is now taken at its word. On
 
 - The research file uses the same units rule but not the cover-page check, so Universe Pharmaceuticals' research page still shows $17.9B. That's a separate change to the normaliser, outside the screener.
 - Wise, under $5B revenue, still shows as Industrials. Under the standard classification it would be Financials.
+
+## After Eli's second read (same day)
+
+**ROIC, a rule on the size of the base.** ROIC is now n/a when invested capital is under a tenth of total assets, at any value, as well as above 100% with under a quarter.
+
+This makes 39 companies n/a. With revenue over $500M:
+
+| Company | ROIC before |
+|---|---|
+| Cencora | 37.9% |
+| GE Vernova | 51.8% |
+| Live Nation | 60.9% |
+| Expedia | 89.4% |
+| BeOne Medicines | 46.7% |
+| Frontier Group | −26.8% |
+| GameStop | 39.0% |
+| Capri | 5.4% |
+| WEX | 56.2% |
+| Allegiant | 11.1% |
+
+The other 29 are small companies. Most showed figures like Joby's −31,635%, which had no meaning on a capital base that small.
+
+**ROIC at the 34 customer-money companies: now n/a.** I checked the cash in their invested capital against each balance sheet:
+- For 15 of the 17 that showed a figure, it was their own cash, separate from customers' money.
+- Asure Software's $12.8M of "securities" sit inside its funds held for clients.
+- Wise's cash is mostly customers' balances.
+
+I chose n/a over excluding the customers' money, for two reasons:
+- Their operating profit includes interest earned on customers' money, which isn't in their invested capital. ADP's 70.5% partly measured the float, not ADP's capital.
+- A securities line can't be told apart from client-fund investments without reading each balance sheet.
+
+This makes 17 companies n/a: PayPal, Block, ADP, Intuit, Fiserv, MercadoLibre, Paychex, SS&C, Corpay, Western Union, Paylocity, ACI Worldwide, Bill, Remitly, Blackbaud, Upwork and Asure.
+
+**Wise** is in the sector list as Financials.
+
+**New top 20, High return on capital** († = from pretax income plus interest expense):
+
+| | Company | ROIC |
+|---|---|---|
+| 1 | AppLovin | 114.1% |
+| 2 | NVIDIA | 107.2% |
+| 3 | CarGurus | 103.6% |
+| 4 | Sandisk | 99.2% |
+| 5 | Apple | 96.8% |
+| 6 | Mastercard | 94.2% |
+| 7 | Seagate | 86.9% |
+| 8 | Micron | 86.6% |
+| 9 | Chipotle | 83.0% |
+| 10 | Tapestry | 81.9% |
+| 11 | TJX † | 81.3% |
+| 12 | Teradata | 77.6% |
+| 13 | KLA † | 69.2% |
+| 14 | Lam Research | 67.9% |
+| 15 | Brinker | 66.5% |
+| 16 | Ross Stores | 65.7% |
+| 17 | Adobe | 63.2% |
+| 18 | Harmony Biosciences | 59.5% |
+| 19 | Idexx | 58.0% |
+| 20 | Visa | 52.0% |
+
+**Counts that moved:**
+- High return on capital: 107 → 96.
+- More cash than debt: 142 → 141 (that night's filings, not a rule).

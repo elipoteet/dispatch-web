@@ -9,7 +9,7 @@
 // companies, against the addendum's first thresholds where they differ.
 // Counts from the published run of 9 November 2026, after Eli's review
 // (buybacks gained a $500M revenue floor; New England's fell to $100M):
-//   High return on capital          ROIC 25%+ (20%), revenue $500M+         107
+//   High return on capital          ROIC 25%+ (20%), revenue $500M+          96
 //   Revenue up ten years in a row   10 years, revenue $2B+ (no floor)        130
 //   Strong free cash flow           FCF margin 25%+, revenue $1B+            116
 //   Fast growth, already profitable growth 20%+, op. margin 10%+, $200M+    136
@@ -18,7 +18,7 @@
 //   Fast growth, still losing money growth 30%+, net loss, $100M+           128
 //   Buying back shares              shares down 6%+ (3%), positive FCF, $500M+  88
 //   Dividends covered by cash flow  40% of FCF or less (60%), $10B+ ($500M) 130
-//   More cash than debt             more cash than debt, positive FCF, $1B+  142
+//   More cash than debt             more cash than debt, positive FCF, $1B+  141
 //   Profits without the cash        net profit, conversion 0.5× or less, $200M+  77
 //   Issuing shares fast             shares up 30%+ (10%), revenue $100M+     130
 //   Based in New England            six states, revenue $100M+ (no floor)   178

@@ -8,6 +8,8 @@
 // margin and net cash describe the customers' money as much as the company,
 // as at a bank. Eli's rule (9 November 2026): such a company gets n/a for
 // both, the way banks do, and for everything built on them (metrics.ts).
+// Return on invested capital too (9 November 2026): its profit includes
+// interest on the customers' money, which its capital doesn't.
 //
 // The rule: money held for customers worth at least a tenth of total assets
 // and at least $25 million on the latest balance sheet, counting
