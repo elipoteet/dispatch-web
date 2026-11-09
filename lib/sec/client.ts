@@ -495,12 +495,12 @@ export async function fetchCompanyFacts(cik: string): Promise<CompanyFacts> {
 // full 200 (checked 5 November 2026), so a refresh always downloads the file.
 //
 // A tag nobody filed for a period has no frame at all: 404, returned as null.
-import type { FrameResponse, FrameUnit } from "@/lib/sec/frames";
+import type { FrameResponse, FrameUnit, Taxonomy } from "@/lib/sec/frames";
 
 export type FetchedFrame = { frame: FrameResponse; bytes: number };
 
-export async function fetchFrame(tag: string, unit: FrameUnit, period: string): Promise<FetchedFrame | null> {
-  const url = `https://data.sec.gov/api/xbrl/frames/us-gaap/${tag}/${unit}/${period}.json`;
+export async function fetchFrame(tag: string, unit: FrameUnit, period: string, taxonomy: Taxonomy = "us-gaap"): Promise<FetchedFrame | null> {
+  const url = `https://data.sec.gov/api/xbrl/frames/${taxonomy}/${tag}/${unit}/${period}.json`;
   try {
     const text = await getText(url, `the ${tag} ${period} frame`);
     return { frame: JSON.parse(text) as FrameResponse, bytes: text.length };
@@ -627,6 +627,21 @@ export async function fetchCompanyConcept(cik: string | number, tag: string): Pr
       `https://data.sec.gov/api/xbrl/companyconcept/CIK${padCik(cik)}/us-gaap/${tag}.json`,
       `CIK ${cik} ${tag}`,
     );
+  } catch (err) {
+    if (err instanceof NoSecDataError) return null;
+    throw err;
+  }
+}
+
+// —— One file from a filing's folder, uncached ——
+// www.sec.gov/Archives/edgar/data/{cik}/{accession without dashes}/{file}:
+// FilingSummary.xml lists the filing's statement pages, and R2.htm, R4.htm...
+// are the statements themselves (lib/sec/statementPage.ts). A balance sheet
+// page is 20 to 60KB. Null when the filing has no such file.
+export async function fetchFilingFile(cik: string | number, accession: string, file: string): Promise<string | null> {
+  const url = `https://www.sec.gov/Archives/edgar/data/${Number(padCik(cik))}/${accession.replace(/-/g, "")}/${file}`;
+  try {
+    return await getText(url, `${file} in ${accession}`);
   } catch (err) {
     if (err instanceof NoSecDataError) return null;
     throw err;

@@ -223,7 +223,19 @@ export type ScreenerLineItem =
   | "income_tax"
   | "pretax_income"
   // Write-downs, for telling a gross margin's gap from a one-off loss.
-  | "impairment";
+  | "impairment"
+  // Money held for customers (9 November 2026): funds held for payroll
+  // clients or customers, settlement balances, and restricted cash. Read only
+  // to tell a payments, payroll or fintech company, whose cash flow and cash
+  // include its customers' money (lib/screener/customerMoney.ts).
+  | "customer_funds"
+  | "settlement_balances"
+  | "restricted_cash"
+  // Securities a company holds, of any maturity, and the long-term part:
+  // where the two leave securities the cash side hasn't counted, the balance
+  // sheet itself is read (lib/sec/statementPage.ts).
+  | "securities_total"
+  | "securities_noncurrent";
 
 export const SCREENER_INSTANT_ITEMS: ReadonlySet<ScreenerLineItem> = new Set<ScreenerLineItem>([
   "current_assets",
@@ -234,6 +246,11 @@ export const SCREENER_INSTANT_ITEMS: ReadonlySet<ScreenerLineItem> = new Set<Scr
   "long_term_debt_current",
   "short_term_borrowings",
   "long_term_debt_noncurrent",
+  "customer_funds",
+  "settlement_balances",
+  "restricted_cash",
+  "securities_total",
+  "securities_noncurrent",
 ]);
 
 // Every list below was checked against the latest 10-K in the companyfacts of
@@ -312,6 +329,9 @@ export const SCREENER_CONCEPT_TAGS: Record<ScreenerLineItem, readonly string[]> 
     "AvailableForSaleSecuritiesDebtSecuritiesCurrent",
     "HeldToMaturitySecuritiesCurrent",
     "OtherShortTermInvestments",
+    // The newer name for available-for-sale debt securities due within a
+    // year: IBM's $0.8B of marketable securities (9 November 2026).
+    "DebtSecuritiesAvailableForSaleExcludingAccruedInterestCurrent",
   ],
   // All debt due within a year: short-term borrowings and the current part of
   // long-term debt together (Chevron's "Short-term debt", $10.9B).
@@ -342,4 +362,29 @@ export const SCREENER_CONCEPT_TAGS: Record<ScreenerLineItem, readonly string[]> 
     "IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest",
     "IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments",
   ],
+
+  // —— Money held for customers (checked 9 November 2026 against every
+  // screener company's latest year-end, and the 10-K balance sheets of Wise,
+  // MercadoLibre, ADP, Paychex, PayPal, Block, Fiserv, Paycom, Paylocity,
+  // Western Union, Remitly, Shift4, Global Payments, Corpay, Bill and
+  // Payoneer) ——
+  // Paychex, Paycom, Paylocity and Bill file FundsHeldForClients; Block and
+  // Payoneer CustomerFunds.
+  customer_funds: ["FundsHeldForClients", "CustomerFunds"],
+  // Money in transit between card holders, merchants and banks: Fiserv,
+  // Western Union, Remitly, Block. Global Payments files only the liability.
+  settlement_balances: ["SettlementAssetsCurrent", "SettlementLiabilitiesCurrent"],
+  // Restricted cash filed as one figure rather than split into current and
+  // noncurrent (those two are the normaliser's, read in frames.ts): ADP's
+  // $6.4B, MercadoLibre's $9.9B, Corpay's $6.6B.
+  restricted_cash: ["RestrictedCashAndCashEquivalents", "RestrictedCash", "RestrictedCashAndCashEquivalentsAtCarryingValue"],
+
+  // —— Securities the cash side may have missed ——
+  // NVIDIA's $52.0B of marketable securities, KLA's $3.3B and eBay's $1.1B sit
+  // on their balance sheets under the companies' own elements, which the
+  // frames don't carry. Their notes still file a total in the standard tag
+  // (NVIDIA: $39.5B of available-for-sale debt securities), and that total,
+  // less any long-term part, is the sign to go and read the balance sheet.
+  securities_total: ["AvailableForSaleSecuritiesDebtSecurities"],
+  securities_noncurrent: ["AvailableForSaleSecuritiesDebtSecuritiesNoncurrent"],
 };

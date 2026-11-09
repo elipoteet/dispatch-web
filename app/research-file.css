@@ -844,6 +844,8 @@ a.rf-search-item, a.rf-search-item:hover { color: var(--navy); text-decoration: 
 .rf .rf-scr-co a.rf-scr-val:hover { color: var(--gold-ink); text-decoration-color: currentColor; }
 .rf-scr-tk { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.04em; color: var(--muted); }
 .rf-scr-na { color: var(--muted); }
+/* Return on invested capital worked out from pretax income (the notes say so). */
+.rf-scr-mark { margin-left: 2px; font-size: 0.75em; color: var(--muted); cursor: help; }
 .rf-scr-year { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--muted); }
 
 /* A phone's rows. */

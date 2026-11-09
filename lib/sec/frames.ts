@@ -59,7 +59,17 @@ export type FrameValue = { val: number; start: string | null; end: string; accn:
 // existing items reuse CONCEPT_TAGS as they are; the screener-only ones come
 // from SCREENER_CONCEPT_TAGS; the restricted-cash tags are the normaliser's own
 // (cash worked out from the restricted-cash total, normalize.ts).
-export type InputItem = TaggedLineItem | ScreenerLineItem | "cash_with_restricted" | "restricted_cash_current" | "restricted_cash_noncurrent";
+export type InputItem =
+  | TaggedLineItem
+  | ScreenerLineItem
+  | "cash_with_restricted"
+  | "restricted_cash_current"
+  | "restricted_cash_noncurrent"
+  | "cover_shares";
+
+// The SEC's frames serve the company-information taxonomy (dei) as well as
+// the accounting one (us-gaap).
+export type Taxonomy = "us-gaap" | "dei";
 
 export type InputSpec = {
   item: InputItem;
@@ -71,6 +81,7 @@ export type InputSpec = {
   // income, for the change in operating margin over three years). "short":
   // the latest year and the one before.
   history: "long" | "medium" | "short";
+  taxonomy?: Taxonomy;
 };
 
 function frameUnit(item: LineItem): FrameUnit {
@@ -100,6 +111,11 @@ export const SCREENER_INPUTS: readonly InputSpec[] = [
   { item: "cash_with_restricted", tags: [CASH_WITH_RESTRICTED], unit: "USD", kind: "instant", history: "short" },
   { item: "restricted_cash_current", tags: RESTRICTED_CASH_TAGS[0], unit: "USD", kind: "instant", history: "short" },
   { item: "restricted_cash_noncurrent", tags: RESTRICTED_CASH_TAGS[1], unit: "USD", kind: "instant", history: "short" },
+  // The share count on the annual report's cover page, a figure typed apart
+  // from the financial statements: it tells a share count filed in the wrong
+  // units from dollar figures filed in the wrong units (lib/sec/units.ts,
+  // settleNetIncome; Universe Pharmaceuticals, 9 November 2026).
+  { item: "cover_shares", tags: ["EntityCommonStockSharesOutstanding"], unit: "shares", kind: "instant", history: "short", taxonomy: "dei" },
 ];
 
 // —— Periods ——
@@ -141,7 +157,7 @@ export function instantPeriodsBetween(from: string, to: string): string[] {
   return out;
 }
 
-export type FrameRequest = { item: InputItem; tag: string; unit: FrameUnit; period: string };
+export type FrameRequest = { item: InputItem; tag: string; unit: FrameUnit; period: string; taxonomy: Taxonomy };
 
 export type RefreshMode = "full" | "nightly";
 
@@ -178,10 +194,11 @@ export function framePlan(today: string, mode: RefreshMode): FrameRequest[] {
     }
     for (const tag of spec.tags) {
       for (const period of periods) {
-        const key = `${tag}|${spec.unit}|${period}`;
+        const taxonomy = spec.taxonomy ?? "us-gaap";
+        const key = `${taxonomy}|${tag}|${spec.unit}|${period}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        out.push({ item: spec.item, tag, unit: spec.unit, period });
+        out.push({ item: spec.item, tag, unit: spec.unit, period, taxonomy });
       }
     }
   }

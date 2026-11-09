@@ -43,7 +43,10 @@ function isShiftedCopy(bad: number, good: number): boolean {
   return [1e3, 1e6, 1e-3, 1e-6].some((f) => Math.abs((bad * f) / good - 1) <= 0.25);
 }
 
-export type Settled<T> = { picked: T | null; inconsistent: boolean };
+// dollarsInOtherUnits: the filing's dollar figures, not its share count, are
+// the ones in the wrong units (settleNetIncome), so every dollar figure from
+// that filing is in doubt, revenue included.
+export type Settled<T> = { picked: T | null; inconsistent: boolean; dollarsInOtherUnits?: boolean };
 
 // Of candidates in the caller's own order of preference, the first that
 // agrees with `expected`, provided every candidate it passes over is that same
@@ -99,11 +102,28 @@ export function settleCashFlow<T extends { val: number }>(candidates: T[]): Sett
 //   count as 44,933). Operating income settles it: net income stands only
 //   when it is in operating income's range and EPS x shares is far outside
 //   it. Otherwise, or with no operating income to ask, n/a.
+// - Operating income can't tell the two apart when a filing has every dollar
+//   figure in the wrong units: Universe Pharmaceuticals' annual report for
+//   the year to September 2025 gives revenue as $17.9 billion, net income as
+//   -$3.7 billion and operating income as -$2.9 billion, all a thousand times
+//   too large (its previous report gave the year before as $23.0 million of
+//   revenue; the new one restates it as $23.0 billion), while EPS (-$8.06)
+//   and the share count (455,871) are right. The share count on the report's
+//   cover page, typed apart from the statements, settles it: the same order
+//   as the weighted count (within 30 times either way, for a reverse split
+//   or new shares) means the share count is right, so the dollars are not,
+//   and net income is n/a with dollarsInOtherUnits set. Of the 46 companies
+//   whose net income and EPS x shares were a units step apart on 9 November
+//   2026, it was the only one; the other 45 file their share count in
+//   thousands, and their covers say so.
+export const COVER_SAME_ORDER = 30;
+
 export function settleNetIncome<T extends { val: number }>(
   candidates: T[],
   eps: number | null,
   shares: number | null,
   operatingIncome: number | null,
+  coverShares: number | null = null,
 ): Settled<T> {
   if (candidates.length === 0) return { picked: null, inconsistent: false };
   const expected = eps != null && shares != null && shares > 0 ? eps * shares : null;
@@ -111,6 +131,10 @@ export function settleNetIncome<T extends { val: number }>(
   const epsConflict = expected != null && expected !== 0 && looksLikeUnitsError(candidates[0].val, expected, LOOSE);
   if (!pairConflict && !epsConflict) return { picked: candidates[0], inconsistent: false };
   if (!pairConflict) {
+    if (coverShares != null && coverShares > 0 && shares != null) {
+      const r = coverShares / shares;
+      if (r < COVER_SAME_ORDER && r > 1 / COVER_SAME_ORDER) return { picked: null, inconsistent: true, dollarsInOtherUnits: true };
+    }
     // Which of the two is in the same range as operating income: within 30
     // times of it counts as near, beyond 100 times as far. Net income near and
     // EPS x shares far means the share count is in other units, and net

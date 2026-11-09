@@ -86,6 +86,13 @@ describe("framePlan", () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 
+  it("reads the cover page's share count from the company-information taxonomy, the rest from us-gaap", () => {
+    const cover = full.filter((r) => r.tag === "EntityCommonStockSharesOutstanding");
+    expect(cover).toHaveLength(7);
+    expect(cover.every((r) => r.taxonomy === "dei" && r.unit === "shares" && r.period.endsWith("I"))).toBe(true);
+    expect(full.filter((r) => r.taxonomy !== "us-gaap")).toHaveLength(7);
+  });
+
   it("reads operating income four years back, for the change in operating margin", () => {
     const periods = full.filter((r) => r.tag === "OperatingIncomeLoss").map((r) => r.period);
     expect(periods).toContain("CY2021");

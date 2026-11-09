@@ -2,11 +2,18 @@
 // rules on real companies, from saved SEC frames, are in screener.test.ts.
 
 import { describe, expect, it } from "vitest";
-import { cashAndInvestments, computeMetrics, grossMarginIsPartial, sameShareBasis, taxRate, totalDebt, METRICS } from "@/lib/screener/metrics";
+import { cashAndInvestments, computeMetrics, grossMarginIsPartial, sameShareBasis, taxRate, totalDebt, withStatementDebt, METRICS, type MetricContext } from "@/lib/screener/metrics";
+import { sectorFromSic } from "@/lib/screener/sectors";
 import type { Assembled, BalanceItem, DurationItem, Picked } from "@/lib/screener/assemble";
 
 const END = "2025-12-31";
 const PRIOR_END = "2024-12-31";
+// The hand-built companies' dollar figures are in millions (revenue of
+// $1,000 million), so revenue clears the $10 million floor for growth. Share
+// counts and EPS stay as written.
+const M = 1e6;
+const PER_SHARE: ReadonlySet<string> = new Set(["shares_diluted", "eps_diluted"]);
+const money = (item: string, v: number) => (PER_SHARE.has(item) ? v : v * M);
 
 function p(val: number, accn = "A-25", tag = "Tag", end = END): Picked {
   return { val, end, tag, accn };
@@ -62,7 +69,7 @@ function build(b: Build = {}): Assembled {
     Object.fromEntries(
       Object.entries(vals)
         .filter(([, v]) => v != null && !Number.isNaN(v))
-        .map(([k, v]) => [k, p(v as number, accns?.[k as DurationItem] ?? "A-25", "Tag", end)]),
+        .map(([k, v]) => [k, p(money(k, v as number), accns?.[k as DurationItem] ?? "A-25", "Tag", end)]),
     ) as Partial<Record<DurationItem, Picked>>;
   const balanceVals = { ...BASE_BALANCE, ...(b.balance ?? {}) };
   const history = b.history ?? [1000, 800, 700, 600, 500, 450, 400, 380, 360, 340, 320];
@@ -75,28 +82,29 @@ function build(b: Build = {}): Assembled {
     balance: Object.fromEntries(
       Object.entries(balanceVals)
         .filter(([, v]) => v != null && !Number.isNaN(v))
-        .map(([k, v]) => [k, p(v as number, "A-25", b.balanceTags?.[k as BalanceItem] ?? "Tag")]),
+        .map(([k, v]) => [k, p((v as number) * M, "A-25", b.balanceTags?.[k as BalanceItem] ?? "Tag")]),
     ) as Assembled["balance"],
-    revenueHistory: history.map((v, i) => (v == null ? null : p(v, "A", "Revenues", `${2025 - i}-12-31`))),
+    revenueHistory: history.map((v, i) => (v == null ? null : p(v * M, "A", "Revenues", `${2025 - i}-12-31`))),
     revenueHistoryInconsistent: b.historyInconsistent ?? [],
     threeYearsBack: back
       ? {
           periodEnd: "2022-12-31",
-          revenue: back.revenue == null ? null : p(back.revenue, "A-22", "Revenues", "2022-12-31"),
-          operating_income: back.operating_income == null ? null : p(back.operating_income, "A-22", "OperatingIncomeLoss", "2022-12-31"),
+          revenue: back.revenue == null ? null : p(back.revenue * M, "A-22", "Revenues", "2022-12-31"),
+          operating_income: back.operating_income == null ? null : p(back.operating_income * M, "A-22", "OperatingIncomeLoss", "2022-12-31"),
         }
       : null,
   };
 }
 
-const run = (b?: Build, kind: "operating" | "financial" | "reit" = "operating", sic: string | null = null) => computeMetrics(build(b), kind, sic);
+const run = (b?: Build, kind: "operating" | "financial" | "reit" = "operating", sic: string | null = null, context: MetricContext = {}) =>
+  computeMetrics(build(b), kind, { sector: sectorFromSic(sic), ...context });
 const MISSING = Number.NaN; // drops a value from the built year
 
 describe("the main ten", () => {
   const m = run();
 
   it("reports revenue and growth", () => {
-    expect(m.values.revenue).toBe(1000);
+    expect(m.values.revenue).toBe(1000 * M);
     expect(m.values.revenue_growth_1y).toBeCloseTo(0.25);
     // (1000 / 600)^(1/3) - 1
     expect(m.values.revenue_growth_3y).toBeCloseTo(Math.pow(1000 / 600, 1 / 3) - 1, 10);
@@ -108,11 +116,11 @@ describe("the main ten", () => {
     expect(m.values.net_margin).toBeCloseTo(0.15);
     // (300 - 100) / 1000, free cash flow calculated by us
     expect(m.values.fcf_margin).toBeCloseTo(0.2);
-    expect(m.freeCashFlow).toBe(200);
+    expect(m.freeCashFlow).toBe(200 * M);
   });
 
   it("reports net cash as cash less debt, and the share count change", () => {
-    expect(m.values.net_cash).toBe(200);
+    expect(m.values.net_cash).toBe(200 * M);
     expect(m.values.share_change_1y).toBeCloseTo(100 / 104 - 1);
   });
 
@@ -156,7 +164,7 @@ describe("n/a: a measure that doesn't fit the business", () => {
     const m = run({}, "reit");
     expect(m.na.gross_margin).toBe("not-applicable");
     expect(m.na.fcf_margin).toBe("not-applicable");
-    expect(m.values.net_cash).toBe(200);
+    expect(m.values.net_cash).toBe(200 * M);
     expect(m.values.debt_to_equity).toBeCloseTo(0.3);
     expect(m.values.interest_coverage).toBeCloseTo(10);
   });
@@ -377,8 +385,10 @@ describe("net cash, both sides", () => {
     expect(totalDebt({ total_debt: pk(40.294e9, "LongTermDebt") })?.value).toBe(40.294e9);
   });
 
-  it("adds all debt due within a year to debt that excludes it, by tag or because it equals the noncurrent figure", () => {
-    // Chevron: the same $39.8B under "including current maturities" and the noncurrent tag.
+  it("takes debt tagged as including current maturities at its word (Chevron, corrected 9 November 2026)", () => {
+    // Balance sheet: $977M of short-term debt, $39.8B of long-term debt. The
+    // note's $10.9B of short-term debt is before $9.9B is refinanced into
+    // long-term, so adding it counted that $9.9B twice ($50.7B).
     expect(
       totalDebt({
         total_debt: pk(39.781e9, "LongTermDebtAndCapitalLeaseObligationsIncludingCurrentMaturities"),
@@ -387,7 +397,20 @@ describe("net cash, both sides", () => {
         debt_current: pk(10.918e9, "DebtCurrent"),
         short_term_borrowings: pk(0.977e9, "ShortTermBorrowings"),
       })?.value,
-    ).toBeCloseTo(50.699e9, -3);
+    ).toBeCloseTo(40.758e9, -3);
+    // Kyndryl: short-term debt less current maturities, where that's no more
+    // than the short-term borrowings filed.
+    expect(
+      totalDebt({
+        total_debt: pk(3.11e9, "LongTermDebtAndCapitalLeaseObligationsIncludingCurrentMaturities"),
+        long_term_debt_current: pk(0.8e9, "LongTermDebtAndCapitalLeaseObligationsCurrent"),
+        debt_current: pk(1.8e9, "DebtCurrent"),
+        short_term_borrowings: pk(1.8e9, "ShortTermBorrowings"),
+      })?.value,
+    ).toBeCloseTo(4.11e9, -3);
+  });
+
+  it("adds all debt due within a year to debt that excludes it, by tag or because it equals the noncurrent figure", () => {
     // Procter & Gamble: noncurrent by its tag, plus debt due within a year.
     expect(totalDebt({ total_debt: pk(22.842e9, "LongTermDebtNoncurrent"), debt_current: pk(11.296e9, "DebtCurrent") })?.value).toBeCloseTo(34.138e9, -3);
     // Noncurrent with no single current total: maturities plus borrowings.
@@ -401,7 +424,7 @@ describe("net cash, both sides", () => {
 
   it("feeds net cash and debt to equity, n/a when either side is missing", () => {
     const m = run({ balance: { short_term_investments: 200, short_term_borrowings: 50 }, balanceTags: { total_debt: "LongTermDebt" } });
-    expect(m.values.net_cash).toBe(500 + 200 - (300 + 50));
+    expect(m.values.net_cash).toBe((500 + 200 - (300 + 50)) * M);
     expect(m.values.debt_to_equity).toBeCloseTo(350 / 1000);
     expect(run({ balance: { total_debt: MISSING } }).na.net_cash).toBe("missing");
   });
@@ -506,5 +529,133 @@ describe("operating margin change, growth plus free cash flow, cash conversion",
     expect(run({ latest: { net_income: 0 } }).na.cash_conversion).toBe("base");
     expect(run({}, "financial").na.cash_conversion).toBe("not-applicable");
     expect(run({ latest: { operating_cash_flow: MISSING } }).na.cash_conversion).toBe("missing");
+  });
+});
+
+describe("return on invested capital (9 November 2026)", () => {
+  // Base company: operating income 200, tax at the default 21%, debt 300 plus
+  // equity 1,000 less cash 500 = 800 invested; total assets 2,500.
+  it("is after-tax operating profit over debt plus equity less cash", () => {
+    const m = run();
+    expect(m.values.roic).toBeCloseTo((200 * 0.79) / 800);
+    expect(m.workings.roicBasis).toBe("operating income");
+  });
+
+  it("starts from pretax income plus interest expense where no operating income is filed", () => {
+    // ExxonMobil, Johnson & Johnson: no operating income line (Eli, 9 November 2026).
+    const m = run({ latest: { operating_income: MISSING, pretax_income: 180, interest_expense: 20 } });
+    expect(m.values.roic).toBeCloseTo((200 * 0.79) / 800);
+    expect(m.workings.roicBasis).toBe("pretax income plus interest expense");
+    // Both are needed: no interest line, no figure.
+    const none = run({ latest: { operating_income: MISSING, pretax_income: 180, interest_expense: MISSING } });
+    expect(none.values.roic).toBeNull();
+    expect(none.na.roic).toBe("missing");
+    expect(none.workings.roicBasis).toBeNull();
+    // Operating margin and interest coverage don't take the fallback.
+    expect(m.values.operating_margin).toBeNull();
+    expect(m.values.interest_coverage).toBeNull();
+  });
+
+  it("is n/a above 100% when invested capital is under a quarter of total assets", () => {
+    // Operating income 2,000: 1,580 after tax on 800 invested, 197.5%.
+    const strong = run({ latest: { operating_income: 2000 } });
+    expect(strong.values.roic).toBeCloseTo(1.975); // 800 of 2,500 assets is 32%
+    const tinyBase = run({ latest: { operating_income: 2000 }, balance: { total_assets: 4000 } }); // 20%
+    expect(tinyBase.values.roic).toBeNull();
+    expect(tinyBase.na.roic).toBe("base");
+    // Without total assets there's nothing to vouch for a figure over 100%.
+    expect(run({ latest: { operating_income: 2000 }, balance: { total_assets: MISSING } }).values.roic).toBeNull();
+    // Up to 100% the capital base isn't questioned.
+    expect(run({ balance: { total_assets: 100_000 } }).values.roic).toBeCloseTo((200 * 0.79) / 800);
+  });
+});
+
+describe("revenue growth from under $10 million (9 November 2026)", () => {
+  it("is n/a for one year when the year before had under $10 million of sales", () => {
+    const m = run({ prior: { revenue: 9 } });
+    expect(m.values.revenue_growth_1y).toBeNull();
+    expect(m.na.revenue_growth_1y).toBe("base");
+    // And so is revenue growth plus free cash flow margin.
+    expect(m.values.growth_plus_fcf_margin).toBeNull();
+    expect(run({ prior: { revenue: 10 } }).values.revenue_growth_1y).toBeCloseTo(99);
+  });
+
+  it("is n/a over several years when the first year had under $10 million", () => {
+    const m = run({ history: [1000, 800, 700, 5, 4, 3] });
+    expect(m.na.revenue_growth_3y).toBe("base");
+    expect(m.na.revenue_growth_5y).toBe("base");
+    expect(run({ history: [1000, 800, 700, 10] }).values.revenue_growth_3y).toBeCloseTo(Math.pow(100, 1 / 3) - 1);
+  });
+});
+
+describe("companies holding their customers' money (9 November 2026)", () => {
+  const m = run({}, "operating", "7389", { holdsCustomerMoney: true });
+
+  it("are n/a for free cash flow and net cash, and what's built on them, as banks are", () => {
+    for (const key of ["fcf_margin", "net_cash", "dividends_to_fcf", "buybacks_to_fcf", "growth_plus_fcf_margin", "cash_conversion"] as const) {
+      expect(m.values[key]).toBeNull();
+      expect(m.na[key]).toBe("not-applicable");
+    }
+    expect(m.freeCashFlow).toBeNull();
+  });
+
+  it("keep everything else", () => {
+    expect(m.values.revenue_growth_1y).toBeCloseTo(0.25);
+    expect(m.values.net_margin).toBeCloseTo(0.15);
+    expect(m.values.roic).toBeCloseTo((200 * 0.79) / 800);
+    expect(m.values.debt_to_equity).toBeCloseTo(0.3);
+  });
+});
+
+describe("securities read off the balance sheet page (9 November 2026)", () => {
+  it("adds them to cash, for net cash and ROIC", () => {
+    // NVIDIA: $52.0B of marketable securities under its own element.
+    const added = [{ element: "nvda:MarketableSecuritiesAndEquitySecuritiesFVNI", label: "Marketable securities", value: 100 * M }];
+    const m = run({}, "operating", null, { statement: { added } });
+    expect(m.values.net_cash).toBe((500 + 100 - 300) * M);
+    expect(m.values.roic).toBeCloseTo((200 * 0.79) / 700);
+    expect(m.workings.cash?.how).toContain("nvda:MarketableSecuritiesAndEquitySecuritiesFVNI");
+    // A page that showed nothing more leaves cash as it was.
+    expect(run({}, "operating", null, { statement: { added: [] } }).values.net_cash).toBe(200 * M);
+  });
+
+  it("leaves net cash and ROIC n/a when the page was needed and couldn't be read", () => {
+    const m = run({}, "operating", null, { statement: "unread" });
+    expect(m.na.net_cash).toBe("missing");
+    expect(m.na.roic).toBe("missing");
+  });
+});
+
+describe("a filing with every dollar figure in the wrong units (9 November 2026)", () => {
+  it("leaves net cash, ROIC and free cash flow n/a, as inconsistent", () => {
+    // Universe Pharmaceuticals: assemble.ts has already left revenue and net
+    // income out.
+    const a = build({ latest: { revenue: MISSING, net_income: MISSING }, inconsistent: ["revenue", "net_income"] });
+    a.latest.dollarsInOtherUnits = "0001213900-26-009000";
+    const m = computeMetrics(a, "operating");
+    expect(m.na.net_cash).toBe("inconsistent");
+    expect(m.na.roic).toBe("inconsistent");
+    expect(m.na.fcf_margin).toBe("inconsistent");
+    expect(m.na.revenue).toBe("inconsistent");
+    expect(m.freeCashFlow).toBeNull();
+  });
+});
+
+describe("debt due within a year read off the balance sheet page (9 November 2026)", () => {
+  const pk = (val: number, tag: string): Picked => ({ val, end: "2025-12-31", tag, accn: "K" });
+  const B = { total_debt: pk(30.70e9, "LongTermDebtNoncurrent"), short_term_borrowings: pk(5.514e9, "ShortTermBorrowings") };
+  const lines = [
+    { element: "us-gaap:ShortTermBorrowings", label: "Short-term borrowings", value: 5.514e9 },
+    { element: "us-gaap:LongTermDebtAndCapitalLeaseObligationsCurrent", label: "Long-term debt due within one year", value: 0.035e9 },
+    { element: "us-gaap:LongTermDebtAndCapitalLeaseObligationsCurrent", label: "Long-term debt due within one year", value: 7.085e9 },
+  ];
+
+  it("adds what the page shows beyond the borrowings already counted (Caterpillar: $43.3B, as its 10-K)", () => {
+    expect(withStatementDebt(totalDebt(B), { added: [], shortTermDebt: lines }, B)?.value).toBeCloseTo(43.334e9, -6);
+  });
+
+  it("adds nothing where the debt figure already has its current part", () => {
+    const withCurrent = { ...B, long_term_debt_current: pk(7.131e9, "LongTermDebtCurrent") };
+    expect(withStatementDebt(totalDebt(withCurrent), { added: [], shortTermDebt: lines }, withCurrent)?.value).toBe(totalDebt(withCurrent)?.value);
   });
 });

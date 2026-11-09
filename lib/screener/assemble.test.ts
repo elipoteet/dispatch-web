@@ -265,3 +265,48 @@ describe("annualReportValue", () => {
     expect(annualReportValue([fact(1, "DEF 14A", "2026-10-19")], "2025-01-01", "2025-12-31")).toBeNull();
   });
 });
+
+describe("a filing with every dollar figure in the wrong units (9 November 2026)", () => {
+  // Universe Pharmaceuticals' annual report for the year to September 2025:
+  // revenue, gross profit, operating and net income all a thousand times too
+  // large, EPS and the share count right, and a cover page that agrees with
+  // the share count.
+  const fy = (y: number, val: number, accn = "UPC-26"): Partial<FrameEntry> => ({ start: `${y - 1}-10-01`, end: `${y}-09-30`, val, accn });
+  const frames = (coverShares: number, niAccn = "UPC-26"): [string, Partial<FrameEntry>[]][] => [
+    ["Revenues", [fy(2024, 23_024_458_000), fy(2025, 17_858_732_000)]],
+    ["GrossProfit", [fy(2024, 6_071_902_000), fy(2025, 6_301_169_000)]],
+    ["CostOfRevenue", [fy(2024, 16_952_556_000), fy(2025, 11_557_563_000)]],
+    ["OperatingIncomeLoss", [fy(2025, -2_915_919_000)]],
+    ["NetIncomeLoss", [fy(2025, -3_672_055_000, niAccn)]],
+    ["EarningsPerShareDiluted", [fy(2025, -8.06)]],
+    ["WeightedAverageNumberOfDilutedSharesOutstanding", [fy(2025, 455_871)]],
+    ["NetCashProvidedByUsedInOperatingActivities", [fy(2024, -9_506_683_000), fy(2025, -5_052_319_000)]],
+    ["EntityCommonStockSharesOutstanding", [{ end: "2025-09-30", val: coverShares, accn: "UPC-26" }]],
+  ];
+
+  it("leaves revenue and net income n/a and names the filing", () => {
+    const r = assembleCompany(company(frames(563_338)), TODAY);
+    if (!r.ok) throw new Error("no company");
+    const L = r.company.latest;
+    expect(L.dollarsInOtherUnits).toBe("UPC-26");
+    expect(L.values.revenue).toBeUndefined();
+    expect(L.values.net_income).toBeUndefined();
+    expect(L.inconsistent).toEqual(expect.arrayContaining(["revenue", "net_income"]));
+    expect(r.company.revenueHistory[0]).toBeNull();
+    expect(r.company.revenueHistoryInconsistent).toContain(0);
+  });
+
+  it("asks the cover only about figures from one filing: a proxy's net income is the 10-K fix's job", () => {
+    const r = assembleCompany(company(frames(563_338, "PROXY-26")), TODAY);
+    if (!r.ok) throw new Error("no company");
+    expect(r.company.latest.dollarsInOtherUnits).toBeUndefined();
+    expect(r.company.latest.values.revenue?.val).toBe(17_858_732_000);
+  });
+
+  it("keeps the figures when the cover says the share count is the one in other units", () => {
+    const r = assembleCompany(company(frames(455_871_000)), TODAY);
+    if (!r.ok) throw new Error("no company");
+    expect(r.company.latest.dollarsInOtherUnits).toBeUndefined();
+    expect(r.company.latest.values.net_income?.val).toBe(-3_672_055_000);
+  });
+});

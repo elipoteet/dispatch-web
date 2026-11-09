@@ -6,21 +6,22 @@
 // From the addendum of 7 November 2026 (docs/phase-eleven/phase-eleven-screens.md),
 // grouped under the question each answers. Its thresholds were starting
 // points, tuned to round numbers so each screen finds roughly 15 to 150
-// companies; counts are from a full run on 7 November 2026, against the
-// addendum's first thresholds where they differ:
-//   High return on capital          ROIC 25%+ (20%), revenue $500M+         105 (187)
-//   Revenue up ten years in a row   10 years, revenue $2B+ (no floor)        130 (200)
-//   Strong free cash flow           FCF margin 25%+, revenue $1B+            123
-//   Fast growth, already profitable growth 20%+, op. margin 10%+, $200M+    139
-//   Rule of 40                      40%+, technology, revenue $200M+         118
-//   Margins widening                10+ points (5), revenue $2B+ ($200M)     125 (596)
-//   Fast growth, still losing money growth 30%+, net loss, $100M+           131
-//   Buying back shares              shares down 6%+ (3%), positive FCF       106 (334)
-//   Dividends covered by cash flow  40% of FCF or less (60%), $10B+ ($500M) 131 (561)
-//   More cash than debt             more cash than debt, positive FCF, $1B+  146
-//   Profits without the cash        net profit, conversion 0.5× or less, $200M+  76
-//   Issuing shares fast             shares up 30%+ (10%), revenue $100M+     131 (313)
-//   Based in New England            six states, revenue $500M+ (no floor)    131 (336)
+// companies, against the addendum's first thresholds where they differ.
+// Counts from the published run of 9 November 2026, after Eli's review
+// (buybacks gained a $500M revenue floor; New England's fell to $100M):
+//   High return on capital          ROIC 25%+ (20%), revenue $500M+         107
+//   Revenue up ten years in a row   10 years, revenue $2B+ (no floor)        130
+//   Strong free cash flow           FCF margin 25%+, revenue $1B+            116
+//   Fast growth, already profitable growth 20%+, op. margin 10%+, $200M+    136
+//   Rule of 40                      40%+, technology, revenue $200M+         113
+//   Margins widening                10+ points (5), revenue $2B+ ($200M)     125
+//   Fast growth, still losing money growth 30%+, net loss, $100M+           128
+//   Buying back shares              shares down 6%+ (3%), positive FCF, $500M+  88
+//   Dividends covered by cash flow  40% of FCF or less (60%), $10B+ ($500M) 130
+//   More cash than debt             more cash than debt, positive FCF, $1B+  142
+//   Profits without the cash        net profit, conversion 0.5× or less, $200M+  77
+//   Issuing shares fast             shares up 30%+ (10%), revenue $100M+     130
+//   Based in New England            six states, revenue $100M+ (no floor)   178
 //
 // Bounds are inclusive, as the filter boxes are ("25% or more"). Where a
 // title says "more than", "losing" or "positive", the strict reading and the
@@ -134,7 +135,7 @@ export const STARTING_SCREENS: readonly StartingScreen[] = [
     group: "returns",
     title: "Buying back shares",
     why: "Fewer shares means each remaining one owns more of the company.",
-    filters: F({ fcf: { min: 0, max: null }, shares: { min: null, max: -6 } }),
+    filters: F({ revenue: { min: 5e8, max: null }, fcf: { min: 0, max: null }, shares: { min: null, max: -6 } }),
     sort: "shares",
     order: "asc",
   },
@@ -182,7 +183,7 @@ export const STARTING_SCREENS: readonly StartingScreen[] = [
     group: "home",
     title: "Based in New England",
     why: null,
-    filters: F({ revenue: { min: 5e8, max: null } }, { states: [...NEW_ENGLAND] }),
+    filters: F({ revenue: { min: 1e8, max: null } }, { states: [...NEW_ENGLAND] }),
     sort: "revenue",
     order: "desc",
   },

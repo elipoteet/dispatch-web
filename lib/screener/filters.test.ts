@@ -349,7 +349,7 @@ describe("starting screens", () => {
     const s = startingScreen("high-return-on-capital")!;
     expect(describeScreen(s.filters)).toBe("Companies with revenue of at least $500 million and a return on invested capital of 25% or more.");
     expect(screenDescription(s, describeScreen(s.filters))).toContain("Many long-term investors start here.");
-    expect(describeScreen(startingScreen("based-in-new-england")!.filters)).toBe("Companies based in New England, with revenue of at least $500 million.");
+    expect(describeScreen(startingScreen("based-in-new-england")!.filters)).toBe("Companies based in New England, with revenue of at least $100 million.");
   });
 
   it("round-trips each screen through a link, and names a link that matches one", () => {

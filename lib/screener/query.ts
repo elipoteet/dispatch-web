@@ -25,11 +25,14 @@ export type ResultRow = {
   periodEnd: string;
   // By filter param ("growth1y"), as stored: fractions and dollars.
   values: Record<string, number | null>;
+  // Return on invested capital worked out from pretax income plus interest
+  // expense, the company filing no operating income line (metrics.ts).
+  roicFromPretax: boolean;
 };
 
 export type Results = { ok: true; rows: ResultRow[]; total: number } | Failure;
 
-const SELECT = ["cik", "ticker", "name", "sector", "state", "period_end", ...RANGE_FILTERS.map((f) => f.column)].join(",");
+const SELECT = ["cik", "ticker", "name", "sector", "state", "period_end", "roic_basis:sources->>roic_basis", ...RANGE_FILTERS.map((f) => f.column)].join(",");
 
 // The two queries below: matching rows, and a bare count. Each condition is
 // applied with its own method, so the query keeps its type.
@@ -71,6 +74,7 @@ function toRow(raw: Record<string, unknown>): ResultRow {
     state: raw.state == null ? null : String(raw.state),
     periodEnd: String(raw.period_end ?? ""),
     values,
+    roicFromPretax: raw.roic_basis === "pretax income plus interest expense",
   };
 }
 

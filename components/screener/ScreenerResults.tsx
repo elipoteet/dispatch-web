@@ -161,11 +161,11 @@ export async function ScreenerResults({ view, screen }: { view: View; screen: St
           </p>
           <p>
             <strong>Calculated by The Dispatch.</strong>
-            {" Free cash flow is operating cash flow minus capital spending. Net cash is cash and short-term investments, less all debt, long- and short-term. Return on invested capital uses the company’s own tax rate, or 21% where that can’t be worked out. “What the price assumes” opens each company’s Valuation tab, where today’s price is set against the business."}
+            {" Free cash flow is operating cash flow minus capital spending. Net cash is cash and short-term investments, less all debt, long- and short-term. Return on invested capital uses the company’s own tax rate, or 21% where that can’t be worked out; where a company files no operating income line it starts from pretax income plus interest expense, marked †. “What the price assumes” opens each company’s Valuation tab, where today’s price is set against the business."}
           </p>
           <p>
             <strong>n/a</strong>
-            {" means the measure doesn’t fit the business (gross margin at a bank), a figure wasn’t filed, or it can’t be worked out (growth from a loss). A company with n/a drops out of any filter on that measure; a missing figure is never counted as zero."}
+            {" means the measure doesn’t fit the business (gross margin at a bank), a figure wasn’t filed, or it can’t be worked out (growth from a loss). Companies that hold their customers’ money, in payments and payroll, are n/a for free cash flow and net cash, as banks are: their cash flow and cash include that money. A company with n/a drops out of any filter on that measure; a missing figure is never counted as zero."}
           </p>
           <p>
             <strong>Coverage.</strong>
@@ -235,7 +235,7 @@ function ResultsTable({ rows, columns, showState, view, link }: { rows: ResultRo
               </th>
               {columns.map((f) => (
                 <td key={f.param} className={r.values[f.param] == null ? "rf-scr-na" : undefined}>
-                  {formatFigure(f, r.values[f.param])}
+                  <Figure f={f} r={r} />
                 </td>
               ))}
               <td className={`rf-scr-left${r.sector ? "" : " rf-scr-na"}`}>{r.sector ?? "n/a"}</td>
@@ -246,6 +246,25 @@ function ResultsTable({ rows, columns, showState, view, link }: { rows: ResultRo
         </tbody>
       </table>
     </div>
+  );
+}
+
+// One figure, with a dagger where return on invested capital starts from
+// pretax income plus interest expense (explained in the notes below).
+const FROM_PRETAX = "Worked out from pretax income plus interest expense: the company files no operating income line.";
+
+function Figure({ f, r }: { f: RangeFilter; r: ResultRow }) {
+  const value = r.values[f.param];
+  const marked = f.param === "roic" && r.roicFromPretax && value != null;
+  return (
+    <>
+      {formatFigure(f, value)}
+      {marked && (
+        <sup className="rf-scr-mark" title={FROM_PRETAX}>
+          †<span className="visually-hidden"> {FROM_PRETAX}</span>
+        </sup>
+      )}
+    </>
   );
 }
 
@@ -264,7 +283,9 @@ function ResultsList({ rows, measures }: { rows: ResultRow[]; measures: RangeFil
             {measures.map((f) => (
               <span key={f.param}>
                 <span className="rf-scr-item-lbl">{f.label}</span>{" "}
-                <span className={r.values[f.param] == null ? "rf-scr-na" : "rf-scr-item-val"}>{formatFigure(f, r.values[f.param])}</span>
+                <span className={r.values[f.param] == null ? "rf-scr-na" : "rf-scr-item-val"}>
+                  <Figure f={f} r={r} />
+                </span>
               </span>
             ))}
           </span>

@@ -181,12 +181,31 @@ function settle(
   const candidates = candidatesFor(company, item, end, ranked);
   if (item === "revenue") return settleRevenue(candidates, values.gross_profit?.val ?? null, values.cost_of_revenue?.val ?? null);
   if (item === "operating_cash_flow") return settleCashFlow(candidates);
+  // The cover page settles a disagreement only between figures from one
+  // filing. Net income from a proxy statement, often in millions (FedEx's
+  // $4,433), disagrees with the 10-K's EPS x shares for another reason, and
+  // the 10-K's own figure replaces it (rows.ts, needsAnnualReportFix).
+  const filing = candidates[0]?.accn;
+  const oneFiling = filing != null && values.eps_diluted?.accn === filing && values.shares_diluted?.accn === filing;
   return settleNetIncome(
     candidates,
     values.eps_diluted?.val ?? null,
     values.shares_diluted?.val ?? null,
     values.operating_income?.val ?? null,
+    oneFiling ? coverShares(company, end) : null,
   );
+}
+
+// The share count on the cover of the annual report for the year ending on
+// `end`: the first cover dated on or after that day, within thirteen months
+// (a 10-K's cover is dated a few weeks after the year ends, a 20-F's on the
+// last day of the year).
+function coverShares(company: CompanyFrames, end: string): number | null {
+  const limit = Date.parse(end) + 396 * DAY_MS;
+  const covers = valuesFor(company, "EntityCommonStockSharesOutstanding", "instant")
+    .filter((v) => v.end >= end && Date.parse(v.end) <= limit)
+    .sort((a, b) => (a.end < b.end ? -1 : 1));
+  return covers[0]?.val ?? null;
 }
 
 // —— Years ——
@@ -292,7 +311,15 @@ export type BalanceItem =
   | "debt_current"
   | "long_term_debt_current"
   | "short_term_borrowings"
-  | "long_term_debt_noncurrent";
+  | "long_term_debt_noncurrent"
+  | "customer_funds"
+  | "settlement_balances"
+  | "restricted_cash"
+  | "cash_with_restricted"
+  | "restricted_cash_current"
+  | "restricted_cash_noncurrent"
+  | "securities_total"
+  | "securities_noncurrent";
 
 const BALANCE_ITEMS: BalanceItem[] = [
   "cash_and_equivalents",
@@ -307,9 +334,17 @@ const BALANCE_ITEMS: BalanceItem[] = [
   "long_term_debt_current",
   "short_term_borrowings",
   "long_term_debt_noncurrent",
+  "customer_funds",
+  "settlement_balances",
+  "restricted_cash",
+  "cash_with_restricted",
+  "restricted_cash_current",
+  "restricted_cash_noncurrent",
+  "securities_total",
+  "securities_noncurrent",
 ];
 
-export type DurationItem = Exclude<InputItem, BalanceItem | "cash_with_restricted" | "restricted_cash_current" | "restricted_cash_noncurrent">;
+export type DurationItem = Exclude<InputItem, BalanceItem | "cover_shares">;
 
 const DURATION_ITEMS: DurationItem[] = [
   ...(Object.keys(CONCEPT_TAGS) as InputItem[]),
@@ -323,6 +358,10 @@ export type CompanyYear = {
   // Line items left out because the filing's own figures disagree by a
   // units factor and nothing settles it (lib/sec/units.ts).
   inconsistent: DurationItem[];
+  // The filing whose dollar figures are all in the wrong units (units.ts,
+  // settleNetIncome): revenue and net income are then n/a, and so is
+  // anything else in dollars from it.
+  dollarsInOtherUnits?: string;
 };
 
 export type Assembled = {
@@ -368,6 +407,16 @@ function yearValues(company: CompanyFrames, end: string, ranked: Map<DurationIte
       noteStart(settled.picked);
     }
     if (settled.inconsistent) inconsistent.push(item);
+    if (settled.dollarsInOtherUnits) {
+      // Revenue from the same filing is in the same wrong units, so it goes
+      // too.
+      const filing = values.eps_diluted?.accn ?? "unknown";
+      if (values.revenue?.accn === filing) {
+        delete values.revenue;
+        if (!inconsistent.includes("revenue")) inconsistent.push("revenue");
+      }
+      return { periodStart, periodEnd: end, values, inconsistent, dollarsInOtherUnits: filing };
+    }
   }
   return { periodStart, periodEnd: end, values, inconsistent };
 }
@@ -398,8 +447,10 @@ export function assembleCompany(company: CompanyFrames, today: string): Assemble
       if (hit) checks[item] = hit;
     }
     const settled = settle(company, "revenue", end, ranked.get("revenue") ?? [], checks);
-    if (settled.inconsistent) revenueHistoryInconsistent.push(i);
-    return settled.picked;
+    const year = i === 0 ? latest : i === 1 ? prior : null;
+    const otherUnits = year?.dollarsInOtherUnits != null && settled.picked?.accn === year.dollarsInOtherUnits;
+    if (settled.inconsistent || otherUnits) revenueHistoryInconsistent.push(i);
+    return otherUnits ? null : settled.picked;
   });
 
   const threeYearsBack = chain[3]

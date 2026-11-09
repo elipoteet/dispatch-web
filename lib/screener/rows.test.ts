@@ -13,6 +13,15 @@ import {
   minPublishRows,
   publishDecision,
   type NetIncomeFix,
+  applyInterestFix,
+  needsInterestFix,
+  needsStatementRead,
+  reusableInterestFix,
+  reusableStatementRead,
+  statementContext,
+  statementFiling,
+  STATEMENT_RULE,
+  type StatementRead,
 } from "@/lib/screener/rows";
 import { annualReportFact, type Assembled, type CompanyYear, type Picked } from "@/lib/screener/assemble";
 import { computeMetrics, METRICS } from "@/lib/screener/metrics";
@@ -243,5 +252,105 @@ describe("publishDecision", () => {
   it("asks the database to check at least nine in ten again", () => {
     expect(minPublishRows(4_650)).toBe(4_185);
     expect(minPublishRows(0)).toBe(1);
+  });
+});
+
+// —— 9 November 2026 ——
+function co(latest: CompanyYear, balance: Assembled["balance"] = {}): Assembled {
+  return { cik: 1045810, name: "NVIDIA CORP", latest, prior: null, balance, revenueHistory: [], revenueHistoryInconsistent: [], threeYearsBack: null };
+}
+
+describe("needsAnnualReportFix and a filing in the wrong units", () => {
+  it("doesn't fetch the 10-K's figure when that figure is the one in the wrong units", () => {
+    const y = { ...year({ revenue: p(1, "K") }, ["net_income"]), dollarsInOtherUnits: "K" };
+    expect(needsAnnualReportFix(y)).toBe(false);
+    expect(needsAnnualReportFix(y, "revenue")).toBe(false);
+  });
+});
+
+describe("reading the balance sheet page for securities", () => {
+  const K = "0001045810-26-000021";
+  const nvda = co(year({ operating_cash_flow: p(102_718e6, K), revenue: p(215_938e6, K) }, [], "2026-01-25"), {
+    cash_and_equivalents: p(10_605e6, "Q", "CashAndCashEquivalentsAtCarryingValue", "2026-01-25"),
+    securities_total: p(39_520e6, "Q", "AvailableForSaleSecuritiesDebtSecurities", "2026-01-25"),
+  });
+
+  it("is needed when securities in the standard tag aren't on the cash side (NVIDIA)", () => {
+    expect(needsStatementRead(nvda, "operating")).toBe(true);
+    expect(statementFiling(nvda)).toBe(K);
+    // Not for a bank, whose net cash is n/a anyway.
+    expect(needsStatementRead(nvda, "financial")).toBe(false);
+  });
+
+  it("isn't needed when a short-term investment line was counted, or the securities are long-term", () => {
+    expect(needsStatementRead({ ...nvda, balance: { ...nvda.balance, short_term_investments: p(1, "Q") } }, "operating")).toBe(false);
+    expect(needsStatementRead({ ...nvda, balance: { ...nvda.balance, securities_noncurrent: p(39_520e6, "Q") } }, "operating")).toBe(false);
+    // Under $100 million, or under a tenth of cash: not worth a read.
+    expect(needsStatementRead({ ...nvda, balance: { ...nvda.balance, securities_total: p(90e6, "Q") } }, "operating")).toBe(false);
+  });
+
+  it("reuses a read while the year's filing is the same", () => {
+    const read: StatementRead = { accn: K, file: "R5.htm", added: [], failed: null, rule: STATEMENT_RULE };
+    expect(reusableStatementRead(read, K)).toBe(read);
+    expect(reusableStatementRead(read, "0001045810-27-000001")).toBeUndefined();
+    expect(reusableStatementRead({ ...read, rule: 0 }, K)).toBeUndefined();
+  });
+
+  it("tells the measures what to add, or that the page wasn't read", () => {
+    const added = [{ element: "nvda:MarketableSecuritiesAndEquitySecuritiesFVNI", label: "Marketable securities", value: 51_951e6 }];
+    const read: StatementRead = { accn: K, file: "R5.htm", added, failed: null, rule: STATEMENT_RULE };
+    expect(statementContext(read, true)).toEqual({ added, shortTermDebt: null });
+    expect(statementContext({ ...read, failed: "the page's cash line doesn't match the filed cash figure" }, true)).toBe("unread");
+    expect(statementContext(undefined, true)).toBe("unread");
+    expect(statementContext(undefined, false)).toBeUndefined();
+  });
+});
+
+describe("interest expense for ROIC's pretax fallback", () => {
+  const K = "0000200406-26-000016";
+  const jnj = co(year({ pretax_income: p(31_000e6, K), operating_cash_flow: p(24_000e6, K) }, [], "2025-12-28"));
+
+  it("is fetched for a company with pretax income but no operating income or interest", () => {
+    expect(needsInterestFix(jnj, "operating")).toBe(true);
+    expect(needsInterestFix(co(year({ pretax_income: p(1, K), interest_expense: p(1, K) })), "operating")).toBe(false);
+    expect(needsInterestFix(co(year({ pretax_income: p(1, K), operating_income: p(1, K) })), "operating")).toBe(false);
+  });
+
+  it("fills interest expense for the year it was fetched for, and carries over while the filing stands", () => {
+    const fix = { end: "2025-12-28", home: K, val: 971e6, accn: K };
+    expect(applyInterestFix(jnj, fix).latest.values.interest_expense).toEqual({ val: 971e6, end: "2025-12-28", tag: "InterestExpenseNonoperating", accn: K });
+    expect(applyInterestFix(jnj, { ...fix, val: null, accn: null })).toBe(jnj);
+    expect(reusableInterestFix(fix, jnj)).toBe(fix);
+    expect(reusableInterestFix({ ...fix, end: "2024-12-29" }, jnj)).toBeUndefined();
+  });
+});
+
+describe("the row's sector and sources", () => {
+  const profile = (cik: string, sic: string) =>
+    profileRow({ cik, name: "Mastercard Incorporated", sic, sicDescription: null, state: "NY", fiscalYearEnd: "1231", entityType: "operating", tickers: [], exchanges: [] }, "2026-11-09T00:00:00Z");
+  const company = { ...co(year({ revenue: p(32_800e6, "K"), operating_cash_flow: p(17_000e6, "K") })), cik: 1141391 };
+
+  it("takes the hand-checked sector over SIC's (Mastercard: Financials, not Industrials)", () => {
+    const row = screenerRow({ company, ticker: "MA", exchange: "NYSE", profile: profile("0001141391", "7389"), kind: "operating", metrics: computeMetrics(company, "operating"), fixes: {}, updatedAt: "x" });
+    expect(row.sector).toBe("Financials");
+  });
+
+  it("records customer money, the ROIC basis and a balance sheet read in sources", () => {
+    const read: StatementRead = { accn: "K", file: "R4.htm", added: [], failed: null, rule: STATEMENT_RULE };
+    const row = screenerRow({
+      company,
+      ticker: "MA",
+      exchange: "NYSE",
+      profile: profile("0001141391", "7389"),
+      kind: "operating",
+      metrics: computeMetrics(company, "operating"),
+      fixes: {},
+      customerMoney: { holds: true, how: "FundsHeldForClients: 30% of total assets" },
+      statement: read,
+      updatedAt: "x",
+    });
+    const sources = row.sources as Record<string, unknown>;
+    expect(sources.customer_money).toBe("FundsHeldForClients: 30% of total assets");
+    expect(sources.cash_from_statement).toEqual(read);
   });
 });

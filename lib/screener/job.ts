@@ -9,7 +9,9 @@
 //      (screener_filers), one at a time, until its time for that runs out;
 //   4. takes revenue and net income from the 10-K where the frames hold
 //      another filing's figure (rows.ts, needsAnnualReportFix), reusing last
-//      night's answer while the frames still hold the same filing;
+//      night's answer while the frames still hold the same filing, and reads
+//      the balance sheet page of the few annual reports whose securities sit
+//      under the company's own label (rows.ts, needsStatementRead);
 //   5. builds a row per company it has a profile for, leaving out commodity
 //      and crypto funds, and works out each measure's median;
 //   6. writes the rows into screener_metrics_next and the medians into
@@ -25,11 +27,14 @@
 // history has to be stored: the frames are the history.
 
 import { createServiceRoleClient } from "@/lib/supabase/service";
-import { fetchCompanyConcept, fetchFilerProfile, fetchFrame, fetchTickerExchangeFile, padCik } from "@/lib/sec/client";
+import { fetchCompanyConcept, fetchFilerProfile, fetchFilingFile, fetchFrame, fetchTickerExchangeFile, padCik } from "@/lib/sec/client";
 import { framePlan, type FrameRequest } from "@/lib/sec/frames";
-import { filerKindFromSic } from "@/lib/sec/concepts";
+import { CONCEPT_TAGS, SCREENER_CONCEPT_TAGS, filerKindFromSic } from "@/lib/sec/concepts";
+import { balanceSheetFile, parseStatementPage, securitiesOnBalanceSheet, shortTermDebtOnBalanceSheet } from "@/lib/sec/statementPage";
 import { annualReportFact, assembleCompany, collectFrame, type Assembled, type CompanyYear, type FrameCollection } from "@/lib/screener/assemble";
-import { computeMetrics, METRICS } from "@/lib/screener/metrics";
+import { customerMoney } from "@/lib/screener/customerMoney";
+import { cashAndInvestments, computeMetrics, METRICS } from "@/lib/screener/metrics";
+import { sectorFor } from "@/lib/screener/sectorCorrections";
 import { EXCHANGES, tickerByCik, withPredecessors } from "@/lib/screener/tickers";
 import {
   FIX_RULE,
@@ -42,6 +47,19 @@ import {
   screenerRow,
   minPublishRows,
   publishDecision,
+  STATEMENT_RULE,
+  INTEREST_TAG,
+  applyInterestFix,
+  needsInterestFix,
+  reusableInterestFix,
+  type InterestFix,
+  needsDebtRead,
+  needsSecuritiesRead,
+  needsStatementRead,
+  reusableStatementRead,
+  statementContext,
+  statementFiling,
+  type StatementRead,
   type AnnualFix,
   type FixedItem,
   type Median,
@@ -61,6 +79,9 @@ export type JobOptions = {
   // For checking a change on the whole universe before it goes live.
   dryRun?: boolean;
   onRows?: (rows: Record<string, unknown>[], medians: Median[]) => void;
+  // Where frames files come from; the SEC unless a check supplies saved
+  // copies, so a dry run can be repeated without downloading 80 MB again.
+  fetchFrame?: typeof fetchFrame;
 };
 
 type FixCounts = { needed: number; reused: number; fetched: number; pending: number };
@@ -75,6 +96,8 @@ export type JobSummary = {
   profiles: { fetched: number; failed: number; missingAfter: number };
   netIncome: FixCounts;
   revenue: FixCounts;
+  statements: FixCounts;
+  interest: FixCounts;
   seconds: number;
   error: string | null;
 };
@@ -101,8 +124,44 @@ async function writeAll(db: Db, table: string, rows: object[], onConflict: strin
 type Fixes = { latest?: AnnualFix; prior?: AnnualFix };
 type StoredFix = { latest: AnnualFix | null; prior: AnnualFix | null } | undefined;
 
+// Elements a cash figure may already include, so a balance sheet line under
+// one of them is never added twice.
+const COUNTED_CASH_ELEMENTS: ReadonlySet<string> = new Set([
+  ...CONCEPT_TAGS.cash_and_equivalents,
+  ...SCREENER_CONCEPT_TAGS.cash_and_short_term_investments,
+  ...SCREENER_CONCEPT_TAGS.short_term_investments,
+]);
+
+// The balance sheet page of one annual report: the securities on it that the
+// cash figure hasn't counted, and, where asked, its debt due within a year
+// (rows.ts, needsStatementRead). Two requests: the filing's list of pages,
+// then the page.
+async function readStatement(cik: string, accn: string, a: Assembled, checks: { securities: boolean; debt: boolean }): Promise<StatementRead> {
+  const base = { accn, rule: STATEMENT_RULE };
+  // The page is checked against the cash line alone, not cash plus
+  // short-term investments.
+  const own = a.balance.cash_and_equivalents;
+  const counted = cashAndInvestments(a.balance);
+  const cash = own ? { value: own.val, how: own.tag } : counted;
+  if (!cash) return { ...base, file: null, added: [], failed: "no cash figure" };
+  const list = await fetchFilingFile(cik, accn, "FilingSummary.xml");
+  const file = list ? balanceSheetFile(list) : null;
+  if (!file) return { ...base, file: null, added: [], failed: list ? "no balance sheet page in the filing" : "the filing has no FilingSummary.xml" };
+  const html = await fetchFilingFile(cik, accn, file);
+  if (!html) return { ...base, file, added: [], failed: "the balance sheet page is missing" };
+  const page = parseStatementPage(html);
+  const read = securitiesOnBalanceSheet(page, { value: cash.value, tag: cash.how }, COUNTED_CASH_ELEMENTS);
+  if (!read.ok) return { ...base, file, added: [], failed: read.reason };
+  const added = checks.securities ? read.added : [];
+  if (!checks.debt) return { ...base, file, added, shortTermDebt: null, failed: null };
+  const lines = shortTermDebtOnBalanceSheet(page, { value: cash.value, tag: cash.how });
+  if (!lines.ok) return { ...base, file, added: [], failed: lines.reason };
+  return { ...base, file, added, shortTermDebt: lines.lines, failed: null };
+}
+
 export async function runScreenerJob(options: JobOptions): Promise<JobSummary> {
   const { startedAt, budgetMs, today, dryRun = false } = options;
+  const getFrame = options.fetchFrame ?? fetchFrame;
   const elapsed = () => Date.now() - startedAt;
   const runAt = new Date(startedAt).toISOString();
   const db = createServiceRoleClient();
@@ -114,6 +173,8 @@ export async function runScreenerJob(options: JobOptions): Promise<JobSummary> {
     profiles: { fetched: 0, failed: 0, missingAfter: 0 },
     netIncome: { needed: 0, reused: 0, fetched: 0, pending: 0 },
     revenue: { needed: 0, reused: 0, fetched: 0, pending: 0 },
+    statements: { needed: 0, reused: 0, fetched: 0, pending: 0 },
+    interest: { needed: 0, reused: 0, fetched: 0, pending: 0 },
     seconds: 0,
     error: null,
   };
@@ -137,9 +198,9 @@ export async function runScreenerJob(options: JobOptions): Promise<JobSummary> {
       Array.from({ length: 4 }, async () => {
         while (next < plan.length) {
           const req: FrameRequest = plan[next++];
-          const key = `${req.tag}/${req.unit}/${req.period}`;
+          const key = `${req.taxonomy === "us-gaap" ? "" : `${req.taxonomy}/`}${req.tag}/${req.unit}/${req.period}`;
           try {
-            const got = await fetchFrame(req.tag, req.unit, req.period);
+            const got = await getFrame(req.tag, req.unit, req.period, req.taxonomy);
             if (!got) {
               summary.frames.notFiled++;
               frameRows.push({ frame: key, fetched_at: new Date().toISOString(), status: "not-filed", companies: 0, bytes: 0, error: null });
@@ -210,8 +271,13 @@ export async function runScreenerJob(options: JobOptions): Promise<JobSummary> {
 
     // —— 4. Revenue and net income from the 10-K ——
     const previous = new Map<string, Partial<Record<FixedItem, StoredFix>>>();
-    for (const r of await readAll<{ cik: string; sources: { net_income_10k?: StoredFix; revenue_10k?: StoredFix } }>(db, "screener_metrics", "cik,sources")) {
+    const previousReads = new Map<string, StatementRead>();
+    const previousInterest = new Map<string, InterestFix>();
+    type StoredSources = { net_income_10k?: StoredFix; revenue_10k?: StoredFix; cash_from_statement?: StatementRead; interest_10k?: InterestFix };
+    for (const r of await readAll<{ cik: string; sources: StoredSources }>(db, "screener_metrics", "cik,sources")) {
       previous.set(r.cik, { net_income: r.sources?.net_income_10k, revenue: r.sources?.revenue_10k });
+      if (r.sources?.cash_from_statement) previousReads.set(r.cik, r.sources.cash_from_statement);
+      if (r.sources?.interest_10k) previousInterest.set(r.cik, r.sources.interest_10k);
     }
     const fixes: Record<FixedItem, Map<string, Fixes>> = { net_income: new Map(), revenue: new Map() };
     const fixDeadline = budgetMs - 35_000;
@@ -256,6 +322,62 @@ export async function runScreenerJob(options: JobOptions): Promise<JobSummary> {
       }
     }
 
+    // —— 4b. Securities under the company's own label ——
+    const reads = new Map<string, StatementRead>();
+    const readDeadline = budgetMs - 30_000;
+    for (const u of universe) {
+      const cik = padCik(u.company.cik);
+      const profile = profiles.get(cik);
+      if (!profile || !needsStatementRead(u.company, filerKindFromSic(profile.sic))) continue;
+      summary.statements.needed++;
+      const accn = statementFiling(u.company);
+      const reused = reusableStatementRead(previousReads.get(cik), accn);
+      if (reused) {
+        reads.set(cik, reused);
+        summary.statements.reused++;
+        continue;
+      }
+      if (!accn || elapsed() > readDeadline) {
+        summary.statements.pending++;
+        continue;
+      }
+      try {
+        const kind = filerKindFromSic(profile.sic);
+        reads.set(cik, await readStatement(cik, accn, u.company, { securities: needsSecuritiesRead(u.company, kind), debt: needsDebtRead(u.company, kind) }));
+        summary.statements.fetched++;
+      } catch {
+        summary.statements.pending++;
+      }
+    }
+
+    // —— 4c. Interest expense for ROIC's pretax fallback ——
+    const interestFixes = new Map<string, InterestFix>();
+    for (const u of universe) {
+      const cik = padCik(u.company.cik);
+      const profile = profiles.get(cik);
+      if (!profile || !needsInterestFix(u.company, filerKindFromSic(profile.sic))) continue;
+      summary.interest.needed++;
+      const reused = reusableInterestFix(previousInterest.get(cik), u.company);
+      if (reused) {
+        interestFixes.set(cik, reused);
+        summary.interest.reused++;
+        continue;
+      }
+      if (elapsed() > readDeadline) {
+        summary.interest.pending++;
+        continue;
+      }
+      try {
+        const concept = await fetchCompanyConcept(cik, INTEREST_TAG);
+        const facts = concept ? Object.values(concept.units).flat() : [];
+        const f = annualReportFact(facts, u.company.latest.periodStart!, u.company.latest.periodEnd);
+        interestFixes.set(cik, { end: u.company.latest.periodEnd, home: statementFiling(u.company), val: f?.val ?? null, accn: f?.accn ?? null });
+        summary.interest.fetched++;
+      } catch {
+        summary.interest.pending++;
+      }
+    }
+
     // —— 5. Rows, and where the middle company sits ——
     const rows: Record<string, unknown>[] = [];
     for (const u of universe) {
@@ -273,7 +395,16 @@ export async function runScreenerJob(options: JobOptions): Promise<JobSummary> {
       const incomeFix = fixes.net_income.get(cik) ?? {};
       let company = applyAnnualReportFix(u.company, "revenue", u.company.latest.values.revenue?.tag ?? "Revenues", revenueFix.latest, revenueFix.prior);
       company = applyAnnualReportFix(company, "net_income", u.company.latest.values.net_income?.tag ?? "NetIncomeLoss", incomeFix.latest, incomeFix.prior);
+      const interestFix = interestFixes.get(cik);
+      company = applyInterestFix(company, interestFix);
       const kind = filerKindFromSic(profile.sic);
+      const money = customerMoney(cik, company, profile.sic);
+      const read = reads.get(cik);
+      const context = {
+        sector: sectorFor(cik, profile.sic),
+        holdsCustomerMoney: money.holds,
+        statement: statementContext(read, needsStatementRead(company, kind)),
+      };
       rows.push(
         screenerRow({
           company,
@@ -281,9 +412,12 @@ export async function runScreenerJob(options: JobOptions): Promise<JobSummary> {
           exchange: u.exchange,
           profile,
           kind,
-          metrics: computeMetrics(company, kind, profile.sic),
+          metrics: computeMetrics(company, kind, context),
           fixes: incomeFix,
           revenueFixes: revenueFix,
+          customerMoney: money,
+          statement: read,
+          interestFix,
           updatedAt: runAt,
         }),
       );
@@ -341,6 +475,8 @@ export async function runScreenerJob(options: JobOptions): Promise<JobSummary> {
           "frames files that failed": summary.frames.failed,
           "net income from the 10-K still to fetch": summary.netIncome.pending,
           "revenue from the 10-K still to fetch": summary.revenue.pending,
+          "balance sheet pages still to read": summary.statements.pending,
+          "interest expense from the 10-K still to fetch": summary.interest.pending,
           published: summary.companies.published,
           "not published because": summary.companies.notPublished,
           "companies removed": summary.companies.removed,

@@ -4,9 +4,10 @@
 import type { FilerProfile } from "@/lib/sec/client";
 import type { FilerKind } from "@/lib/sec/concepts";
 import type { Assembled, CompanyYear, Picked } from "@/lib/screener/assemble";
-import { METRICS, type ScreenerMetrics } from "@/lib/screener/metrics";
+import type { CustomerMoney } from "@/lib/screener/customerMoney";
+import { METRICS, cashAndInvestments, debtLacksCurrentPart, type MetricContext, type ScreenerMetrics, type StatementLine } from "@/lib/screener/metrics";
 import { displayName } from "@/lib/screener/names";
-import { sectorFromSic } from "@/lib/screener/sectors";
+import { sectorFor } from "@/lib/screener/sectorCorrections";
 
 // —— Net income from the 10-K, where the frames hold the proxy's ——
 // A frame keeps each company's last-filed figure, and for net income that is
@@ -33,6 +34,8 @@ function homeFiling(year: CompanyYear, item: FixedItem): string | null {
 
 export function needsAnnualReportFix(year: CompanyYear | null, item: FixedItem = "net_income"): boolean {
   if (!year) return false;
+  // The 10-K's own figure is the one in the wrong units: nothing to fetch.
+  if (year.dollarsInOtherUnits) return false;
   const value = year.values[item];
   if (!value) return year.inconsistent.includes(item);
   const home = homeFiling(year, item);
@@ -89,6 +92,105 @@ export function reusableFix(previous: AnnualFix | undefined, year: CompanyYear |
   return previous;
 }
 
+// —— Interest expense for ROIC without an operating income line ——
+// Return on invested capital falls back to pretax income plus interest
+// expense where no operating income is filed (metrics.ts). Most large
+// companies now file interest as InterestExpenseNonoperating, and the SEC's
+// frames for that tag leave out 10-Ks filed before about mid-2026 (concepts.ts,
+// interest_expense), so Johnson & Johnson's and Eli Lilly's interest isn't in
+// them though their own concept files have it. For a company with pretax
+// income, no operating income and no interest in the frames, the job takes the
+// year's figure from its concept file (annualReportFact), once per annual
+// report; a company with no such figure stays n/a.
+export const INTEREST_TAG = "InterestExpenseNonoperating";
+
+export type InterestFix = { end: string; home: string | null; val: number | null; accn: string | null };
+
+export function needsInterestFix(a: Assembled, kind: FilerKind): boolean {
+  const L = a.latest.values;
+  return kind === "operating" && !L.operating_income && L.pretax_income != null && !L.interest_expense && a.latest.periodStart != null;
+}
+
+export function reusableInterestFix(previous: InterestFix | undefined, a: Assembled): InterestFix | undefined {
+  if (!previous || previous.end !== a.latest.periodEnd || previous.home !== statementFiling(a)) return undefined;
+  return previous;
+}
+
+export function applyInterestFix(a: Assembled, fix: InterestFix | undefined): Assembled {
+  if (!fix || fix.val == null || fix.accn == null || fix.end !== a.latest.periodEnd || a.latest.values.interest_expense) return a;
+  const picked: Picked = { val: fix.val, end: fix.end, tag: INTEREST_TAG, accn: fix.accn };
+  return { ...a, latest: { ...a.latest, values: { ...a.latest.values, interest_expense: picked } } };
+}
+
+// —— Securities under a company's own label (lib/sec/statementPage.ts) ——
+// Where the securities a company reports in the standard tag (available-for-
+// sale debt securities, less any long-term part) come to more than a tenth of
+// the cash counted and at least $100 million, while no short-term investment
+// line was counted, they sit on the balance sheet under the company's own
+// element. The job then reads the balance sheet page of the year's annual
+// report (statementFiling) and adds what it finds, once per filing: the read
+// carries over until the year's filing changes. 35 companies on 9 November
+// 2026, NVIDIA, KLA and eBay among them; for most (Caterpillar's insurance
+// holdings, Duke Energy's decommissioning fund) the page shows nothing more
+// among current assets, and their cash stands.
+// Rule 2 (9 November 2026): debt due within a year read too.
+export const STATEMENT_RULE = 2;
+export const UNPLACED_SECURITIES_SHARE = 0.1;
+export const UNPLACED_SECURITIES_FLOOR = 100_000_000;
+
+export type StatementRead = {
+  accn: string;
+  file: string | null;
+  added: StatementLine[];
+  // Debt lines among current liabilities, when the debt check was asked for
+  // (needsDebtRead).
+  shortTermDebt?: StatementLine[] | null;
+  // Why nothing could be taken from the page; net cash is then n/a.
+  failed: string | null;
+  rule: number;
+};
+
+export function needsStatementRead(a: Assembled, kind: FilerKind): boolean {
+  return needsSecuritiesRead(a, kind) || needsDebtRead(a, kind);
+}
+
+// The same page, for debt due within a year a company files only under its
+// own element or split by business (Caterpillar): metrics.ts,
+// debtLacksCurrentPart.
+export function needsDebtRead(a: Assembled, kind: FilerKind): boolean {
+  return kind === "operating" && cashAndInvestments(a.balance) != null && debtLacksCurrentPart(a.balance);
+}
+
+export function needsSecuritiesRead(a: Assembled, kind: FilerKind): boolean {
+  if (kind !== "operating") return false;
+  const B = a.balance;
+  if (B.cash_and_short_term_investments || B.short_term_investments) return false;
+  const cash = cashAndInvestments(B);
+  const total = B.securities_total?.val;
+  if (!cash || total == null) return false;
+  const unplaced = total - (B.securities_noncurrent?.val ?? 0);
+  return unplaced > Math.max(Math.abs(cash.value) * UNPLACED_SECURITIES_SHARE, UNPLACED_SECURITIES_FLOOR);
+}
+
+// The annual report the latest year's figures came from.
+export function statementFiling(a: Assembled): string | null {
+  const L = a.latest.values;
+  return L.operating_cash_flow?.accn ?? L.revenue?.accn ?? L.net_income?.accn ?? null;
+}
+
+export function reusableStatementRead(previous: StatementRead | undefined, accn: string | null): StatementRead | undefined {
+  if (!previous || !accn || previous.accn !== accn || previous.rule !== STATEMENT_RULE) return undefined;
+  return previous;
+}
+
+// What the measures get: nothing when no read was needed; "unread" when one
+// was and isn't there, or failed, so net cash is n/a rather than short.
+export function statementContext(read: StatementRead | undefined, needed: boolean): MetricContext["statement"] {
+  if (!needed) return undefined;
+  if (!read || read.failed) return "unread";
+  return { added: read.added, shortTermDebt: read.shortTermDebt ?? null };
+}
+
 // —— Rows ——
 export type ProfileRow = {
   cik: string;
@@ -138,6 +240,9 @@ export type ScreenerRowInput = {
   metrics: ScreenerMetrics;
   fixes: { latest?: AnnualFix; prior?: AnnualFix };
   revenueFixes?: { latest?: AnnualFix; prior?: AnnualFix };
+  customerMoney?: CustomerMoney;
+  statement?: StatementRead;
+  interestFix?: InterestFix;
   updatedAt: string;
 };
 
@@ -155,12 +260,17 @@ export function screenerRow(input: ScreenerRowInput): Record<string, unknown> {
   const w = m.workings;
   if (w.cash || w.debt) sources.net_cash = { cash: w.cash, debt: w.debt };
   if (w.taxRate) sources.roic_tax_rate = w.taxRate;
+  if (w.roicBasis) sources.roic_basis = w.roicBasis;
+  if (input.customerMoney?.holds) sources.customer_money = input.customerMoney.how;
+  if (input.statement) sources.cash_from_statement = input.statement;
+  if (input.interestFix) sources.interest_10k = input.interestFix;
+  if (a.latest.dollarsInOtherUnits) sources.dollars_in_other_units = a.latest.dollarsInOtherUnits;
   const row: Record<string, unknown> = {
     cik,
     ticker: input.ticker,
     exchange: input.exchange,
     name: displayName(cik, a.name, profile.name),
-    sector: sectorFromSic(profile.sic),
+    sector: sectorFor(cik, profile.sic),
     sic: profile.sic,
     filer_kind: input.kind,
     state: profile.state,

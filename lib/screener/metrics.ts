@@ -15,7 +15,7 @@
 import { suppressedItems, type FilerKind } from "@/lib/sec/concepts";
 import { MAX_ORDINARY_CHANGE } from "@/lib/research/splits";
 import type { Assembled, BalanceItem, DurationItem, Picked } from "@/lib/screener/assemble";
-import { sectorFromSic } from "@/lib/screener/sectors";
+import type { Sector } from "@/lib/screener/sectors";
 
 export const MAIN_METRICS = [
   "revenue",
@@ -102,12 +102,35 @@ export type ScreenerMetrics = {
     debt: Figure | null;
     // The tax rate used for ROIC, and whether it was the default 21%.
     taxRate: { rate: number; default: boolean } | null;
+    // What ROIC's profit was: operating income, or pretax income plus
+    // interest expense where no operating income line is filed.
+    roicBasis: RoicBasis | null;
   };
   na: Partial<Record<MetricKey | "pays_dividend", NaReason>>;
 };
 
 // A sum, with what went into it.
 export type Figure = { value: number; how: string };
+
+export type RoicBasis = "operating income" | "pretax income plus interest expense";
+
+// What the job knows about a company beyond its filed figures.
+export type MetricContext = {
+  // The sector shown (sectorCorrections.ts, sectorFor).
+  sector?: Sector | null;
+  // Holds its customers' money (customerMoney.ts): free cash flow margin and
+  // net cash are n/a, as at a bank. Eli's rule, 9 November 2026.
+  holdsCustomerMoney?: boolean;
+  // Securities read off the balance sheet page because the company tags them
+  // with its own elements (lib/sec/statementPage.ts), added to cash; or
+  // "unread" when the page was needed and couldn't be read or trusted, which
+  // leaves net cash and ROIC n/a rather than short of the securities.
+  // Debt lines read off the same page where the debt figure leaves out
+  // what's due within a year and nothing was filed for it (Caterpillar).
+  statement?: { added: StatementLine[]; shortTermDebt?: StatementLine[] | null } | "unread";
+};
+
+export type StatementLine = { element: string; label: string; value: number };
 
 type Result = { value: number | null; na?: NaReason };
 const ok = (value: number): Result => ({ value });
@@ -130,13 +153,24 @@ function growth(now: number | null, before: number | null): Result {
   return ok(now / before - 1);
 }
 
+// Revenue growth from a base under $10 million is n/a (Eli, 9 November
+// 2026): a company going from $1 million to $40 million "grew 3,900%", which
+// describes a start, not a rate. Applies to the starting year of every
+// revenue growth measure.
+export const MIN_REVENUE_BASE = 10_000_000;
+
+function revenueGrowth(now: number | null, before: number | null): Result {
+  if (before != null && before > 0 && before < MIN_REVENUE_BASE) return na("base");
+  return growth(now, before);
+}
+
 // Compound average yearly growth over `years`, along consecutive years only.
 function cagr(history: (Picked | null)[], bad: number[], years: number): Result {
   if (history.length <= years) return na("history");
   const now = v(history[0]);
   const then = v(history[years]);
   if (now == null || then == null) return na(bad.includes(0) || bad.includes(years) ? "inconsistent" : "missing");
-  if (then <= 0 || now < 0) return na("base");
+  if (then <= 0 || now < 0 || then < MIN_REVENUE_BASE) return na("base");
   return ok(Math.pow(now / then, 1 / years) - 1);
 }
 
@@ -189,6 +223,39 @@ export function cashAndInvestments(B: Balance): Figure | null {
     : { value: B.cash_and_equivalents.val, how: B.cash_and_equivalents.tag };
 }
 
+// Cash plus securities read off the balance sheet page (statementPage.ts).
+export function withStatementSecurities(cash: Figure | null, statement: MetricContext["statement"]): Figure | null {
+  if (!cash || !statement || statement === "unread" || statement.added.length === 0) return cash;
+  return {
+    value: cash.value + statement.added.reduce((s, a) => s + a.value, 0),
+    how: [cash.how, ...statement.added.map((a) => `${a.element} ("${a.label}", balance sheet page)`)].join(" + "),
+  };
+}
+
+// Long-term debt that leaves out what's due within a year, with nothing
+// filed for that part: the balance sheet page is read for it (rows.ts,
+// needsStatementRead). 134 companies on 9 November 2026, Caterpillar the
+// largest; for most the page shows no such debt.
+export function debtLacksCurrentPart(B: Balance): boolean {
+  const base = B.total_debt;
+  return base != null && NONCURRENT_DEBT_TAGS.has(base.tag) && !B.debt_current && !B.long_term_debt_current;
+}
+
+// Debt plus what the balance sheet page shows due within a year, less the
+// short-term borrowings already counted (the only current part totalDebt
+// adds for such a company). Caterpillar: $5.51B of short-term borrowings
+// counted; the page also shows $7.12B of long-term debt due within a year.
+export function withStatementDebt(debt: Figure | null, statement: MetricContext["statement"], B: Balance): Figure | null {
+  if (!debt || !statement || statement === "unread" || !statement.shortTermDebt?.length || !debtLacksCurrentPart(B)) return debt;
+  const onPage = statement.shortTermDebt.reduce((s, l) => s + l.value, 0);
+  const counted = B.short_term_borrowings?.val ?? 0;
+  if (onPage - counted <= 0) return debt;
+  return {
+    value: debt.value + onPage - counted,
+    how: `${debt.how} + (debt due within a year on the balance sheet page${counted ? ` less ${B.short_term_borrowings!.tag}` : ""})`,
+  };
+}
+
 const NONCURRENT_DEBT_TAGS = new Set(["LongTermDebtNoncurrent", "LongTermDebtAndCapitalLeaseObligations"]);
 
 // All debt: the long-term debt the research file reads (concepts.ts,
@@ -201,10 +268,18 @@ const NONCURRENT_DEBT_TAGS = new Set(["LongTermDebtNoncurrent", "LongTermDebtAnd
 //   filed (NVIDIA: $1.0B less $1.0B, nothing to add), otherwise one
 //   short-term borrowing line (Apple's $2.0B of commercial paper).
 // - Where it EXCLUDES that part, by its tag, or because it equals the
-//   noncurrent figure while some long-term debt falls due this year (Chevron
-//   files $39.8B under both), add all debt due within a year (Chevron's
-//   $10.9B "Short-term debt").
+//   noncurrent figure while some long-term debt falls due this year, add all
+//   debt due within a year.
+// - A figure tagged as INCLUDING current maturities is taken at its word,
+//   even where the same figure is also tagged noncurrent, and what's added
+//   is never more than the short-term borrowings filed. Chevron (corrected
+//   9 November 2026): its balance sheet shows $977M of short-term debt and
+//   $39.8B of long-term debt, $40.8B in all. Its debt note's $10.9B
+//   (DebtCurrent) is short-term debt before $9.9B of it, refinanced, moves
+//   to long-term; adding it, as Stage D did, counted that $9.9B twice.
 // Finance leases outside these tags aren't counted, as before.
+const INCLUDING_CURRENT = /IncludingCurrentMaturities$/;
+
 export function totalDebt(B: Balance): Figure | null {
   const base = B.total_debt;
   if (!base) return null;
@@ -213,8 +288,10 @@ export function totalDebt(B: Balance): Figure | null {
   const maturities = B.long_term_debt_current;
   const borrowings = B.short_term_borrowings;
   const noncurrent = B.long_term_debt_noncurrent;
+  const including = INCLUDING_CURRENT.test(base.tag);
   const excludesCurrent =
-    NONCURRENT_DEBT_TAGS.has(base.tag) || (noncurrent != null && near(noncurrent.val, base.val) && (maturities?.val ?? 0) > 0);
+    !including &&
+    (NONCURRENT_DEBT_TAGS.has(base.tag) || (noncurrent != null && near(noncurrent.val, base.val) && (maturities?.val ?? 0) > 0));
   if (excludesCurrent) {
     if (current) return { value: base.val + current.val, how: `${base.tag} + ${current.tag}` };
     const parts = [maturities, borrowings].filter((p): p is Picked => p != null);
@@ -222,6 +299,9 @@ export function totalDebt(B: Balance): Figure | null {
   }
   if (current && maturities) {
     const shortTerm = Math.max(0, current.val - maturities.val);
+    if (including && borrowings && borrowings.val < shortTerm) {
+      return { value: base.val + borrowings.val, how: `${base.tag} + ${borrowings.tag}` };
+    }
     return { value: base.val + shortTerm, how: `${base.tag} + (${current.tag} - ${maturities.tag})` };
   }
   if (borrowings) return { value: base.val + borrowings.val, how: `${base.tag} + ${borrowings.tag}` };
@@ -262,6 +342,18 @@ export function grossMarginIsPartial(L: Partial<Record<DurationItem, Picked>>, r
 export const DEFAULT_TAX_RATE = 0.21;
 export const MAX_TAX_RATE = 0.35;
 
+// A return above 100% a year means after-tax profit larger than all the
+// capital in the business. A few businesses really do that: Apple (97%),
+// Mastercard (94%) and NVIDIA (about 107%) each still have invested capital of
+// at least a quarter of total assets. NetApp (510%), H World (144%), Extreme
+// Networks (123%), Nutex Health (109%) and Blue Bird (106%) don't: their
+// invested capital is under a fifth of total assets (2% at NetApp), worn
+// down by buybacks and cash piles, and the ratio measures how small that base
+// has become rather than the business (Eli, 9 November 2026). So above 100%,
+// ROIC is n/a unless invested capital is at least a quarter of total assets.
+export const ROIC_CEILING = 1;
+export const MIN_CAPITAL_SHARE_ABOVE_CEILING = 0.25;
+
 export function taxRate(L: Partial<Record<DurationItem, Picked>>): { rate: number; default: boolean } {
   const tax = L.income_tax?.val;
   const pretax = L.pretax_income?.val;
@@ -269,21 +361,27 @@ export function taxRate(L: Partial<Record<DurationItem, Picked>>): { rate: numbe
   return { rate: Math.min(MAX_TAX_RATE, Math.max(0, tax / pretax)), default: false };
 }
 
-export function computeMetrics(company: Assembled, kind: FilerKind, sic: string | null = null): ScreenerMetrics {
+export function computeMetrics(company: Assembled, kind: FilerKind, context: MetricContext = {}): ScreenerMetrics {
   const suppressed = new Set(suppressedItems(kind)?.items ?? []);
   const isFinancial = kind === "financial";
+  const customerMoney = context.holdsCustomerMoney === true;
+  // Every dollar figure in the latest annual report is in the wrong units
+  // (assemble.ts, dollarsInOtherUnits): revenue and net income are already
+  // n/a; the balance sheet's dollars are as wrong.
+  const otherUnits = company.latest.dollarsInOtherUnits != null;
   const L = company.latest.values;
   const P = company.prior?.values ?? {};
   const B = company.balance;
   const revenue = v(L.revenue);
   const results = {} as Record<MetricKey, Result>;
-  const cash = cashAndInvestments(B);
-  const debt = totalDebt(B);
+  const cash = withStatementSecurities(cashAndInvestments(B), context.statement);
+  const debt = withStatementDebt(totalDebt(B), context.statement, B);
   let tax: { rate: number; default: boolean } | null = null;
+  let roicBasis: RoicBasis | null = null;
 
   // —— Main ten (sector is stored separately) ——
   results.revenue = revenue == null ? na("missing") : ok(revenue);
-  results.revenue_growth_1y = company.prior ? growth(revenue, v(P.revenue)) : na("history");
+  results.revenue_growth_1y = company.prior ? revenueGrowth(revenue, v(P.revenue)) : na("history");
   const badYears = company.revenueHistoryInconsistent;
   results.revenue_growth_3y = cagr(company.revenueHistory, badYears, 3);
 
@@ -304,7 +402,7 @@ export function computeMetrics(company: Assembled, kind: FilerKind, sic: string 
     // out operations, maintenance and depreciation, so a gross margin worked
     // out from it doesn't describe the business, like gross margin at a bank.
     // A utility that reports gross profit itself (Ormat) keeps it.
-    else if (gm != null && !L.gross_profit && sectorFromSic(sic) === "Utilities") results.gross_margin = na("not-applicable");
+    else if (gm != null && !L.gross_profit && context.sector === "Utilities") results.gross_margin = na("not-applicable");
   }
   results.operating_margin = overRevenue(v(L.operating_income), revenue);
   results.net_margin = overRevenue(v(L.net_income), revenue);
@@ -314,12 +412,15 @@ export function computeMetrics(company: Assembled, kind: FilerKind, sic: string 
   // "operating cash flow less capex" overstates what it keeps. The research
   // file still shows a REIT's free cash flow row; the screener doesn't filter
   // on it.
-  const fcfApplies = kind === "operating" && !suppressed.has("free_cash_flow");
+  // A company holding its customers' money is n/a too: its operating cash
+  // flow moves with their balances (customerMoney.ts).
+  const fcfApplies = kind === "operating" && !suppressed.has("free_cash_flow") && !customerMoney;
   const fcf = fcfApplies && L.operating_cash_flow && L.capex ? L.operating_cash_flow.val - L.capex.val : null;
   results.fcf_margin = fcfApplies ? overRevenue(fcf, revenue) : na("not-applicable");
 
-  if (isFinancial) results.net_cash = na("not-applicable");
-  else if (!cash || !debt) results.net_cash = na("missing");
+  if (isFinancial || customerMoney) results.net_cash = na("not-applicable");
+  else if (otherUnits) results.net_cash = na("inconsistent");
+  else if (context.statement === "unread" || !cash || !debt) results.net_cash = na("missing");
   else results.net_cash = ok(cash.value - debt.value);
 
   const sharesBasis = sameShareBasis(L.shares_diluted, P.shares_diluted);
@@ -404,17 +505,35 @@ export function computeMetrics(company: Assembled, kind: FilerKind, sic: string 
   // that owes more than it owns has no meaningful capital base, and the
   // ratio runs to the thousands (McKesson 1,348%, Unisys 1,550% on 7
   // November 2026).
+  //
+  // Where a company files no operating income line (ExxonMobil, Chevron,
+  // Johnson & Johnson, Eli Lilly: 277 companies on 7 November 2026), the
+  // profit is pretax income plus interest expense, Eli's choice of 9
+  // November 2026, and the row says so (sources.roic_basis). Both have to be
+  // filed: no interest line, no figure.
+  let profit = operatingIncome;
+  if (profit != null) roicBasis = "operating income";
+  else if (L.pretax_income && L.interest_expense) {
+    profit = L.pretax_income.val + L.interest_expense.val;
+    roicBasis = "pretax income plus interest expense";
+  }
   if (kind !== "operating") {
     results.roic = na("not-applicable");
-  } else if (operatingIncome == null || equity == null || debt == null || cash == null) {
+  } else if (otherUnits) {
+    results.roic = na("inconsistent");
+  } else if (profit == null || equity == null || debt == null || cash == null || context.statement === "unread") {
     results.roic = na("missing");
   } else if (equity <= 0) {
     results.roic = na("base");
   } else {
     const invested = debt.value + equity - cash.value;
     tax = taxRate(L);
-    results.roic = invested <= 0 ? na("base") : ok((operatingIncome * (1 - tax.rate)) / invested);
+    const roic = invested > 0 ? (profit * (1 - tax.rate)) / invested : null;
+    if (roic == null) results.roic = na("base");
+    else if (roic > ROIC_CEILING && !(assets != null && invested >= assets * MIN_CAPITAL_SHARE_ABOVE_CEILING)) results.roic = na("base");
+    else results.roic = ok(roic);
   }
+  if (results.roic.value == null) roicBasis = null;
 
   // —— Operating margin, now against three fiscal years earlier, in points ——
   const back = company.threeYearsBack;
@@ -439,7 +558,7 @@ export function computeMetrics(company: Assembled, kind: FilerKind, sic: string 
   // n/a for banks and insurers, whose operating cash flow swings on deposits
   // and loans (concepts.ts), and when net income is zero or below.
   const ocf = v(L.operating_cash_flow);
-  if (isFinancial) results.cash_conversion = na("not-applicable");
+  if (isFinancial || customerMoney) results.cash_conversion = na("not-applicable");
   else if (ocf == null || netIncome == null) results.cash_conversion = na("missing");
   else if (netIncome <= 0) results.cash_conversion = na("base");
   else results.cash_conversion = ok(ocf / netIncome);
@@ -459,5 +578,5 @@ export function computeMetrics(company: Assembled, kind: FilerKind, sic: string 
   }
   if (paysDividend == null) reasons.pays_dividend = "missing";
 
-  return { values, paysDividend, freeCashFlow: fcf, netIncome, workings: { cash, debt, taxRate: tax }, na: reasons };
+  return { values, paysDividend, freeCashFlow: otherUnits ? null : fcf, netIncome, workings: { cash, debt, taxRate: tax, roicBasis }, na: reasons };
 }
