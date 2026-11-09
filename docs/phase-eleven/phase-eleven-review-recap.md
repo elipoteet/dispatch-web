@@ -238,8 +238,8 @@ The fix: debt tagged "including current maturities" is now taken at its word. On
 
 ## Not done
 
-- The research file uses the same units rule but not the cover-page check, so Universe Pharmaceuticals' research page still shows $17.9B. That's a separate change to the normaliser, outside the screener.
-- Wise, under $5B revenue, still shows as Industrials. Under the standard classification it would be Financials.
+- ~~The research file uses the same units rule but not the cover-page check, so Universe Pharmaceuticals' research page still shows $17.9B.~~ Corrected the same day: that was wrong, and I hadn't checked it. The research file reads only 10-K and 10-Q filings, and Universe files 20-Fs, so its page shows no SEC figures at all (the "17.96" there is its 52-week high price). The cover-page check for the research file is ready on its own branch, `fix/units-cover-page`; it changes none of the 163 stored companies.
+- ~~Wise, under $5B revenue, still shows as Industrials.~~ Now Financials (see below).
 
 ## After Eli's second read (same day)
 
