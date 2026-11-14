@@ -89,7 +89,7 @@ async function secFetch(url: string): Promise<Response> {
 
 // One retry on 429 or 5xx, then give up. The SEC is normally rock solid; a long
 // retry chain would just hold a serverless invocation open.
-async function getJson<T>(url: string, what: string): Promise<T> {
+async function getText(url: string, what: string): Promise<string> {
   let res = await secFetch(url);
   if (res.status === 404) throw new NoSecDataError(`No SEC data for ${what}.`);
   if (res.status === 429 || res.status >= 500) {
@@ -102,7 +102,11 @@ async function getJson<T>(url: string, what: string): Promise<T> {
     throw new Error(`SEC returned 403 for ${what} — check SEC_CONTACT_EMAIL is a real, monitored address.`);
   }
   if (!res.ok) throw new Error(`SEC HTTP ${res.status} for ${what}`);
-  return (await res.json()) as T;
+  return res.text();
+}
+
+async function getJson<T>(url: string, what: string): Promise<T> {
+  return JSON.parse(await getText(url, what)) as T;
 }
 
 // —— Ticker to CIK ——
@@ -475,4 +479,171 @@ export async function fetchCompanyFacts(cik: string): Promise<CompanyFacts> {
     `https://data.sec.gov/api/xbrl/companyfacts/CIK${padCik(cik)}.json`,
     `CIK ${cik} company facts`,
   );
+}
+
+// —— Frames: one line item across every company (phase eleven) ——
+// https://data.sec.gov/api/xbrl/frames/{taxonomy}/{tag}/{unit}/{period}.json
+// holds, for one XBRL tag and one calendar period, the latest-filed value of
+// every company that reported it: about 5,700 rows for NetIncomeLoss in
+// CY2025, 870KB of JSON (170KB on the wire, gzipped). The screener is built
+// from these instead of 5,000 companyfacts files.
+//
+// Like company facts, never wrapped in unstable_cache: the data cache rejects
+// entries over about 2MB, and nothing needs the raw file after it has been
+// reduced to a value per company (lib/sec/frames.ts, indexFrame). The SEC sends
+// no ETag or Last-Modified on these and answers a conditional request with a
+// full 200 (checked 5 November 2026), so a refresh always downloads the file.
+//
+// A tag nobody filed for a period has no frame at all: 404, returned as null.
+import type { FrameResponse, FrameUnit, Taxonomy } from "@/lib/sec/frames";
+
+export type FetchedFrame = { frame: FrameResponse; bytes: number };
+
+export async function fetchFrame(tag: string, unit: FrameUnit, period: string, taxonomy: Taxonomy = "us-gaap"): Promise<FetchedFrame | null> {
+  const url = `https://data.sec.gov/api/xbrl/frames/${taxonomy}/${tag}/${unit}/${period}.json`;
+  try {
+    const text = await getText(url, `the ${tag} ${period} frame`);
+    return { frame: JSON.parse(text) as FrameResponse, bytes: text.length };
+  } catch (err) {
+    if (err instanceof NoSecDataError) return null;
+    throw err;
+  }
+}
+
+// —— Every listed ticker with its exchange, uncached ——
+// company_tickers_exchange.json: the same companies as company_tickers.json,
+// plus each ticker's exchange (Nasdaq, NYSE, OTC, CBOE, TXSE or null), as
+// { fields: ["cik","name","ticker","exchange"], data: [[1045810,"NVIDIA CORP","NVDA","Nasdaq"], ...] }.
+// Rows run largest company first, and a company's main share class comes
+// before its others (GOOGL before GOOG, BRK-B before BRK-A; checked 5 November
+// 2026), which is what lib/screener/tickers.ts relies on.
+//
+// Uncached because the screener job runs outside a page request, where
+// unstable_cache throws (project gotcha 8). 180KB on the wire.
+export type TickerExchangeFile = { fields: string[]; data: [number, string, string, string | null][] };
+
+export async function fetchTickerExchangeFile(): Promise<TickerExchangeFile> {
+  return getJson<TickerExchangeFile>("https://www.sec.gov/files/company_tickers_exchange.json", "the ticker and exchange list");
+}
+
+// —— One company's profile, for the screener ——
+// SIC code (sector, and whether gross margin and free cash flow apply) and the
+// headquarters address. The frames carry a location field, but it is "-" for
+// a third of companies, NVIDIA and American Airlines among them (CY2025
+// NetIncomeLoss, 5 November 2026), so the business address here is used
+// instead. Read from the raw submissions file, uncached for the same reason as
+// above; only these few fields are kept.
+type RawAddress = {
+  stateOrCountry?: string | null;
+  stateOrCountryDescription?: string | null;
+  isForeignLocation?: number | null;
+  country?: string | null;
+};
+
+export type RawSubmissions = Submissions & {
+  addresses?: { business?: RawAddress; mailing?: RawAddress };
+  stateOfIncorporation?: string;
+};
+
+export type FilerProfile = {
+  cik: string;
+  name: string;
+  sic: string | null;
+  sicDescription: string | null;
+  // Two-letter U.S. state or territory code, "Outside the U.S.", or null when
+  // the SEC has no business address. Never guessed.
+  state: string | null;
+  // "MMDD" as the SEC writes it: "0131" for NVIDIA, whose years actually end
+  // on the last Sunday of January. The screener shows each company's real
+  // period end from its filings, not this.
+  fiscalYearEnd: string | null;
+  entityType: string | null;
+  tickers: string[];
+  exchanges: (string | null)[];
+};
+
+// The SEC's address codes for U.S. states, the District of Columbia and the
+// territories. Every other code (A0..Z4) is a foreign country or province.
+const US_LOCATION_CODES = new Set([
+  "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA",
+  "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK",
+  "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
+  "DC", "PR", "VI", "GU", "AS", "MP",
+]);
+
+export const OUTSIDE_US = "Outside the U.S.";
+
+// A foreign address usually has no stateOrCountry at all, only the foreign
+// flag and a country (Teva: Tel Aviv, "isForeignLocation": 1, "country":
+// "Israel"), so the flag and the country are checked before the code.
+export function locationFrom(address: RawAddress | undefined): string | null {
+  if (!address) return null;
+  if (address.isForeignLocation === 1) return OUTSIDE_US;
+  const code = address.stateOrCountry?.trim().toUpperCase();
+  if (code) return US_LOCATION_CODES.has(code) ? code : OUTSIDE_US;
+  const country = address.country?.trim();
+  if (country && !/^(united states|usa|us)$/i.test(country)) return OUTSIDE_US;
+  return null;
+}
+
+export function filerProfileFrom(raw: RawSubmissions): FilerProfile {
+  return {
+    cik: padCik(raw.cik),
+    name: raw.name,
+    sic: raw.sic?.trim() || null,
+    sicDescription: raw.sicDescription?.trim() || null,
+    // Business address only. The mailing address is often a registered agent
+    // or a law firm in another state, so falling back to it would be a guess.
+    state: locationFrom(raw.addresses?.business),
+    fiscalYearEnd: raw.fiscalYearEnd?.trim() || null,
+    entityType: raw.entityType ?? null,
+    tickers: raw.tickers ?? [],
+    exchanges: raw.exchanges ?? [],
+  };
+}
+
+export type FetchedProfile = { profile: FilerProfile; bytes: number };
+
+export async function fetchFilerProfile(cik: string): Promise<FetchedProfile> {
+  const text = await getText(`https://data.sec.gov/submissions/CIK${padCik(cik)}.json`, `CIK ${cik}`);
+  return { profile: filerProfileFrom(JSON.parse(text) as RawSubmissions), bytes: text.length };
+}
+
+// —— One line item's whole history for one company, uncached ——
+// data.sec.gov/api/xbrl/companyconcept/CIK{cik}/us-gaap/{tag}.json: every
+// value the company ever filed under one tag, each with the form it came in.
+// Small (Tesla's NetIncomeLoss: 44KB, 3.5KB on the wire). The screener needs
+// it where the frames hold a figure from a proxy statement rather than the
+// 10-K: the frames keep only the last value filed, and a proxy's
+// pay-versus-performance table can restate net income differently (Tesla's
+// 2025: $3.855 billion in the proxy, $3.794 billion in the 10-K).
+import type { SecFact } from "@/lib/sec/normalize";
+
+export type CompanyConcept = { cik: number; taxonomy: string; tag: string; units: Record<string, SecFact[]> };
+
+export async function fetchCompanyConcept(cik: string | number, tag: string): Promise<CompanyConcept | null> {
+  try {
+    return await getJson<CompanyConcept>(
+      `https://data.sec.gov/api/xbrl/companyconcept/CIK${padCik(cik)}/us-gaap/${tag}.json`,
+      `CIK ${cik} ${tag}`,
+    );
+  } catch (err) {
+    if (err instanceof NoSecDataError) return null;
+    throw err;
+  }
+}
+
+// —— One file from a filing's folder, uncached ——
+// www.sec.gov/Archives/edgar/data/{cik}/{accession without dashes}/{file}:
+// FilingSummary.xml lists the filing's statement pages, and R2.htm, R4.htm...
+// are the statements themselves (lib/sec/statementPage.ts). A balance sheet
+// page is 20 to 60KB. Null when the filing has no such file.
+export async function fetchFilingFile(cik: string | number, accession: string, file: string): Promise<string | null> {
+  const url = `https://www.sec.gov/Archives/edgar/data/${Number(padCik(cik))}/${accession.replace(/-/g, "")}/${file}`;
+  try {
+    return await getText(url, `${file} in ${accession}`);
+  } catch (err) {
+    if (err instanceof NoSecDataError) return null;
+    throw err;
+  }
 }

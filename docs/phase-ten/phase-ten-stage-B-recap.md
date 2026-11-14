@@ -1,6 +1,6 @@
 # Phase ten, Stage B: Recently viewed
 
-Written 2 November 2026. Branch `feat/research-site`. The brief is `docs/phase-ten.md`.
+Written 2 November 2026. Branch `feat/research-site`. The brief is `docs/phase-ten/phase-ten.md`.
 
 ## What a student sees now
 

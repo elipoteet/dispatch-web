@@ -4,7 +4,7 @@ Written 2 November 2026. Build brief for Claude Code. Branch `feat/research-site
 
 ## Setup
 
-Save this brief as `docs/phase-ten.md` and the five design files that came with it as `docs/design/phase-ten/` (`Main.dc.html`, `Financials.dc.html`, `Phone.dc.html`, `Home.dc.html`, `Style.dc.html`). Commit both with Stage A.
+Save this brief as `docs/phase-ten/phase-ten.md` and the five design files that came with it as `docs/design/phase-ten/` (`Main.dc.html`, `Financials.dc.html`, `Phone.dc.html`, `Home.dc.html`, `Style.dc.html`). Commit both with Stage A.
 
 The design files are exported from the Design canvas "Dispatch Visual Refresh". They won't render on their own (they load the canvas's runtime), so read them as source: every size, weight, colour and spacing in their `<style>` blocks and inline styles is the value to build. Copy those numbers exactly rather than estimating. Their figures are illustrative; the site keeps every number exactly as it computes it today.
 
@@ -14,7 +14,7 @@ Three changes, built in this order. The portfolio simulator and its Paper trade 
 
 ## Read first
 
-`docs/direction-2026-10-30.md`, `docs/phase-nine.md`, `docs/phase-nine-review-fixes.md`, and `docs/claude-project-context.md` for the stack and the Next.js 16 gotchas.
+`docs/strategy/direction-2026-10-30.md`, `docs/phase-nine/phase-nine.md`, `docs/phase-nine/phase-nine-review-fixes.md`, and `docs/claude-project-context.md` for the stack and the Next.js 16 gotchas.
 
 ## Decisions already made, do not relitigate
 
@@ -115,4 +115,4 @@ Done means:
 
 ## Before calling any stage done
 
-As in phase nine: `tsc`, tests and build clean; a real `next start` checked with curl for routing; an incognito check signed out; light and dark; 390px. Then a short plain-language recap in `docs/phase-ten-stage-X-recap.md`: what a student now sees, what deviated, and what this brief got wrong. Push the branch after each stage so Eli can click through the preview before the next one starts.
+As in phase nine: `tsc`, tests and build clean; a real `next start` checked with curl for routing; an incognito check signed out; light and dark; 390px. Then a short plain-language recap in `docs/phase-ten/phase-ten-stage-X-recap.md`: what a student now sees, what deviated, and what this brief got wrong. Push the branch after each stage so Eli can click through the preview before the next one starts.

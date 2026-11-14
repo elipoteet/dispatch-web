@@ -8,8 +8,8 @@ fresh Claude conversation can pick up this project with no prior history.
 
 > **Out of date as of 30 October 2026.** The memo product described below is being
 > replaced by the free research file planned in
-> `docs/phase-nine.md`, on the `feat/research-site` branch. Read
-> `docs/direction-2026-10-30.md` first. The stack, brand rules and gotchas in this file
+> `docs/phase-nine/phase-nine.md`, on the `feat/research-site` branch. Read
+> `docs/strategy/direction-2026-10-30.md` first. The stack, brand rules and gotchas in this file
 > still hold.
 
 **The Dispatch** is an equity-research web app. A visitor types a U.S. stock ticker and
@@ -17,7 +17,7 @@ gets back a structured research memo in a few seconds — fundamentals, technica
 sentiment, risks, catalysts — built fresh from real market data every time, not
 templated boilerplate. It also has a "Time Machine" that rebuilds any past memo as it
 would have read on a prior date. The paper-trading portfolio was retired on 2 November
-2026 (`docs/phase-ten.md`): old `/portfolio` links redirect to `/research`, and its
+2026 (`docs/phase-ten/phase-ten.md`): old `/portfolio` links redirect to `/research`, and its
 `paper_*` and `equity_snapshot` tables stay in the database untouched.
 
 **No ratings, scores or leaderboard (30 October 2026).** The memo's 1–10 scorecard,
@@ -27,7 +27,7 @@ Leaderboard with its competition accounts were all removed. Nothing on the site
 delivers a rating, score, verdict, target price, fair value, leaderboard or track
 record; do not reintroduce one. The competition tables and old alert rows stay in the
 database untouched. The site is being rebuilt as a free research file per company on
-the `feat/research-site` branch (`docs/phase-nine.md` there).
+the `feat/research-site` branch (`docs/phase-nine/phase-nine.md` there).
 
 Solo project. Built and run by **Eli Poteet**, a finance student at the University of
 New Hampshire. Not a company, no team — see the "Who's behind this" section on the

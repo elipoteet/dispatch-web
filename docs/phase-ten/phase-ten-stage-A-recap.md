@@ -1,6 +1,6 @@
 # Phase ten, Stage A: paper trading retired
 
-Written 2 November 2026. Branch `feat/research-site`. The brief is `docs/phase-ten.md`, and the five design boards are saved in `docs/design/phase-ten/`.
+Written 2 November 2026. Branch `feat/research-site`. The brief is `docs/phase-ten/phase-ten.md`, and the five design boards are saved in `docs/design/phase-ten/`.
 
 ## What a student sees now
 
