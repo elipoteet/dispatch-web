@@ -2,93 +2,93 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "About",
+  description:
+    "The Dispatch is a free research file on every U.S. public company, built from what each company reports to the SEC. No account, no paywall, no ratings.",
   alternates: { canonical: "/about" },
   openGraph: { url: "/about" },
 };
 
+// Keep this page true to the site. Before any merge to master, read it
+// against what the site actually does (CLAUDE.md, Workflow).
 export default function AboutPage() {
   return (
     <section className="page active" id="page-about">
       <div className="about">
-        <div className="label">About the Firm</div>
+        <div className="label">About</div>
         <h1>About The Dispatch.</h1>
         <div className="about-body">
           <p>
-            The Dispatch was founded on a small, unfashionable conviction: that most investors
-            would make better decisions if they did less, read more, and stared at fewer charts.
-            We are not a terminal. We are a research desk.
+            The Dispatch is a free research file on every U.S. public company, built from what
+            each company reports to the SEC. There is no account, no paywall, and no rating
+            telling you what to buy. It started from a small, unfashionable conviction: most
+            investors would make better decisions if they did less, read more, and stared at
+            fewer charts. This is not a terminal. It is a research desk.
           </p>
 
+          <h2>What&rsquo;s in a file.</h2>
+
           <p>
-            Every ticker submitted returns a structured memo — fundamentals, technicals,
-            sentiment, risks, catalysts — composed from live market data. No proprietary
-            algorithms. No black-box signals. Every number is labeled with its source; every
-            statement is tied to the evidence behind it. What you see is what a diligent
-            analyst would produce, performed in seconds rather than hours.
+            Type in a ticker and you get six tabs. Overview describes the business in the
+            company&rsquo;s own words from its annual report, with the facts that stand out and a
+            price chart from one day to the company&rsquo;s full history. Financials shows ten
+            years of revenue, profit and cash flow, annual and quarterly. Valuation shows what
+            today&rsquo;s share price assumes: the growth in free cash flow the price implies, and
+            how the company&rsquo;s multiples compare with its own history. Earnings shows how each
+            quarter compared with expectations and what the company itself guided to. Insiders
+            lists what executives and directors have bought and sold on the open market. Filings
+            shows what changed in the company&rsquo;s risk factors from one annual report to the
+            next.
           </p>
 
-          <h2>The method.</h2>
+          <h2>The screener.</h2>
 
           <p>
-            We read every stock along three dimensions: Fundamentals (growth, profitability,
-            balance sheet), Technicals (trend structure, momentum, volatility), and Sentiment
-            (analyst consensus, news flow). We don&rsquo;t boil them down to a score or a rating. A
-            number like that looks precise, but it&rsquo;s really a judgment, and the judgment
-            should be yours.
+            The screener filters about 4,600 U.S.-listed companies by the figures in their
+            filings: growth, margins, free cash flow, return on capital, debt, dividends and
+            buybacks. It opens on a set of starting screens grouped by the question each one
+            answers, such as whether a business is strong, whether its growth pays off, and where
+            its cash goes. Every result opens that company&rsquo;s file. It screens on the
+            business, not the share price, so it has no P/E or market value filters. Each
+            company&rsquo;s Valuation tab covers what the price assumes.
           </p>
 
-          <p>
-            We favor durable businesses over momentum trades. We treat volatility as information,
-            not risk. We believe that a well-named uncertainty is more useful than a confident
-            prediction. If you want someone to tell you what to buy, you should hire an advisor; if
-            you want to read carefully and decide for yourself, we built this for you.
-          </p>
-
-          <h2>The Time Machine.</h2>
+          <h2>Where the numbers come from.</h2>
 
           <p>
-            Every memo is a snapshot of a moment — but moments are worth revisiting. The Time
-            Machine lets you pick any date within the last three years and see the memo as it
-            would have read then, with technicals and sentiment recalculated from that
-            day&rsquo;s data. Fundamentals are held
-            back rather than shown stale, since point-in-time filings aren&rsquo;t something we
-            can honestly reconstruct after the fact.
-          </p>
-
-          <p>
-            Pull up a memo from six months ago and compare it directly to the live one. Did the
-            thesis hold? What changed, and why? Hindsight is usually wasted on investors
-            who never write anything down. We&rsquo;d rather you could check your own work.
+            Every figure traces back to a filing on SEC EDGAR, refreshed as new reports arrive.
+            Prices come from Twelve Data and Finnhub. Free cash flow is operating cash flow minus
+            capital spending, and it is labelled as calculated by The Dispatch, because it
+            isn&rsquo;t a reported line. Where a measure doesn&rsquo;t fit a business, such as
+            gross margin at a bank, the file shows n/a rather than a number that looks right and
+            isn&rsquo;t. Companies file errors too; where one is caught, the file shows the
+            corrected figure if the annual report settles it, and a blank if it doesn&rsquo;t.
           </p>
 
           <h2>What we are not.</h2>
 
           <p>
-            The Dispatch does not offer investment advice. Our memos are descriptive summaries of
-            public information — useful context for your own thinking, not substitutes for it. We
-            don&rsquo;t rate stocks, score them, or set price targets. Markets will continue to
-            surprise everyone, including us.
+            The Dispatch does not offer investment advice. Nothing here rates a stock, scores it,
+            ranks it, or sets a target price. The valuation tool tells you what growth
+            today&rsquo;s price requires. Whether that growth is likely is the judgment, and the
+            judgment should be yours.
           </p>
 
           <h2 id="contact">Who&rsquo;s behind this.</h2>
 
           <p>
-            Everything above is written as &ldquo;we,&rdquo; because that&rsquo;s how research
-            usually reads — but The Dispatch is built and run by one person. I&rsquo;m Eli
-            Poteet, a finance student at the University of New Hampshire. I built this because I
-            actually trade, and if I&rsquo;m being honest I&rsquo;m not particularly good at it
-            yet, which is part of why I built it. I got tired of juggling six tabs and a
-            spreadsheet just to get a straight answer on a stock I already cared about, so I
-            wanted one page that did the reading for me and showed its work. I use it on my own
-            every day, and the goal isn&rsquo;t just to have prettier numbers in front of me,
-            it&rsquo;s to actually develop a strategy I can trust and get better at trading over
-            time.
+            Everything above reads as &ldquo;we,&rdquo; because that&rsquo;s how research usually
+            reads, but The Dispatch is built and run by one person. I&rsquo;m Eli Poteet, a
+            finance student at the University of New Hampshire. I built this because I got tired
+            of juggling six tabs and a spreadsheet to get a straight answer on a company I already
+            cared about, and because the sites that did have the answer either sold me a verdict
+            or hid the numbers behind a subscription. I wanted one page that did the reading and
+            showed its work.
           </p>
 
           <p>
-            There&rsquo;s no team here, no compliance desk, no firm — just someone building the
-            tool he wished existed. If you spot something wrong, have a ticker you think the
-            engine gets wrong, or just want to talk shop, reach out. I read everything.
+            There&rsquo;s no team, no compliance desk, no firm. If you spot something wrong, a
+            company whose figures look off, or just want to talk shop, reach out. I read
+            everything.
           </p>
 
           <p className="about-signature">
