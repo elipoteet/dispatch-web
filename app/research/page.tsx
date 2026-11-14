@@ -5,8 +5,8 @@ import { CompanySearch } from "@/components/company/CompanySearch";
 import { RecentlyViewed } from "@/components/company/RecentlyViewed";
 import { HOME_EXAMPLES } from "@/lib/research/home";
 
-// The research desk: search, and the visitor's recently viewed companies.
-// Stage 8 adds the screener's way in.
+// The research desk: search, the screener's way in, and the visitor's
+// recently viewed companies.
 export const metadata: Metadata = {
   title: "Research",
   description: "Search any U.S. public company by ticker or name and open its free research file, built from its SEC filings.",
@@ -37,6 +37,10 @@ export default async function ResearchPage({ searchParams }: { searchParams: Pro
             </Link>
           ))}
         </div>
+        <p className="rf-research-screener">
+          No company in mind? <Link href="/screener" prefetch={false}>Find some with the screener</Link>, by growth, margins, cash flow and
+          debt.
+        </p>
         <RecentlyViewed />
       </div>
     </section>

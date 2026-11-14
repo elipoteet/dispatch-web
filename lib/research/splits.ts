@@ -80,7 +80,7 @@ export function factorAt(steps: SplitStep[], date: string): number {
 // no split in the window and the extra price request isn't worth spending.
 // A merger paid in stock can also trip this; the check then simply runs and
 // finds no split.
-const MAX_ORDINARY_CHANGE = 1.15;
+export const MAX_ORDINARY_CHANGE = 1.15;
 
 export function needsSplitCheck(counts: { date: string; value: number }[], currentShares: number | null): boolean {
   const ordered = counts.filter((c) => c.value > 0).sort((a, b) => (a.date < b.date ? -1 : 1));

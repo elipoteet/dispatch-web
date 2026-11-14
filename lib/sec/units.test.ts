@@ -114,3 +114,24 @@ describe("figures that are far apart but both real stay as they are", () => {
     expect(r.picked?.val).toBe(3_307_239_000);
   });
 });
+
+describe("settleNetIncome with the cover page's share count (9 November 2026)", () => {
+  it("blames the dollars when the weighted share count matches the cover (Universe Pharmaceuticals)", () => {
+    // Year to September 2025: net income -$3.672 billion, EPS -$8.06 on
+    // 455,871 shares, operating income -$2.916 billion; cover: 563,338 shares.
+    const r = settleNetIncome([v("NetIncomeLoss", -3_672_055_000)], -8.06, 455_871, -2_915_919_000, 563_338);
+    expect(r.picked).toBeNull();
+    expect(r.inconsistent).toBe(true);
+    expect(r.dollarsInOtherUnits).toBe(true);
+  });
+
+  it("keeps net income when the cover shows the share count is in thousands (Smith & Wesson)", () => {
+    const r = settleNetIncome([v("NetIncomeLoss", 18_481_000)], 0.41, 44_933, 29_211_000, 44_727_068);
+    expect(r.picked?.val).toBe(18_481_000);
+    expect(r.dollarsInOtherUnits).toBeUndefined();
+  });
+
+  it("is never asked when net income and EPS x shares agree", () => {
+    expect(settleNetIncome([v("NetIncomeLoss", 120_067e6)], 4.9, 24_514e6, 130_387e6, 24_300e6).picked?.val).toBe(120_067e6);
+  });
+});

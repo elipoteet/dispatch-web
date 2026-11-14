@@ -17,6 +17,13 @@ const nextConfig: NextConfig = {
       // equity_snapshot tables stay in the database untouched.
       { source: "/portfolio", destination: "/research", permanent: true },
       { source: "/portfolio/:path*", destination: "/research", permanent: true },
+      // The screener's first starting screens (phase eleven, Stage C) were
+      // replaced on 7 November 2026 (lib/screener/screens.ts, RETIRED_SCREENS;
+      // more-cash-than-debt kept its address). Their links land on the
+      // screener's opening page.
+      ...["revenue-up-20-cash-flow-positive", "share-count-shrinking", "gross-margin-above-70", "losing-money-revenue-up-30", "revenue-falling"].map(
+        (slug) => ({ source: `/screener/${slug}`, destination: "/screener", permanent: true }),
+      ),
     ];
   },
 };

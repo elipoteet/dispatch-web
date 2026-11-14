@@ -721,3 +721,189 @@ a.rf-search-item, a.rf-search-item:hover { color: var(--navy); text-decoration: 
 .rf-wrap.rf-wrap-top { padding-bottom: 0; }
 /* The tape is the hero's lower edge when it's there; the rule only when not. */
 .rf-wrap-top:has(+ .ticker-tape) .rf-hero { border-bottom: 0; }
+
+/* ============================================================
+   Screener: /screener and /screener/{screen} (phase eleven, Stage C).
+   The opening view's numbered starting screens, then a screen applied:
+   toolbar of active filters, the filter panel, the results table (a list of
+   two-line rows on a phone), Show 50 more, and the note on the figures.
+   Nothing here marks a company out: figures are plain ink, n/a is muted.
+   ============================================================ */
+.rf-scr { display: flex; flex-direction: column; gap: 28px; padding-top: 56px; }
+.rf-scr-intro { max-width: 760px; }
+.rf-scr-intro .rf-page-lede { margin-bottom: 0; }
+.rf-scr-section { display: flex; flex-direction: column; gap: 24px; padding-top: 28px; }
+.rf-scr-cards { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 16px; }
+.rf-scr-cards > li { display: flex; }
+.rf a.rf-scr-card {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-rows: auto auto 1fr auto;
+  gap: 8px 10px;
+  padding: 20px 22px 16px;
+  border: 1px solid var(--rule-2);
+  background: var(--surface);
+  color: var(--navy);
+  text-decoration: none;
+}
+.rf a.rf-scr-card:hover { border-color: var(--navy); color: var(--navy); }
+.rf a.rf-scr-card:hover .rf-scr-card-title { color: var(--gold-ink); }
+.rf-scr-card-n { grid-row: 1 / span 4; padding-top: 3px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--gold-ink); }
+.rf-scr-card-title { font-size: 18px; font-weight: 600; line-height: 1.35; text-wrap: balance; }
+.rf-scr-card-why { font-size: 14.5px; line-height: 1.5; color: var(--ink-2); text-wrap: pretty; }
+.rf-scr-card-filters { display: flex; flex-direction: column; gap: 2px; padding-top: 4px; font-size: 13px; line-height: 1.5; color: var(--muted); }
+/* The opening view's starting screens, under the question each answers. */
+.rf-scr-question { display: flex; flex-direction: column; gap: 14px; padding-top: 12px; }
+.rf-scr-q { display: flex; flex-direction: column; gap: 2px; margin: 0; }
+.rf-scr-q-text { font-size: 20px; font-weight: 600; line-height: 1.3; color: var(--navy); }
+.rf-scr-card-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--rule); font-size: 14px; color: var(--ink-2); font-variant-numeric: tabular-nums lining-nums; }
+.rf-scr-card-arrow { font-size: 18px; line-height: 1; color: var(--gold-ink); }
+/* A solid button that is a link keeps its cream text over .rf a's navy. */
+.rf a.rf-btn-solid, .rf a.rf-btn-solid:hover { color: var(--cream); }
+.rf a.rf-btn { text-decoration: none; }
+.rf-scr-build { flex-direction: row; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px 32px; }
+.rf-scr-updated { margin: 0; font-size: 14px; color: var(--muted); }
+
+/* —— A screen applied —— */
+.rf-scr-head { display: flex; flex-direction: column; gap: 10px; }
+.rf a.rf-scr-back { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; min-height: 36px; font-size: 14.5px; color: var(--muted); text-decoration: none; }
+.rf a.rf-scr-back:hover { color: var(--gold-ink); }
+.rf-scr-title { margin: 0; font-size: 40px; line-height: 1.1; font-weight: 700; letter-spacing: -0.025em; max-width: 26ch; text-wrap: balance; }
+.rf-scr-count { margin: 0; font-size: 17px; color: var(--ink-2); font-variant-numeric: tabular-nums lining-nums; }
+.rf-scr-count strong { color: var(--navy); font-weight: 650; }
+/* The screen restated in a sentence, and why investors look at it. */
+.rf-scr-says { margin: 0; font-size: 18px; line-height: 1.5; color: var(--ink-2); max-width: 70ch; text-wrap: pretty; }
+.rf-scr-why { margin: 0; font-size: 15px; line-height: 1.55; color: var(--muted); max-width: 70ch; }
+
+.rf-scr-controls { display: flex; flex-direction: column; gap: 16px; }
+.rf-scr-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 14px 0; border-top: 1px solid var(--navy); border-bottom: 1px solid var(--rule); }
+.rf-scr-buttons { display: flex; gap: 8px; }
+.rf-scr-sortmenu { display: none; }
+.rf-scr-chips { flex: 1 1 auto; display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.rf .rf-scr-chip { gap: 10px; padding: 0 12px 0 14px; background: var(--surface-2); color: var(--navy); font-size: 14px; }
+.rf-scr-chip-x { font-family: 'IBM Plex Mono', monospace; font-size: 16px; line-height: 1; color: var(--muted); }
+.rf .rf-scr-chip:hover .rf-scr-chip-x { color: var(--gold-ink); }
+.rf-scr-copy { margin-left: auto; }
+.rf-scr-toolnote { flex-basis: 100%; margin: 0; font-size: 13.5px; color: var(--muted); }
+
+.rf-scr-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 28px 48px; padding: 24px 28px; border: 1px solid var(--rule); background: var(--surface); }
+.rf-scr-howto { grid-column: 1 / -1; margin: 0; font-size: 14px; line-height: 1.55; color: var(--muted); max-width: 80ch; }
+.rf-scr-group { min-width: 0; margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 16px; }
+.rf-scr-group legend { padding: 0; margin-bottom: 10px; }
+.rf-scr-wide { grid-column: 1 / -1; }
+.rf-scr-range { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 6px 16px; }
+.rf-scr-range-label { display: flex; flex-direction: column; gap: 3px; font-size: 15px; font-weight: 500; }
+/* What a filter measures, and where the middle company sits. */
+.rf-scr-def { font-size: 13px; font-weight: 400; line-height: 1.45; color: var(--muted); }
+.rf-scr-median { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 400; letter-spacing: 0.02em; color: var(--gold-ink); }
+.rf-scr-more-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding-top: 20px; border-top: 1px solid var(--rule); }
+.rf-scr-more-body { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 28px 48px; }
+.rf-scr-statebar { display: flex; flex-wrap: wrap; gap: 4px; margin: -6px 0 0 -10px; }
+.rf-scr-states { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 2px 16px; max-height: 260px; overflow-y: auto; padding: 10px 12px; border: 1px solid var(--rule-2); background: var(--paper); }
+.rf-scr-state { display: flex; align-items: center; gap: 8px; min-height: 34px; font-size: 14px; color: var(--ink-2); cursor: pointer; }
+.rf-scr-state input { width: 16px; height: 16px; margin: 0; accent-color: var(--navy); }
+.rf-scr-range-boxes { display: flex; align-items: center; gap: 8px; }
+.rf-scr-box-wrap { display: inline-flex; align-items: center; gap: 8px; }
+.rf-scr-to { font-size: 13px; color: var(--muted); }
+.rf-scr-box { display: inline-flex; align-items: center; gap: 4px; width: 112px; height: 42px; padding: 0 10px; border: 1px solid var(--rule-2); background: var(--paper); }
+.rf-scr-box:focus-within { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-wash); }
+.rf-scr-box.is-bad { border-color: var(--accent); }
+.rf-scr-box input { flex: 1; min-width: 0; width: 100%; height: 100%; padding: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 15px; color: var(--navy); font-variant-numeric: tabular-nums lining-nums; }
+.rf-scr-box input::placeholder { color: var(--muted); opacity: 1; }
+.rf-scr-unit { font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; color: var(--muted); }
+.rf-scr-hint { margin: 0; font-size: 13px; color: var(--muted); }
+.rf-scr-range-note { grid-column: 1 / -1; }
+.rf-scr-checks { display: flex; flex-wrap: wrap; gap: 8px; }
+.rf-scr-check { position: relative; display: inline-flex; align-items: center; min-height: 42px; padding: 0 14px; border: 1px solid var(--rule-2); font-size: 14.5px; color: var(--ink-2); cursor: pointer; user-select: none; }
+.rf-scr-check input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+.rf-scr-check:hover { border-color: var(--navy); color: var(--navy); }
+.rf-scr-check.is-on, .rf-scr-check:has(input:checked) { background: var(--navy); border-color: var(--navy); color: var(--cream); }
+.rf-scr-check:has(input:focus-visible) { outline: 2px solid var(--gold); outline-offset: 2px; }
+.rf-scr-panel-foot { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding-top: 20px; border-top: 1px solid var(--rule); }
+.rf-scr-noprice { grid-column: 1 / -1; margin: -12px 0 0; font-size: 14px; line-height: 1.55; color: var(--muted); max-width: 80ch; }
+
+/* The table: the company column stays put while the figures scroll. */
+.rf-scr-table { min-width: 880px; }
+/* Column heads are full names, so they wrap rather than abbreviate. */
+.rf-scr-table thead th { min-width: 96px; max-width: 150px; white-space: normal; vertical-align: bottom; line-height: 1.35; text-transform: uppercase; }
+.rf-scr-table thead th:first-child { min-width: 230px; max-width: none; }
+.rf-scr-table thead th.is-key a { color: var(--navy); }
+.rf-scr-table tbody th { min-width: 230px; max-width: 340px; white-space: normal; }
+.rf .rf-scr-table .rf-scr-left { text-align: left; }
+.rf a.rf-scr-sort { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; color: inherit; text-decoration: none; }
+.rf a.rf-scr-sort:hover, .rf a.rf-scr-sort.is-active { color: var(--navy); }
+.rf a.rf-scr-sort.is-active { font-weight: 600; }
+.rf-scr-arrow { color: var(--gold-ink); }
+.rf-scr-co { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
+.rf-scr-co-top { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
+.rf .rf-scr-co-top a { font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+.rf .rf-scr-co-top a:hover { text-decoration: underline; }
+/* The way across to what the company's price assumes (its Valuation tab). */
+.rf .rf-scr-co a.rf-scr-val { font-size: 12.5px; font-weight: 400; color: var(--muted); text-decoration: underline; text-decoration-color: var(--rule-2); }
+.rf .rf-scr-co a.rf-scr-val:hover { color: var(--gold-ink); text-decoration-color: currentColor; }
+.rf-scr-tk { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.04em; color: var(--muted); }
+.rf-scr-na { color: var(--muted); }
+/* Return on invested capital worked out from pretax income (the notes say so). */
+.rf-scr-mark { margin-left: 2px; font-size: 0.75em; color: var(--muted); cursor: help; }
+.rf-scr-year { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--muted); }
+
+/* A phone's rows. */
+.rf-scr-list { display: none; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--navy); }
+.rf-scr-item { display: flex; flex-direction: column; gap: 4px; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.rf-scr-item-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.rf-scr-item-rev { flex: none; font-weight: 600; font-variant-numeric: tabular-nums lining-nums; white-space: nowrap; }
+.rf-scr-item-sub { display: flex; flex-wrap: wrap; gap: 2px 18px; font-size: 14px; color: var(--ink-2); font-variant-numeric: tabular-nums lining-nums; }
+.rf-scr-item-lbl { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+
+.rf-scr-more { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin: -8px 0 0; font-size: 14.5px; }
+.rf-scr-empty { display: flex; flex-direction: column; gap: 12px; padding: 28px 32px; border: 1px solid var(--rule); background: var(--surface); }
+.rf-scr-empty .rf-h2 { margin: 0; }
+.rf-scr-empty p { margin: 0; font-size: 16.5px; color: var(--ink-2); max-width: 64ch; }
+.rf-scr-empty-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+.rf-scr-notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 16px 36px; margin-top: 16px; padding: 22px 24px; background: var(--surface-2); }
+.rf-scr-notes p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--ink-2); }
+.rf-scr-notes strong { color: var(--navy); font-weight: 600; }
+
+/* Ways in: the home page's tool card and the research desk's line. */
+.rf a.rf-tool.is-live { border-style: solid; border-color: var(--navy); color: var(--navy); text-decoration: none; }
+.rf a.rf-tool.is-live .rf-lbl { color: var(--gold-ink); }
+.rf a.rf-tool.is-live:hover .rf-file-name { color: var(--gold-ink); }
+.rf-research-screener { margin: 28px 0 0; font-size: 15.5px; color: var(--ink-2); }
+
+@media (max-width: 900px) {
+  .rf-scr-title { font-size: 34px; }
+}
+
+@media (max-width: 640px) {
+  .rf-scr { gap: 20px; padding-top: 28px; }
+  .rf-scr-section { gap: 16px; padding-top: 20px; }
+  .rf a.rf-scr-card { padding: 16px 16px 12px; grid-template-columns: 32px minmax(0, 1fr); }
+  .rf-scr-card-title { font-size: 17px; }
+  .rf-scr-q-text { font-size: 18px; }
+  .rf-scr-title { font-size: 28px; }
+  .rf-scr-count { font-size: 16px; }
+  .rf-scr-says { font-size: 16.5px; }
+  /* Filters and sort become the two buttons at the top. */
+  .rf-scr-toolbar { padding: 12px 0; }
+  .rf-scr-buttons { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
+  .rf-scr-sortmenu { display: block; min-width: 0; }
+  .rf-scr-sortmenu select { width: 100%; padding: 0 10px; font-size: 15px; text-overflow: ellipsis; }
+  .rf-scr-copy { margin-left: 0; padding-left: 0; }
+  .rf-scr-panel, .rf-scr-more-body { padding: 18px 16px; gap: 24px; }
+  .rf-scr-more-body { padding: 0; }
+  .rf-scr-states { grid-template-columns: 1fr 1fr; }
+  .rf-scr-range { grid-template-columns: minmax(0, 1fr); }
+  .rf-scr-range-boxes, .rf-scr-box-wrap { width: 100%; }
+  .rf-scr-box-wrap { flex: 1; min-width: 0; }
+  .rf-scr-box { flex: 1; width: auto; min-width: 0; }
+  .rf-scr-box input { font-size: 16px; }
+  .rf-scr-noprice { margin-top: -8px; }
+  /* The table gives way to two-line rows. */
+  .rf-scr-tablebox { display: none; }
+  .rf-scr-list { display: block; }
+  .rf-scr-more { margin-top: 0; }
+  .rf-scr-more .rf-btn { width: 100%; }
+  .rf-scr-empty { padding: 18px 16px; }
+  .rf-scr-notes { padding: 16px; }
+}
