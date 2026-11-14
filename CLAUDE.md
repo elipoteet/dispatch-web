@@ -54,7 +54,7 @@ npx vitest run lib/sec/normalize.test.ts -t "name"  # one test by name
 - Tiingo is the price fallback. It is end-of-day only and not split-adjusted, which `splitAdjust` corrects.
 - Finnhub has a separate, larger quota and serves quotes, profiles, estimates, the earnings calendar and the home-page markets tape (`lib/research/markets.ts`). Anything that needs only a live quote must use Finnhub, never Twelve Data.
 
-### Screener: `lib/sec/frames.ts`, `lib/screener/` (phase eleven, in progress)
+### Screener: `lib/sec/frames.ts`, `lib/screener/` (phase eleven, live since 14 November 2026)
 - Built from the SEC's frames API (one file per tag per calendar period, every company), never from Twelve Data or Finnhub. Brief: `docs/phase-eleven/phase-eleven.md`; Stage A findings: `docs/phase-eleven/phase-eleven-stage-A-report.md`.
 - The pieces:
   - `framePlan` says which files to fetch.
@@ -117,7 +117,8 @@ npx vitest run lib/sec/normalize.test.ts -t "name"  # one test by name
 
 ## Workflow
 
-- `master` auto-deploys to production on Vercel, and every pushed branch gets a preview deploy. Work on a branch (currently `feat/screener`) and merge to `master` only when Eli explicitly says to go live.
+- `master` auto-deploys to production on Vercel, and every pushed branch gets a preview deploy. Work on a branch and merge to `master` only when Eli explicitly says to go live.
+- **Done checklist, before any merge to master:** `npx tsc --noEmit`, `npm test`, `npm run build` and lint at baseline; a real `next start` checked with curl; and the About page. Read `app/about/page.tsx` against what the site actually does after the change. If a feature was added, removed or renamed, update the About page in the same branch, and say in the recap what changed on it. A merge that leaves the About page describing something the site no longer does, or missing something it now does, is not done. Every future build brief carries this rule in its "before calling any stage done" list.
 - Phased work follows a brief in its own `docs/phase-<name>/` folder. Each stage ends with a recap in that folder (`docs/phase-<name>/phase-<name>-stage-X-recap.md`), a push, and a stop for Eli to check the preview.
 - To find a commit's preview URL without the gh CLI: `GET https://api.github.com/repos/elipoteet/dispatch-web/deployments?sha=<sha>`, then read that deployment's statuses for `environment_url`.
 - Eli often has `next start -p 3000` running locally. Ask before rebuilding `.next` or restarting it.

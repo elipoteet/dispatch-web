@@ -136,5 +136,6 @@ The seventeen extra filters behind "More filters", the multi-select state filter
 6. The network log for a full click-through of the screener shows zero Twelve Data and zero Finnhub calls.
 7. The rendered HTML contains none of "fair value", "target", "undervalued", "overvalued", "top pick", "best", "winner", or "buy", "sell" or "hold" as standalone words ("buybacks" is fine).
 8. A short recap in `docs/` in plain language: what a visitor now sees, what deviated from this brief, and what the brief got wrong.
+9. (Added 14 November 2026.) Before any merge to master, read `app/about/page.tsx` against what the site actually does after the change. If a feature was added, removed or renamed, update the About page in the same branch, and say in the recap what changed on it. A merge that leaves the About page describing something the site no longer does, or missing something it now does, is not done.
 
 Commit to `feat/screener` and push. Do not merge or open a pull request without Eli's explicit sign-off.
