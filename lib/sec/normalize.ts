@@ -16,7 +16,7 @@ import {
   type LineItem,
   type TaggedLineItem,
 } from "@/lib/sec/concepts";
-import { settleCashFlow, settleNetIncome, settleRevenue, type Settled } from "@/lib/sec/units";
+import { looksLikeUnitsError, settleCashFlow, settleNetIncome, settleRevenue, type Settled } from "@/lib/sec/units";
 
 // One fact as the SEC serves it, inside facts[taxonomy][tag].units[unit].
 export type SecFact = {
@@ -434,6 +434,69 @@ function settleUnits(companyFacts: CompanyFacts, years: FiscalYearSpan[]): Map<T
   return out;
 }
 
+// —— A filing with every dollar figure in the wrong units ——
+// Universe Pharmaceuticals' annual report for the year to September 2025
+// gives revenue as $17.9 billion, net income as -$3.7 billion and every other
+// dollar figure a thousand times too large, consistently, so no two of its
+// tags disagree and settleUnits has nothing to settle. Its EPS (-$8.06) and
+// share count (455,871) are right. And because the normaliser takes a
+// restated figure from the latest filing, the same report's comparatives
+// (2024's revenue as $23.0 billion, against the $23.0 million its 2024 report
+// gave) replaced the earlier years too.
+//
+// Such a filing is found by three things together:
+//   - its net income is a units step from its own EPS x diluted shares;
+//   - the share count on its cover page is the same order as that diluted
+//     share count (within 30 times), so the share count is right and the
+//     dollars aren't (units.ts, settleNetIncome); a share count filed in
+//     thousands shows up as a cover a thousand times larger instead (Smith &
+//     Wesson);
+//   - it restates a period an earlier filing reported, a units step away
+//     from that earlier figure, so the dollars are known to have moved.
+// Its dollar figures are then set aside, so its years go blank and the years
+// it restated keep their original figures. Anything less certain stays as it
+// is: a blank is fine, a wrong number is not.
+export function filingsInOtherUnits(companyFacts: CompanyFacts): Set<string> {
+  const gaap = companyFacts.facts["us-gaap"] ?? {};
+  const annual = (tag: string, unit: string) =>
+    (gaap[tag]?.units?.[unit] ?? []).filter((f) => isPeriodicReport(f.form) && isAnnualSpan(spanDays(f)));
+  const firstFiled = (tags: readonly string[], unit: string) => tags.map((t) => annual(t, unit)).find((list) => list.length > 0) ?? [];
+  const incomeTag = rankTags(companyFacts, "net_income", "USD")[0];
+  if (!incomeTag) return new Set();
+  const income = annual(incomeTag, "USD");
+  const eps = firstFiled(CONCEPT_TAGS.eps_diluted, "USD/shares");
+  const shares = firstFiled(CONCEPT_TAGS.shares_diluted, "shares");
+  const covers = companyFacts.facts.dei?.EntityCommonStockSharesOutstanding?.units?.shares ?? [];
+  const out = new Set<string>();
+  for (const f of income) {
+    if (out.has(f.accn)) continue;
+    const same = (g: SecFact) => g.accn === f.accn && g.start === f.start && g.end === f.end;
+    const e = eps.find(same);
+    const s = shares.find(same);
+    const cover = covers.find((c) => c.accn === f.accn);
+    if (!e || !s || !cover) continue;
+    if (!settleNetIncome([f], e.val, s.val, null, cover.val).dollarsInOtherUnits) continue;
+    const moved = income.some(
+      (g) => g.accn === f.accn && income.some((h) => h.accn !== f.accn && h.filed < g.filed && h.start === g.start && h.end === g.end && looksLikeUnitsError(g.val, h.val)),
+    );
+    if (moved) out.add(f.accn);
+  }
+  return out;
+}
+
+// The company's facts without the dollar figures of the given filings.
+function withoutDollarFacts(companyFacts: CompanyFacts, filings: Set<string>): CompanyFacts {
+  const gaap = companyFacts.facts["us-gaap"];
+  if (!gaap || filings.size === 0) return companyFacts;
+  const cleaned: typeof gaap = {};
+  for (const [tag, concept] of Object.entries(gaap)) {
+    const units = { ...concept.units };
+    if (units.USD) units.USD = units.USD.filter((f) => !filings.has(f.accn));
+    cleaned[tag] = { ...concept, units };
+  }
+  return { ...companyFacts, facts: { ...companyFacts.facts, "us-gaap": cleaned } };
+}
+
 export type NormalizeOptions = {
   sic?: string | number | null;
 };
@@ -447,9 +510,12 @@ export type NormalizeResult = {
 };
 
 export function normalizeCompanyFacts(
-  companyFacts: CompanyFacts,
+  filed: CompanyFacts,
   options: NormalizeOptions = {},
 ): NormalizeResult {
+  // A filing with every dollar figure in the wrong units (above) is left out
+  // before anything else, so nothing downstream sees its dollars.
+  const companyFacts = withoutDollarFacts(filed, filingsInOtherUnits(filed));
   const filerKind = filerKindFromSic(options.sic);
   const suppression = suppressedItems(filerKind);
   const suppressed = new Set<LineItem>(suppression?.items ?? []);

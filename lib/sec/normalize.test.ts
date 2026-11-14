@@ -7,7 +7,8 @@
 // cross-checked against the filings themselves.
 
 import { describe, expect, it } from "vitest";
-import { normalizeCompanyFacts, pick, type CompanyFacts } from "@/lib/sec/normalize";
+import { filingsInOtherUnits, normalizeCompanyFacts, pick, type CompanyFacts } from "@/lib/sec/normalize";
+import upcFixture from "@/lib/sec/__fixtures__/upc-facts.json";
 import { filerKindFromSic, suppressedItems } from "@/lib/sec/concepts";
 
 import nvdaFixture from "@/lib/sec/__fixtures__/nvda-facts.json";
@@ -405,5 +406,38 @@ describe("Chevron — cash where its own tag is missing", () => {
     // Apple keeps some restricted cash without tagging it, so its total isn't cash.
     const apple = normalizeCompanyFacts(aapl).rows.filter((r) => r.lineItem === "cash_and_equivalents");
     expect(apple.some((r) => r.sourceTag.includes(" - "))).toBe(false);
+  });
+});
+
+describe("a filing with every dollar figure in the wrong units (9 November 2026)", () => {
+  // Universe Pharmaceuticals' real company facts (a 20-F filer, so the
+  // research file doesn't read it; relabelled here as 10-Ks to put the same
+  // figures through the normaliser). Its annual report for the year to
+  // September 2025 (0001213900-26-009000) gives every dollar figure a thousand
+  // times too large, its comparatives included.
+  const asTenK = JSON.parse(JSON.stringify(upcFixture).replace(/"20-F"/g, '"10-K"')) as CompanyFacts;
+  const { rows } = normalizeCompanyFacts(asTenK, { sic: "2834" });
+  const fy = (item: string, year: number) => rows.find((r) => r.lineItem === item && r.fiscalPeriod === "FY" && r.fiscalYear === year);
+
+  it("finds the filing from net income, EPS x shares, the cover page and a moved comparative", () => {
+    expect([...filingsInOtherUnits(asTenK)]).toEqual(["0001213900-26-009000"]);
+  });
+
+  it("leaves that year's dollar figures blank and keeps its per-share figures", () => {
+    expect(fy("revenue", 2025)).toBeUndefined();
+    expect(fy("net_income", 2025)).toBeUndefined();
+    expect(fy("eps_diluted", 2025)?.value).toBe(-8.06);
+  });
+
+  it("gives the years it restated their original figures back", () => {
+    // $23.0 million, as the 2024 report gave it, not the $23.0 billion the
+    // 2025 report restated it as.
+    expect(fy("revenue", 2024)?.value).toBe(23_024_458);
+    expect(fy("net_income", 2024)?.value).toBe(-8_727_298);
+    for (const r of rows.filter((x) => x.lineItem === "revenue")) expect(Math.abs(r.value)).toBeLessThan(1e9);
+  });
+
+  it("sets nothing aside for a filing that is merely right", () => {
+    expect(filingsInOtherUnits(upcFixture as unknown as CompanyFacts).size).toBe(0); // 20-F: not read at all
   });
 });
