@@ -666,3 +666,31 @@ describe("debt due within a year read off the balance sheet page (9 November 202
     expect(withStatementDebt(totalDebt(withCurrent), { added: [], shortTermDebt: lines }, withCurrent)?.value).toBe(totalDebt(withCurrent)?.value);
   });
 });
+
+describe("years of free cash flow to repay net debt (The Compounder, 14 November 2026)", () => {
+  // Base company: cash 500, debt 300 (net cash 200); free cash flow 200.
+  it("is 0 for a company with net cash", () => {
+    expect(run().values.net_debt_to_fcf).toBe(0);
+  });
+
+  it("is net debt over free cash flow otherwise", () => {
+    // Debt 900: net debt 400 over free cash flow 200 = 2 years.
+    expect(run({ balance: { total_debt: 900 } }).values.net_debt_to_fcf).toBeCloseTo(2);
+  });
+
+  it("is n/a when free cash flow is zero or below, even with net debt", () => {
+    const m = run({ balance: { total_debt: 900 }, latest: { operating_cash_flow: 100 } }); // fcf 0
+    expect(m.values.net_debt_to_fcf).toBeNull();
+    expect(m.na.net_debt_to_fcf).toBe("base");
+    expect(run({ balance: { total_debt: 900 }, latest: { operating_cash_flow: 50 } }).na.net_debt_to_fcf).toBe("base");
+  });
+
+  it("is n/a wherever net cash or free cash flow is n/a", () => {
+    expect(run({}, "financial").na.net_debt_to_fcf).toBe("not-applicable");
+    expect(run({}, "operating", "7389", { holdsCustomerMoney: true }).na.net_debt_to_fcf).toBe("not-applicable");
+    expect(run({ balance: { total_debt: MISSING } }).na.net_debt_to_fcf).toBe("missing");
+    expect(run({ latest: { capex: MISSING } }).na.net_debt_to_fcf).toBe("missing");
+    // A REIT has net cash but no free cash flow.
+    expect(run({}, "reit").na.net_debt_to_fcf).toBe("not-applicable");
+  });
+});

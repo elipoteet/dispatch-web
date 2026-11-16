@@ -47,7 +47,11 @@ export type ScreenGroup = (typeof SCREEN_GROUPS)[number]["key"];
 
 export type StartingScreen = {
   slug: string;
-  group: ScreenGroup;
+  // "favorite" is Eli's own screen, shown alone at the top of the opening
+  // page, apart from the grouped screens.
+  group: ScreenGroup | "favorite";
+  // Shown above the title where it isn't the group's.
+  kicker?: string;
   title: string;
   // Why investors look at this: a fact about the measure, never advice.
   why: string | null;
@@ -64,6 +68,25 @@ const F = (ranges: Filters["ranges"], extra: Partial<Omit<Filters, "ranges">> = 
 });
 
 export const STARTING_SCREENS: readonly StartingScreen[] = [
+  // —— Eli's favorite screen (14 November 2026) ——
+  // A set of filters like every other screen, sorted by a column, with no
+  // highlighting: it finds strong companies, not cheap ones, and says so.
+  {
+    slug: "the-compounder",
+    group: "favorite",
+    kicker: "Eli's favorite screen",
+    title: "The Compounder",
+    why: "The one I'd start with. Businesses that earn a lot on the money tied up in them, grow every year, and pay their own way. It finds strong companies, not cheap ones, so check what the price assumes before forming a view.",
+    filters: F({
+      revenue: { min: 5e8, max: null },
+      growth3y: { min: 8, max: null },
+      fcf: { min: 15, max: null },
+      roic: { min: 20, max: null },
+      ndfcf: { min: null, max: 2 },
+    }),
+    sort: "roic",
+    order: "desc",
+  },
   // —— Quality ——
   {
     slug: "high-return-on-capital",
@@ -198,6 +221,9 @@ export const RETIRED_SCREENS = [
   "losing-money-revenue-up-30",
   "revenue-falling",
 ] as const;
+
+export const FAVORITE_SCREEN = STARTING_SCREENS.find((s) => s.group === "favorite")!;
+export const GROUPED_SCREENS: readonly StartingScreen[] = STARTING_SCREENS.filter((s) => s.group !== "favorite");
 
 export function startingScreen(slug: string): StartingScreen | undefined {
   return STARTING_SCREENS.find((s) => s.slug === slug);

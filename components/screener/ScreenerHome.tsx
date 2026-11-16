@@ -1,13 +1,38 @@
 import Link from "next/link";
 import { dayLabel, filterLines } from "@/lib/screener/filters";
 import { loadOverview } from "@/lib/screener/query";
-import { SCREEN_GROUPS, STARTING_SCREENS } from "@/lib/screener/screens";
+import { FAVORITE_SCREEN, GROUPED_SCREENS, SCREEN_GROUPS, type StartingScreen } from "@/lib/screener/screens";
 import { BUILD_YOUR_OWN_HREF } from "@/components/screener/ScreenerResults";
 
 // The screener's opening view: what it is, the starting screens grouped under
 // the question each answers (the addendum, 7 November 2026), each card with
 // its title, why investors look, its filters in plain words and a live
-// count; then a way to build your own, and three things to know.
+// count; then a way to build your own, and three things to know. Eli's own
+// screen sits first, on its own, in the same card as the others (14
+// November 2026).
+function ScreenCard({ s, n, count }: { s: StartingScreen; n: number | null; count: number | undefined }) {
+  return (
+    <li>
+      <Link href={`/screener/${s.slug}`} className="rf-scr-card" prefetch={false}>
+        <span className="rf-scr-card-n">{n == null ? "" : String(n).padStart(2, "0")}</span>
+        <span className="rf-scr-card-title">{s.title}</span>
+        {s.why && <span className="rf-scr-card-why">{s.why}</span>}
+        <span className="rf-scr-card-filters">
+          {filterLines(s.filters, { plain: true }).map((line) => (
+            <span key={line.key}>{line.text}</span>
+          ))}
+        </span>
+        <span className="rf-scr-card-foot">
+          <span>{count != null ? `${count.toLocaleString("en-US")} ${count === 1 ? "company" : "companies"}` : " "}</span>
+          <span aria-hidden="true" className="rf-scr-card-arrow">
+            →
+          </span>
+        </span>
+      </Link>
+    </li>
+  );
+}
+
 export async function ScreenerHome() {
   const overview = await loadOverview();
   const counts = overview.ok ? overview.data.counts : null;
@@ -33,6 +58,17 @@ export async function ScreenerHome() {
           </p>
         )}
 
+        <section className="rf-scr-section rf-scr-favorite" aria-labelledby="scr-favorite">
+          <div>
+            <div className="rf-lbl rf-kicker" id="scr-favorite">
+              {FAVORITE_SCREEN.kicker}
+            </div>
+          </div>
+          <ol className="rf-scr-cards rf-scr-cards-one">
+            <ScreenCard s={FAVORITE_SCREEN} n={null} count={counts?.[FAVORITE_SCREEN.slug]} />
+          </ol>
+        </section>
+
         <section className="rf-scr-section" aria-labelledby="scr-start">
           <div>
             <div className="rf-lbl rf-kicker">Starting screens</div>
@@ -42,7 +78,7 @@ export async function ScreenerHome() {
             <p className="rf-dek">Each screen is a set of filters you can open, sort and change.</p>
           </div>
           {SCREEN_GROUPS.map((g) => {
-            const screens = STARTING_SCREENS.filter((s) => s.group === g.key);
+            const screens = GROUPED_SCREENS.filter((s) => s.group === g.key);
             if (!screens.length) return null;
             return (
               <section key={g.key} className="rf-scr-question" aria-labelledby={`scr-q-${g.key}`}>
@@ -50,32 +86,11 @@ export async function ScreenerHome() {
                   <span className="rf-lbl">{g.label}</span>
                   <span className="rf-scr-q-text">{g.question}</span>
                 </h3>
-                <ol className="rf-scr-cards" start={STARTING_SCREENS.indexOf(screens[0]) + 1}>
-                  {screens.map((s) => {
+                <ol className="rf-scr-cards" start={GROUPED_SCREENS.indexOf(screens[0]) + 1}>
+                  {screens.map((s) => (
                     // Numbered through all the groups, in the list's order.
-                    const n = STARTING_SCREENS.indexOf(s) + 1;
-                    const count = counts?.[s.slug];
-                    return (
-                      <li key={s.slug}>
-                        <Link href={`/screener/${s.slug}`} className="rf-scr-card" prefetch={false}>
-                          <span className="rf-scr-card-n">{String(n).padStart(2, "0")}</span>
-                          <span className="rf-scr-card-title">{s.title}</span>
-                          {s.why && <span className="rf-scr-card-why">{s.why}</span>}
-                          <span className="rf-scr-card-filters">
-                            {filterLines(s.filters, { plain: true }).map((line) => (
-                              <span key={line.key}>{line.text}</span>
-                            ))}
-                          </span>
-                          <span className="rf-scr-card-foot">
-                            <span>{count != null ? `${count.toLocaleString("en-US")} ${count === 1 ? "company" : "companies"}` : " "}</span>
-                            <span aria-hidden="true" className="rf-scr-card-arrow">
-                              →
-                            </span>
-                          </span>
-                        </Link>
-                      </li>
-                    );
-                  })}
+                    <ScreenCard key={s.slug} s={s} n={GROUPED_SCREENS.indexOf(s) + 1} count={counts?.[s.slug]} />
+                  ))}
                 </ol>
               </section>
             );

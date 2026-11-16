@@ -47,9 +47,11 @@ export default function AboutPage() {
             filings: growth, margins, free cash flow, return on capital, debt, dividends and
             buybacks. It opens on a set of starting screens grouped by the question each one
             answers, such as whether a business is strong, whether its growth pays off, and where
-            its cash goes. Every result opens that company&rsquo;s file. It screens on the
-            business, not the share price, so it has no P/E or market value filters. Each
-            company&rsquo;s Valuation tab covers what the price assumes.
+            its cash goes. The opening page also includes one screen I chose myself, The
+            Compounder; like every other screen it is a set of filters, not a recommendation.
+            Every result opens that company&rsquo;s file. It screens on the business, not the
+            share price, so it has no P/E or market value filters. Each company&rsquo;s Valuation
+            tab covers what the price assumes.
           </p>
 
           <h2>Where the numbers come from.</h2>

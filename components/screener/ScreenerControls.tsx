@@ -48,7 +48,7 @@ type Props = {
   clearHref: string;
 };
 
-const UNIT_MARK: Record<Unit, string> = { money: "$", percent: "%", points: "pts", ratio: "×", count: "yrs" };
+const UNIT_MARK: Record<Unit, string> = { money: "$", percent: "%", points: "pts", ratio: "×", count: "yrs", years: "yrs" };
 
 // The toolbar above the results (active filters as removable chips, Edit
 // filters, Copy link, and on a phone a Sort menu), and the filter panel: the

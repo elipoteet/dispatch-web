@@ -19,7 +19,7 @@ import { SECTORS, type Sector } from "@/lib/screener/sectors";
 // ratio:   stored and typed as is (1.5 is 1.5×)
 // count:   whole years
 // money:   dollars
-export type Unit = "money" | "percent" | "points" | "ratio" | "count";
+export type Unit = "money" | "percent" | "points" | "ratio" | "count" | "years";
 
 export const MAIN_GROUPS = ["Size and growth", "Margins and returns", "Balance sheet and shares"] as const;
 export const MORE_GROUPS = ["Profitability", "Spending", "Shareholder returns", "Balance sheet health", "Longer history"] as const;
@@ -75,6 +75,7 @@ export const RANGE_FILTERS: readonly RangeFilter[] = [
   { param: "buyfcf", column: "buybacks_to_fcf", label: "Buybacks, share of free cash flow", definition: "Cash spent buying back shares, as a share of free cash flow. n/a when free cash flow is zero or below.", noun: "buybacks as a share of free cash flow", phrase: "buybacks", unit: "percent", signed: false, group: "Shareholder returns" },
   { param: "de", column: "debt_to_equity", label: "Debt to equity", definition: "Debt for each dollar of shareholders' equity. n/a for banks and insurers, and when equity is zero or below.", noun: "debt to equity", phrase: "debt to equity", unit: "ratio", signed: false, group: "Balance sheet health" },
   { param: "current", column: "current_ratio", label: "Current ratio", definition: "What the company owns that turns into cash within a year, over what it owes within a year.", noun: "current ratio", phrase: "a current ratio", unit: "ratio", signed: false, group: "Balance sheet health" },
+  { param: "ndfcf", column: "net_debt_to_fcf", label: "Years of free cash flow to repay net debt", definition: "Debt less cash and short-term investments, divided by a year's free cash flow. 0 means more cash than debt. n/a when free cash flow is zero or below, and wherever net cash is n/a.", noun: "years of free cash flow to repay net debt", phrase: "net debt", unit: "years", signed: false, group: "Balance sheet health" },
   { param: "coverage", column: "interest_coverage", label: "Interest coverage", definition: "Operating profit over interest expense: how many times over the interest is paid.", noun: "interest coverage", phrase: "interest coverage", unit: "ratio", signed: false, group: "Balance sheet health" },
   { param: "growth5y", column: "revenue_growth_5y", label: "Revenue growth, 5-year average", definition: "Average yearly sales growth over the last five fiscal years.", noun: "5-year revenue growth", phrase: "average revenue growth over five years", unit: "percent", signed: true, group: "Longer history" },
   { param: "growth10y", column: "revenue_growth_10y", label: "Revenue growth, 10-year average", definition: "Average yearly sales growth over the last ten fiscal years.", noun: "10-year revenue growth", phrase: "average revenue growth over ten years", unit: "percent", signed: true, group: "Longer history" },
@@ -178,6 +179,13 @@ export function parseRatio(text: string | null | undefined): number | null {
   return signedNumber(clean(text).replace(/[x×]$/, ""), 1e6);
 }
 
+// "1.5", "1.5 years", "2 yrs" → 1.5. Zero or more.
+export function parseYears(text: string | null | undefined): number | null {
+  if (text == null) return null;
+  const v = signedNumber(clean(text).replace(/(years?|yrs?)$/, ""), 1e6);
+  return v != null && v >= 0 ? v : null;
+}
+
 // "10", "10 years" → 10. Whole, from 0 to 100.
 export function parseCount(text: string | null | undefined): number | null {
   if (text == null) return null;
@@ -216,6 +224,7 @@ export function parseValue(unit: Unit, text: string | null | undefined): number 
   if (unit === "money") return parseMoney(text);
   if (unit === "ratio") return parseRatio(text);
   if (unit === "count") return parseCount(text);
+  if (unit === "years") return parseYears(text);
   return parsePercent(text);
 }
 
@@ -247,7 +256,7 @@ export function boundLabel(unit: Unit, value: number): string {
   if (unit === "percent") return `${value}%`;
   if (unit === "points") return `${value} pts`;
   if (unit === "ratio") return `${value}×`;
-  if (unit === "count") return value === 1 ? "1 year" : `${value} years`;
+  if (unit === "count" || unit === "years") return value === 1 ? "1 year" : `${value} years`;
   const text = moneyParam(Math.abs(value)).toUpperCase();
   return `${value < 0 ? "-" : ""}$${text}`;
 }
@@ -505,6 +514,7 @@ function spokenClause(f: RangeFilter, r: Range): string | null {
   if (f.param === "growth1y" && onlyMax && (r.max as number) < 0) return `revenue down ${-(r.max as number)}% or more over the year`;
   if (f.param === "marginchange" && onlyMin && (r.min as number) > 0) return `an operating margin up ${r.min} points or more over three years`;
   if (f.param === "years" && onlyMin) return `revenue growth in each of the last ${r.min} years`;
+  if (f.param === "ndfcf" && onlyMax) return `net debt of no more than ${boundLabel("years", r.max as number)} of free cash flow`;
   return null;
 }
 
@@ -555,6 +565,10 @@ export function formatFigure(f: RangeFilter, value: number | null): string {
   if (value == null || !Number.isFinite(value)) return "n/a";
   if (f.unit === "money") return formatMoney(value);
   if (f.unit === "count") return String(Math.round(value));
+  if (f.unit === "years") {
+    const n = Number(value.toFixed(1));
+    return n === 1 ? "1 year" : `${n.toLocaleString("en-US")} years`;
+  }
   if (f.unit === "ratio") {
     const digits = Math.abs(value) >= 100 ? 0 : Math.abs(value) >= 10 ? 1 : 2;
     return `${value.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits })}×`;
