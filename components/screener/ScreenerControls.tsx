@@ -1,44 +1,54 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  MAIN_GROUPS,
-  MORE_GROUPS,
+  CHOICE_FILTERS,
   NEW_ENGLAND,
   PAGE_SIZE,
+  PICKER_ENTRIES,
+  PICKER_GROUPS,
   RANGE_FILTERS,
   SECTOR_OPTIONS,
   STATE_OPTIONS,
-  makeRange,
+  filtersFromPanel,
   parseValue,
+  pickerEntry,
+  rangeFilter,
+  searchFilters,
   sectorSlug,
   stateName,
   stateSlug,
   viewQuery,
-  type Filters,
-  type Group,
   type Order,
+  type PickerEntry,
+  type PickerGroup,
   type RangeFilter,
   type Unit,
 } from "@/lib/screener/filters";
-import type { Sector } from "@/lib/screener/sectors";
 
 export type Chip = { key: string; text: string; href: string };
 export type SortChoice = { label: string; href: string };
+
+type Box = { min: string; max: string };
 
 type Props = {
   chips: Chip[];
   // A quiet line under the chips (the default revenue filter's note).
   note: string | null;
+  // The filters in use, in the order their rows start in: range params, then
+  // "dividend", "sector", "state" (lib/screener/filters.ts activeKeys).
+  active: string[];
   // What each box starts with, by filter param.
-  boxes: Record<string, { min: string; max: string }>;
+  boxes: Record<string, Box>;
   sectors: string[];
   states: string[];
   dividend: boolean;
-  // "Half of companies: above 38%", by filter param, and for "dividend".
+  // Beside the boxes: "Half above 38%", by filter param, and for "dividend".
   medians: Record<string, string>;
+  // Behind the "?": "Half of companies: above 38%".
+  medianLines: Record<string, string>;
   // Carried into the new link when the filters change.
   sort: string;
   order: Order;
@@ -49,41 +59,41 @@ type Props = {
 };
 
 const UNIT_MARK: Record<Unit, string> = { money: "$", percent: "%", points: "pts", ratio: "×", count: "yrs", years: "yrs" };
+const EMPTY: Box = { min: "", max: "" };
 
 // The toolbar above the results (active filters as removable chips, Edit
-// filters, Copy link, and on a phone a Sort menu), and the filter panel: the
-// main filters, then "More filters". Applying the panel builds the new link
-// with the same rules the page reads it with (lib/screener/filters.ts) and
-// moves to it, so the screen is always in the address bar. Without this
-// script the panel is a plain form and still works.
+// filters, Copy link, and on a phone a Sort menu), and the filter panel: one
+// compact row per filter in use, each with a "?" that opens its definition,
+// then "Add a filter", a picker of the rest by group. Applying the panel
+// builds the new link with the same rules the page reads it with
+// (lib/screener/filters.ts) and moves to it, so the screen is always in the
+// address bar. Without this script the panel is a plain form of the rows it
+// started with, and still works.
 export function ScreenerControls(props: Props) {
   const router = useRouter();
+  const uid = useId();
   const [open, setOpen] = useState(props.open);
-  const moreActive = RANGE_FILTERS.some((f) => (MORE_GROUPS as readonly string[]).includes(f.group) && (props.boxes[f.param]?.min || props.boxes[f.param]?.max));
-  const [more, setMore] = useState(moreActive || props.states.length > 0 || props.dividend);
-  const [boxes, setBoxes] = useState(props.boxes);
+  const [active, setActive] = useState<string[]>(props.active);
+  const [boxes, setBoxes] = useState<Record<string, Box>>(props.boxes);
   const [sectors, setSectors] = useState<string[]>(props.sectors);
   const [states, setStates] = useState<string[]>(props.states);
   const [dividend, setDividend] = useState(props.dividend);
+  const [openDef, setOpenDef] = useState<string | null>(null);
+  const [picking, setPicking] = useState(props.active.length === 0);
+  const [pickGroup, setPickGroup] = useState<PickerGroup>(PICKER_GROUPS[0]);
+  const [search, setSearch] = useState("");
   const [copied, setCopied] = useState<"yes" | "no" | null>(null);
 
   function setBox(param: string, end: "min" | "max", text: string) {
-    setBoxes((b) => ({ ...b, [param]: { ...(b[param] ?? { min: "", max: "" }), [end]: text } }));
+    setBoxes((b) => ({ ...b, [param]: { ...(b[param] ?? EMPTY), [end]: text } }));
   }
+
+  // Rows added, removed or edited since the page loaded, for the button.
+  const changes = countChanges(props, { active, boxes, sectors, states, dividend });
 
   function apply(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const filters: Filters = {
-      ranges: {},
-      sectors: SECTOR_OPTIONS.filter((s) => sectors.includes(s)) as Sector[],
-      states: STATE_OPTIONS.filter((s) => states.includes(s)),
-      dividend,
-    };
-    for (const f of RANGE_FILTERS) {
-      const box = boxes[f.param];
-      const range = box && makeRange(parseValue(f.unit, box.min), parseValue(f.unit, box.max));
-      if (range) filters.ranges[f.param] = range;
-    }
+    const filters = filtersFromPanel({ boxes: Object.fromEntries(active.map((k) => [k, boxes[k]])), sectors, states, dividend });
     const q = viewQuery({ filters, sort: props.sort, order: props.order, show: PAGE_SIZE, edit: false });
     router.push(q ? `/screener?${q}` : "/screener?edit=1");
   }
@@ -98,46 +108,169 @@ export function ScreenerControls(props: Props) {
     window.setTimeout(() => setCopied(null), 2500);
   }
 
+  function add(key: string) {
+    if (active.includes(key)) return;
+    setActive([...active, key]);
+    if (key === "dividend") setDividend(true);
+    setOpenDef(null);
+    // The new row's first box, once it's drawn.
+    window.requestAnimationFrame(() => document.getElementById(`${uid}-${key}-min`)?.focus());
+  }
+
+  function remove(key: string) {
+    setActive(active.filter((k) => k !== key));
+    if (openDef === key) setOpenDef(null);
+    if (key === "dividend") setDividend(false);
+    else if (key === "sector") setSectors([]);
+    else if (key === "state") setStates([]);
+    else setBoxes((b) => ({ ...b, [key]: EMPTY }));
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLFormElement>) {
+    if (e.key !== "Escape") return;
+    if (openDef) {
+      e.preventDefault();
+      setOpenDef(null);
+      document.getElementById(`${uid}-${openDef}-q`)?.focus();
+    } else if (picking && active.length > 0) {
+      e.preventDefault();
+      setPicking(false);
+      document.getElementById(`${uid}-add`)?.focus();
+    }
+  }
+
   const toggleState = (s: string) => setStates(states.includes(s) ? states.filter((x) => x !== s) : [...states, s]);
   const ne = [...NEW_ENGLAND] as string[];
   const allNe = ne.every((s) => states.includes(s));
 
-  const group = (g: Group) => (
-    <fieldset key={g} className="rf-scr-group">
-      <legend className="rf-lbl">{g}</legend>
-      {RANGE_FILTERS.filter((f) => f.group === g).map((f) => (
-        <RangeRow key={f.param} f={f} box={boxes[f.param] ?? { min: "", max: "" }} median={props.medians[f.param]} onChange={setBox} />
-      ))}
-      {g === "Shareholder returns" && (
-        <div className="rf-scr-range">
-          <span className="rf-scr-range-label" id="f-dividend">
-            Pays a dividend
-            <span className="rf-scr-def">Paid any dividend to shareholders in the latest fiscal year.</span>
-            {props.medians.dividend && <span className="rf-scr-median">{props.medians.dividend}</span>}
-          </span>
-          <span className="rf-seg" role="radiogroup" aria-labelledby="f-dividend">
-            {[
-              { label: "Either", on: !dividend },
-              { label: "Yes", on: dividend },
-            ].map((o) => (
-              <button
-                key={o.label}
-                type="button"
-                role="radio"
-                aria-checked={o.on}
-                className={`rf-seg-btn${o.on ? " is-active" : ""}`}
-                onClick={() => setDividend(o.label === "Yes")}
-              >
-                {o.label}
-              </button>
-            ))}
-          </span>
-          {/* What a plain form sends if this script hasn't run. */}
-          {dividend && <input type="hidden" name="dividend" value="yes" />}
-        </div>
-      )}
-    </fieldset>
+  const rowHead = (entry: PickerEntry) => {
+    const defOpen = openDef === entry.key;
+    return (
+      <span className="rf-scr-row-name">
+        <span className="rf-scr-row-label" id={`${uid}-${entry.key}-label`}>
+          {entry.label}
+        </span>
+        <button
+          type="button"
+          id={`${uid}-${entry.key}-q`}
+          className={`rf-scr-q${defOpen ? " is-open" : ""}`}
+          aria-expanded={defOpen}
+          aria-controls={`${uid}-${entry.key}-def`}
+          aria-label={`What ${entry.label} means`}
+          onClick={() => setOpenDef(defOpen ? null : entry.key)}
+        >
+          ?
+        </button>
+      </span>
+    );
+  };
+
+  const rowDef = (entry: PickerEntry) =>
+    openDef === entry.key && (
+      <div id={`${uid}-${entry.key}-def`} className="rf-scr-row-def">
+        <span>{entry.definition}</span>
+        {props.medianLines[entry.key] && <span className="rf-scr-median">{props.medianLines[entry.key]}</span>}
+      </div>
+    );
+
+  const removeBtn = (entry: PickerEntry) => (
+    <button type="button" className="rf-scr-row-x" aria-label={`Remove ${entry.label}`} onClick={() => remove(entry.key)}>
+      ×
+    </button>
   );
+
+  function row(key: string) {
+    const entry = pickerEntry(key);
+    if (!entry) return null;
+    const f = rangeFilter(key);
+    if (f) {
+      return (
+        <li key={key} className="rf-scr-row">
+          <RangeRow
+            f={f}
+            uid={uid}
+            box={boxes[key] ?? EMPTY}
+            median={props.medians[key]}
+            head={rowHead(entry)}
+            remove={removeBtn(entry)}
+            onChange={setBox}
+          />
+          {rowDef(entry)}
+        </li>
+      );
+    }
+    if (key === "dividend") {
+      return (
+        <li key={key} className="rf-scr-row">
+          <div className="rf-scr-row-line">
+            {rowHead(entry)}
+            <span className="rf-scr-row-fixed">Yes</span>
+            {props.medians.dividend && <span className="rf-scr-median">{props.medians.dividend}</span>}
+            {removeBtn(entry)}
+            {/* What a plain form sends if this script hasn't run. */}
+            {dividend && <input type="hidden" name="dividend" value="yes" />}
+          </div>
+          {rowDef(entry)}
+        </li>
+      );
+    }
+    if (key === "sector") {
+      return (
+        <li key={key} className="rf-scr-row">
+          <div className="rf-scr-row-line">
+            {rowHead(entry)}
+            {removeBtn(entry)}
+          </div>
+          <div className="rf-scr-checks" role="group" aria-labelledby={`${uid}-sector-label`}>
+            {SECTOR_OPTIONS.map((s) => {
+              const on = sectors.includes(s);
+              return (
+                <label key={s} className={`rf-scr-check${on ? " is-on" : ""}`}>
+                  <input type="checkbox" name="sector" value={sectorSlug(s)} checked={on} onChange={() => setSectors(on ? sectors.filter((x) => x !== s) : [...sectors, s])} />
+                  <span>{s}</span>
+                </label>
+              );
+            })}
+          </div>
+          {sectors.length === 0 && <span className="rf-scr-hint">None ticked means every sector.</span>}
+          {rowDef(entry)}
+        </li>
+      );
+    }
+    return (
+      <li key={key} className="rf-scr-row">
+        <div className="rf-scr-row-line">
+          {rowHead(entry)}
+          <span className="rf-scr-statebar">
+            <button type="button" className="rf-linkbtn" onClick={() => setStates(allNe ? states.filter((s) => !ne.includes(s)) : [...new Set([...states, ...ne])])}>
+              {allNe ? "Clear New England" : "All of New England"}
+            </button>
+            {states.length > 0 && (
+              <button type="button" className="rf-linkbtn" onClick={() => setStates([])}>
+                Clear ({states.length})
+              </button>
+            )}
+          </span>
+          {removeBtn(entry)}
+        </div>
+        <div className="rf-scr-states" role="group" aria-labelledby={`${uid}-state-label`}>
+          {STATE_OPTIONS.map((s) => (
+            <label key={s} className="rf-scr-state">
+              <input type="checkbox" name="state" value={stateSlug(s)} checked={states.includes(s)} onChange={() => toggleState(s)} />
+              <span>{stateName(s)}</span>
+            </label>
+          ))}
+        </div>
+        {states.length === 0 && <span className="rf-scr-hint">None ticked means anywhere.</span>}
+        {rowDef(entry)}
+      </li>
+    );
+  }
+
+  // The picker: what the search finds, or the chosen group.
+  const searching = search.trim() !== "";
+  const offered = searching ? searchFilters(search) : PICKER_ENTRIES.filter((e) => e.group === pickGroup);
+  const groupCount = (g: PickerGroup) => RANGE_FILTERS.filter((f) => f.group === g).length + CHOICE_FILTERS.filter((c) => c.group === g).length;
 
   return (
     <div className="rf-scr-controls">
@@ -179,69 +312,75 @@ export function ScreenerControls(props: Props) {
       </div>
 
       {open && (
-        <form id="screener-filters" className="rf-scr-panel" method="get" action="/screener" onSubmit={apply}>
-          <p className="rf-scr-howto">
-            Type a minimum, a maximum or both. Percent boxes take 20 or 20%; dollar boxes take 500M, 1.5B or $2B. Leave a box empty to
-            skip it.
-          </p>
-          {MAIN_GROUPS.map(group)}
-          <fieldset className="rf-scr-group rf-scr-wide">
-            <legend className="rf-lbl">Sector</legend>
-            <div className="rf-scr-checks">
-              {SECTOR_OPTIONS.map((s) => {
-                const on = sectors.includes(s);
-                return (
-                  <label key={s} className={`rf-scr-check${on ? " is-on" : ""}`}>
-                    <input type="checkbox" name="sector" value={sectorSlug(s)} checked={on} onChange={() => setSectors(on ? sectors.filter((x) => x !== s) : [...sectors, s])} />
-                    <span>{s}</span>
-                  </label>
-                );
-              })}
-            </div>
-            <p className="rf-scr-hint">None ticked means every sector.</p>
-          </fieldset>
-
-          <div className="rf-scr-wide rf-scr-more-head">
-            <button type="button" className="rf-btn" aria-expanded={more} aria-controls="screener-more" onClick={() => setMore(!more)}>
-              {more ? "Fewer filters" : "More filters"}
-            </button>
-            {!more && <span className="rf-scr-hint">Returns on equity and assets, spending, dividends, balance sheet health, longer history, and headquarters.</span>}
+        <form id="screener-filters" className="rf-scr-panel" method="get" action="/screener" onSubmit={apply} onKeyDown={onKeyDown}>
+          <div className="rf-scr-panel-head">
+            <span className="rf-lbl">Your filters · {active.length}</span>
+            <Link href={props.clearHref} className="rf-linkbtn" prefetch={false}>
+              Clear all
+            </Link>
           </div>
-          {more && (
-            <div id="screener-more" className="rf-scr-more-body">
-              {MORE_GROUPS.map(group)}
-              <fieldset className="rf-scr-group rf-scr-wide">
-                <legend className="rf-lbl">Headquarters</legend>
-                <div className="rf-scr-statebar">
-                  <button type="button" className="rf-linkbtn" onClick={() => setStates(allNe ? states.filter((s) => !ne.includes(s)) : [...new Set([...states, ...ne])])}>
-                    {allNe ? "Clear New England" : "All of New England"}
-                  </button>
-                  {states.length > 0 && (
-                    <button type="button" className="rf-linkbtn" onClick={() => setStates([])}>
-                      Clear ({states.length})
+          {active.length === 0 ? (
+            <p className="rf-scr-hint rf-scr-none">No filters yet. Add one below.</p>
+          ) : (
+            <ul className="rf-scr-rows" aria-label="Your filters">
+              {active.map(row)}
+            </ul>
+          )}
+
+          <div className="rf-scr-add">
+            <button type="button" id={`${uid}-add`} className="rf-btn" aria-expanded={picking} aria-controls={`${uid}-picker`} onClick={() => setPicking(!picking)}>
+              {picking ? "Done adding" : "+ Add a filter"}
+            </button>
+            {!picking && <span className="rf-scr-hint">Growth, margins, returns, spending, dividends, balance sheet, sector and headquarters.</span>}
+          </div>
+          {picking && (
+            <div id={`${uid}-picker`} className="rf-scr-picker">
+              <label className="rf-scr-search">
+                <span className="rf-scr-search-label">Search filters</span>
+                <input type="search" value={search} placeholder="Try “debt” or “growth”" autoComplete="off" onChange={(e) => setSearch(e.target.value)} />
+              </label>
+              {!searching && (
+                <div className="rf-scr-picker-groups" role="group" aria-label="Filter groups">
+                  {PICKER_GROUPS.map((g) => (
+                    <button key={g} type="button" className={`rf-scr-pgroup${g === pickGroup ? " is-on" : ""}`} aria-pressed={g === pickGroup} onClick={() => setPickGroup(g)}>
+                      {g} <span className="rf-scr-pgroup-n">· {groupCount(g)}</span>
                     </button>
-                  )}
-                </div>
-                <div className="rf-scr-states">
-                  {STATE_OPTIONS.map((s) => (
-                    <label key={s} className="rf-scr-state">
-                      <input type="checkbox" name="state" value={stateSlug(s)} checked={states.includes(s)} onChange={() => toggleState(s)} />
-                      <span>{stateName(s)}</span>
-                    </label>
                   ))}
                 </div>
-                <p className="rf-scr-hint">From the business address the company gives the SEC. None ticked means anywhere.</p>
-              </fieldset>
+              )}
+              {offered.length === 0 ? (
+                <p className="rf-scr-hint">No filter matches “{search.trim()}”.</p>
+              ) : (
+                <ul className="rf-scr-picks" aria-label={searching ? `Filters matching ${search.trim()}` : pickGroup}>
+                  {offered.map((e) => {
+                    const on = active.includes(e.key);
+                    return (
+                      <li key={e.key}>
+                        <button type="button" className={`rf-scr-pick${on ? " is-on" : ""}`} aria-disabled={on || undefined} onClick={() => add(e.key)}>
+                          <span className="rf-scr-pick-name">
+                            <span aria-hidden="true" className="rf-scr-pick-mark">
+                              {on ? "✓" : "+"}
+                            </span>
+                            {e.label}
+                            {on && <span className="visually-hidden"> (already in your filters)</span>}
+                          </span>
+                          <span className="rf-scr-pick-short">
+                            {e.short}
+                            {searching && <span className="rf-scr-pick-group"> · {e.group}</span>}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
           )}
 
           <div className="rf-scr-panel-foot">
-            <button type="submit" className="rf-btn rf-btn-solid">
-              Show results
+            <button type="submit" className={`rf-btn${changes > 0 ? " rf-btn-solid" : ""}`}>
+              {changes > 0 ? `Show results · ${changes} ${changes === 1 ? "change" : "changes"}` : "Show results"}
             </button>
-            <Link href={props.clearHref} className="rf-linkbtn" prefetch={false}>
-              Clear all
-            </Link>
           </div>
           <p className="rf-scr-noprice">
             No price filters: P/E, dividend yield, market value and price moves need share prices, and the screener reads filings only.
@@ -253,52 +392,81 @@ export function ScreenerControls(props: Props) {
   );
 }
 
+// How many rows differ from the page's link: added, removed, or with a box or
+// a choice edited.
+function countChanges(start: Props, now: { active: string[]; boxes: Record<string, Box>; sectors: string[]; states: string[]; dividend: boolean }): number {
+  let n = 0;
+  const same = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
+  for (const key of new Set([...start.active, ...now.active])) {
+    const was = start.active.includes(key);
+    const is = now.active.includes(key);
+    if (was !== is) n++;
+    else if (key === "sector") n += same(start.sectors, now.sectors) ? 0 : 1;
+    else if (key === "state") n += same(start.states, now.states) ? 0 : 1;
+    else if (key === "dividend") n += start.dividend === now.dividend ? 0 : 1;
+    else {
+      const a = start.boxes[key] ?? EMPTY;
+      const b = now.boxes[key] ?? EMPTY;
+      if (a.min.trim() !== b.min.trim() || a.max.trim() !== b.max.trim()) n++;
+    }
+  }
+  return n;
+}
+
 function RangeRow({
   f,
+  uid,
   box,
   median,
+  head,
+  remove,
   onChange,
 }: {
   f: RangeFilter;
-  box: { min: string; max: string };
+  uid: string;
+  box: Box;
   median?: string;
+  head: React.ReactNode;
+  remove: React.ReactNode;
   onChange: (param: string, end: "min" | "max", text: string) => void;
 }) {
   const bad = (text: string) => text.trim() !== "" && parseValue(f.unit, text) == null;
   const invalid = bad(box.min) || bad(box.max);
+  const empty = box.min.trim() === "" && box.max.trim() === "";
   const mark = UNIT_MARK[f.unit];
   const placeholder = f.unit === "money" ? { min: "e.g. 100M", max: "e.g. 1B" } : { min: "Min", max: "Max" };
   return (
-    <div className="rf-scr-range">
-      <span className="rf-scr-range-label" id={`f-${f.param}`}>
-        {f.label}
-        <span className="rf-scr-def">{f.definition}</span>
-        {median && <span className="rf-scr-median">{median}</span>}
-      </span>
-      <span className="rf-scr-range-boxes">
-        {(["min", "max"] as const).map((end, i) => (
-          <span key={end} className="rf-scr-box-wrap">
-            {i === 1 && <span className="rf-scr-to">to</span>}
-            <span className={`rf-scr-box${bad(box[end]) ? " is-bad" : ""}`}>
-              {f.unit === "money" && <span className="rf-scr-unit">{mark}</span>}
-              <input
-                type="text"
-                inputMode={f.unit === "money" ? "text" : "decimal"}
-                name={`${f.param}_${end}`}
-                value={box[end]}
-                placeholder={placeholder[end]}
-                aria-label={`${f.label}, ${end === "min" ? "at least" : "at most"}`}
-                aria-describedby={`f-${f.param}`}
-                aria-invalid={bad(box[end]) || undefined}
-                autoComplete="off"
-                onChange={(e) => onChange(f.param, end, e.target.value)}
-              />
-              {f.unit !== "money" && <span className="rf-scr-unit">{mark}</span>}
+    <>
+      <div className="rf-scr-row-line">
+        {head}
+        <span className="rf-scr-range-boxes">
+          {(["min", "max"] as const).map((end, i) => (
+            <span key={end} className="rf-scr-box-wrap">
+              {i === 1 && <span className="rf-scr-to">to</span>}
+              <span className={`rf-scr-box${bad(box[end]) ? " is-bad" : ""}`}>
+                {f.unit === "money" && <span className="rf-scr-unit">{mark}</span>}
+                <input
+                  type="text"
+                  id={`${uid}-${f.param}-${end}`}
+                  inputMode={f.unit === "money" ? "text" : "decimal"}
+                  name={`${f.param}_${end}`}
+                  value={box[end]}
+                  placeholder={placeholder[end]}
+                  aria-label={`${f.label}, ${end === "min" ? "at least" : "at most"}`}
+                  aria-invalid={bad(box[end]) || undefined}
+                  autoComplete="off"
+                  onChange={(e) => onChange(f.param, end, e.target.value)}
+                />
+              </span>
             </span>
-          </span>
-        ))}
-      </span>
-      {invalid && <span className="rf-scr-hint rf-scr-range-note">Not a number, so it&rsquo;s left out.</span>}
-    </div>
+          ))}
+          {f.unit !== "money" && <span className="rf-scr-unit">{mark}</span>}
+        </span>
+        {median && <span className="rf-scr-median">{median}</span>}
+        {remove}
+      </div>
+      {invalid && <span className="rf-scr-hint">Not a number, so it&rsquo;s left out.</span>}
+      {!invalid && empty && <span className="rf-scr-hint">Enter a min, a max, or both.</span>}
+    </>
   );
 }

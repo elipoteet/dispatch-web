@@ -792,41 +792,70 @@ a.rf-search-item, a.rf-search-item:hover { color: var(--navy); text-decoration: 
 .rf-scr-copy { margin-left: auto; }
 .rf-scr-toolnote { flex-basis: 100%; margin: 0; font-size: 13.5px; color: var(--muted); }
 
-.rf-scr-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 28px 48px; padding: 24px 28px; border: 1px solid var(--rule); background: var(--surface); }
-.rf-scr-howto { grid-column: 1 / -1; margin: 0; font-size: 14px; line-height: 1.55; color: var(--muted); max-width: 80ch; }
-.rf-scr-group { min-width: 0; margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 16px; }
-.rf-scr-group legend { padding: 0; margin-bottom: 10px; }
-.rf-scr-wide { grid-column: 1 / -1; }
-.rf-scr-range { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 6px 16px; }
-.rf-scr-range-label { display: flex; flex-direction: column; gap: 3px; font-size: 15px; font-weight: 500; }
-/* What a filter measures, and where the middle company sits. */
-.rf-scr-def { font-size: 13px; font-weight: 400; line-height: 1.45; color: var(--muted); }
+.rf-scr-panel { display: flex; flex-direction: column; gap: 0; padding: 8px 28px 24px; border: 1px solid var(--rule); background: var(--surface); }
+.rf-scr-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 4px 0; }
+.rf-scr-panel-head .rf-linkbtn { margin-right: -10px; }
+.rf-scr-none { padding: 14px 0 18px; border-top: 1px solid var(--rule); }
+.rf-scr-rows { margin: 0; padding: 0; list-style: none; }
+/* One row per filter in use: name and ?, the boxes, the median, remove. */
+.rf-scr-row { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-top: 1px solid var(--rule); }
+.rf-scr-row-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.rf-scr-row-name { display: inline-flex; align-items: center; gap: 8px; flex: 1 1 240px; min-width: 0; font-size: 15px; font-weight: 500; }
+.rf-scr-q { flex: none; width: 24px; height: 24px; padding: 0; border: 1px solid var(--rule-2); background: var(--paper); color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; line-height: 1; cursor: pointer; }
+.rf-scr-q:hover, .rf-scr-q.is-open { border-color: var(--navy); color: var(--navy); }
+.rf-scr-q:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.rf-scr-row-def { display: flex; flex-direction: column; gap: 4px; max-width: 70ch; padding: 2px 0 6px; font-size: 13.5px; line-height: 1.5; color: var(--muted); }
+.rf-scr-row-fixed { font-size: 15px; color: var(--navy); }
+.rf-scr-row-x { flex: none; width: 36px; height: 36px; margin-left: auto; padding: 0; border: 0; background: none; color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 18px; line-height: 1; cursor: pointer; }
+.rf-scr-row-x:hover { color: var(--accent); }
+.rf-scr-row-x:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .rf-scr-median { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 400; letter-spacing: 0.02em; color: var(--gold-ink); }
-.rf-scr-more-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding-top: 20px; border-top: 1px solid var(--rule); }
-.rf-scr-more-body { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 28px 48px; }
-.rf-scr-statebar { display: flex; flex-wrap: wrap; gap: 4px; margin: -6px 0 0 -10px; }
+/* A fixed median column, so the boxes line up down the panel. */
+.rf-scr-row-line .rf-scr-median { flex: 0 0 170px; }
+.rf-scr-statebar { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: -10px; }
 .rf-scr-states { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 2px 16px; max-height: 260px; overflow-y: auto; padding: 10px 12px; border: 1px solid var(--rule-2); background: var(--paper); }
 .rf-scr-state { display: flex; align-items: center; gap: 8px; min-height: 34px; font-size: 14px; color: var(--ink-2); cursor: pointer; }
 .rf-scr-state input { width: 16px; height: 16px; margin: 0; accent-color: var(--navy); }
 .rf-scr-range-boxes { display: flex; align-items: center; gap: 8px; }
 .rf-scr-box-wrap { display: inline-flex; align-items: center; gap: 8px; }
 .rf-scr-to { font-size: 13px; color: var(--muted); }
-.rf-scr-box { display: inline-flex; align-items: center; gap: 4px; width: 112px; height: 42px; padding: 0 10px; border: 1px solid var(--rule-2); background: var(--paper); }
+.rf-scr-box { display: inline-flex; align-items: center; gap: 4px; width: 104px; height: 40px; padding: 0 10px; border: 1px solid var(--rule-2); background: var(--paper); }
 .rf-scr-box:focus-within { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-wash); }
 .rf-scr-box.is-bad { border-color: var(--accent); }
 .rf-scr-box input { flex: 1; min-width: 0; width: 100%; height: 100%; padding: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 15px; color: var(--navy); font-variant-numeric: tabular-nums lining-nums; }
 .rf-scr-box input::placeholder { color: var(--muted); opacity: 1; }
 .rf-scr-unit { font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; color: var(--muted); }
 .rf-scr-hint { margin: 0; font-size: 13px; color: var(--muted); }
-.rf-scr-range-note { grid-column: 1 / -1; }
 .rf-scr-checks { display: flex; flex-wrap: wrap; gap: 8px; }
-.rf-scr-check { position: relative; display: inline-flex; align-items: center; min-height: 42px; padding: 0 14px; border: 1px solid var(--rule-2); font-size: 14.5px; color: var(--ink-2); cursor: pointer; user-select: none; }
+.rf-scr-check { position: relative; display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border: 1px solid var(--rule-2); font-size: 14.5px; color: var(--ink-2); cursor: pointer; user-select: none; }
 .rf-scr-check input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
 .rf-scr-check:hover { border-color: var(--navy); color: var(--navy); }
 .rf-scr-check.is-on, .rf-scr-check:has(input:checked) { background: var(--navy); border-color: var(--navy); color: var(--cream); }
 .rf-scr-check:has(input:focus-visible) { outline: 2px solid var(--gold); outline-offset: 2px; }
-.rf-scr-panel-foot { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding-top: 20px; border-top: 1px solid var(--rule); }
-.rf-scr-noprice { grid-column: 1 / -1; margin: -12px 0 0; font-size: 14px; line-height: 1.55; color: var(--muted); max-width: 80ch; }
+/* Add a filter: the picker. */
+.rf-scr-add { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 16px 0; border-top: 1px solid var(--rule); }
+.rf-scr-picker { display: flex; flex-direction: column; gap: 14px; padding: 16px; margin-bottom: 16px; border: 1px solid var(--rule-2); background: var(--paper); }
+.rf-scr-search { display: flex; flex-direction: column; gap: 6px; max-width: 360px; }
+.rf-scr-search-label { font-size: 13px; color: var(--muted); }
+.rf-scr-search input { height: 42px; padding: 0 12px; border: 1px solid var(--rule-2); background: var(--surface); font: inherit; font-size: 15px; color: var(--navy); }
+.rf-scr-search input:focus { outline: 0; border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-wash); }
+.rf-scr-picker-groups { display: flex; flex-wrap: wrap; gap: 8px; }
+.rf-scr-pgroup { display: inline-flex; align-items: center; min-height: 38px; padding: 0 12px; border: 1px solid var(--rule-2); background: transparent; color: var(--ink-2); font: inherit; font-size: 14px; cursor: pointer; }
+.rf-scr-pgroup:hover { border-color: var(--navy); color: var(--navy); }
+.rf-scr-pgroup.is-on { background: var(--navy); border-color: var(--navy); color: var(--cream); }
+.rf-scr-pgroup-n { margin-left: 4px; opacity: 0.7; }
+.rf-scr-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 4px 20px; margin: 0; padding: 0; list-style: none; }
+.rf-scr-pick { display: flex; flex-direction: column; gap: 2px; width: 100%; min-height: 48px; padding: 8px 6px; border: 0; border-bottom: 1px solid var(--rule); background: none; font: inherit; text-align: left; cursor: pointer; }
+.rf-scr-pick:hover .rf-scr-pick-name { color: var(--gold-ink); }
+.rf-scr-pick.is-on { cursor: default; }
+.rf-scr-pick.is-on .rf-scr-pick-name { color: var(--muted); }
+.rf-scr-pick:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.rf-scr-pick-name { display: flex; align-items: baseline; gap: 8px; font-size: 14.5px; font-weight: 500; color: var(--navy); }
+.rf-scr-pick-mark { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--muted); }
+.rf-scr-pick-short { padding-left: 18px; font-size: 13px; line-height: 1.4; color: var(--muted); }
+.rf-scr-pick-group { color: var(--gold-ink); }
+.rf-scr-panel-foot { display: flex; align-items: center; gap: 12px; padding-top: 16px; border-top: 1px solid var(--rule); }
+.rf-scr-noprice { margin: 12px 0 0; font-size: 14px; line-height: 1.55; color: var(--muted); max-width: 80ch; }
 
 /* The table: the company column stays put while the figures scroll. */
 .rf-scr-table { min-width: 880px; }
@@ -900,15 +929,21 @@ a.rf-search-item, a.rf-search-item:hover { color: var(--navy); text-decoration: 
   .rf-scr-sortmenu { display: block; min-width: 0; }
   .rf-scr-sortmenu select { width: 100%; padding: 0 10px; font-size: 15px; text-overflow: ellipsis; }
   .rf-scr-copy { margin-left: 0; padding-left: 0; }
-  .rf-scr-panel, .rf-scr-more-body { padding: 18px 16px; gap: 24px; }
-  .rf-scr-more-body { padding: 0; }
+  .rf-scr-panel { padding: 4px 16px 18px; }
   .rf-scr-states { grid-template-columns: 1fr 1fr; }
-  .rf-scr-range { grid-template-columns: minmax(0, 1fr); }
-  .rf-scr-range-boxes, .rf-scr-box-wrap { width: 100%; }
+  /* A row wraps: name and remove on one line, the boxes on the next. */
+  .rf-scr-row-name { flex-basis: calc(100% - 50px); }
+  .rf-scr-row-x { margin-left: 0; }
+  .rf-scr-row-line .rf-scr-median { flex: 0 1 auto; }
+  .rf-scr-range-boxes { width: 100%; }
   .rf-scr-box-wrap { flex: 1; min-width: 0; }
   .rf-scr-box { flex: 1; width: auto; min-width: 0; }
   .rf-scr-box input { font-size: 16px; }
-  .rf-scr-noprice { margin-top: -8px; }
+  .rf-scr-picker { padding: 12px; }
+  .rf-scr-search { max-width: none; }
+  .rf-scr-search input { font-size: 16px; }
+  .rf-scr-picks { grid-template-columns: 1fr; }
+  .rf-scr-panel-foot .rf-btn { width: 100%; }
   /* The table gives way to two-line rows. */
   .rf-scr-tablebox { display: none; }
   .rf-scr-list { display: block; }
