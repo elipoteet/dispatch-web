@@ -792,34 +792,33 @@ a.rf-search-item, a.rf-search-item:hover { color: var(--navy); text-decoration: 
 .rf-scr-copy { margin-left: auto; }
 .rf-scr-toolnote { flex-basis: 100%; margin: 0; font-size: 13.5px; color: var(--muted); }
 
-.rf-scr-panel { display: flex; flex-direction: column; gap: 0; padding: 8px 28px 24px; border: 1px solid var(--rule); background: var(--surface); }
-.rf-scr-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 4px 0; }
-.rf-scr-panel-head .rf-linkbtn { margin-right: -10px; }
+.rf-scr-panel { display: flex; flex-direction: column; gap: 0; padding: 0 28px 24px; border: 1px solid var(--rule); background: var(--surface); }
+.rf-scr-panel-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; min-height: 48px; }
+.rf-scr-panel-head .rf-lbl { margin: 0; line-height: 1; }
+.rf-scr-panel-head .rf-linkbtn { display: inline-flex; align-items: center; min-height: 44px; margin: 0; padding: 0; }
 .rf-scr-none { padding: 14px 0 18px; border-top: 1px solid var(--rule); }
 .rf-scr-rows { margin: 0; padding: 0; list-style: none; }
-/* One row per filter in use: name and ?, the boxes, the median, remove. */
+/* One row per filter in use, every row on the same grid: name and ?, min,
+   to, max, unit, median, remove. So the boxes and medians line up. */
 .rf-scr-row { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-top: 1px solid var(--rule); }
-.rf-scr-row-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
-.rf-scr-row-name { display: inline-flex; align-items: center; gap: 8px; flex: 1 1 240px; min-width: 0; font-size: 15px; font-weight: 500; }
-.rf-scr-q { flex: none; width: 24px; height: 24px; padding: 0; border: 1px solid var(--rule-2); background: var(--paper); color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; line-height: 1; cursor: pointer; }
-.rf-scr-q:hover, .rf-scr-q.is-open { border-color: var(--navy); color: var(--navy); }
-.rf-scr-q:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.rf-scr-row-line { display: grid; grid-template-columns: minmax(0, 1fr) 104px 24px 104px 32px 180px 36px; align-items: center; gap: 0 10px; }
+.rf-scr-row-choice { grid-template-columns: minmax(0, 1fr) auto 36px; }
+.rf-scr-row-name { display: inline-flex; align-items: center; gap: 8px; min-width: 0; font-size: 15px; font-weight: 500; line-height: 24px; }
+.rf-scr-qbtn { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 1px solid var(--rule-2); background: var(--paper); color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; line-height: 1; cursor: pointer; }
+.rf-scr-qbtn:hover, .rf-scr-qbtn.is-open { border-color: var(--navy); color: var(--navy); }
+.rf-scr-qbtn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .rf-scr-row-def { display: flex; flex-direction: column; gap: 4px; max-width: 70ch; padding: 2px 0 6px; font-size: 13.5px; line-height: 1.5; color: var(--muted); }
-.rf-scr-row-fixed { font-size: 15px; color: var(--navy); }
-.rf-scr-row-x { flex: none; width: 36px; height: 36px; margin-left: auto; padding: 0; border: 0; background: none; color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 18px; line-height: 1; cursor: pointer; }
+.rf-scr-row-fixed { grid-column: 2 / 6; font-size: 15px; color: var(--navy); }
+.rf-scr-row-x { width: 36px; height: 36px; padding: 0; border: 0; background: none; color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 18px; line-height: 1; cursor: pointer; justify-self: end; }
 .rf-scr-row-x:hover { color: var(--accent); }
 .rf-scr-row-x:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .rf-scr-median { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 400; letter-spacing: 0.02em; color: var(--gold-ink); }
-/* A fixed median column, so the boxes line up down the panel. */
-.rf-scr-row-line .rf-scr-median { flex: 0 0 170px; }
-.rf-scr-statebar { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: -10px; }
+.rf-scr-statebar { display: inline-flex; flex-wrap: wrap; gap: 4px; }
 .rf-scr-states { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 2px 16px; max-height: 260px; overflow-y: auto; padding: 10px 12px; border: 1px solid var(--rule-2); background: var(--paper); }
 .rf-scr-state { display: flex; align-items: center; gap: 8px; min-height: 34px; font-size: 14px; color: var(--ink-2); cursor: pointer; }
 .rf-scr-state input { width: 16px; height: 16px; margin: 0; accent-color: var(--navy); }
-.rf-scr-range-boxes { display: flex; align-items: center; gap: 8px; }
-.rf-scr-box-wrap { display: inline-flex; align-items: center; gap: 8px; }
-.rf-scr-to { font-size: 13px; color: var(--muted); }
-.rf-scr-box { display: inline-flex; align-items: center; gap: 4px; width: 104px; height: 40px; padding: 0 10px; border: 1px solid var(--rule-2); background: var(--paper); }
+.rf-scr-to { font-size: 13px; color: var(--muted); text-align: center; }
+.rf-scr-box { display: flex; align-items: center; height: 40px; padding: 0 10px; border: 1px solid var(--rule-2); background: var(--paper); }
 .rf-scr-box:focus-within { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-wash); }
 .rf-scr-box.is-bad { border-color: var(--accent); }
 .rf-scr-box input { flex: 1; min-width: 0; width: 100%; height: 100%; padding: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 15px; color: var(--navy); font-variant-numeric: tabular-nums lining-nums; }
@@ -832,19 +831,24 @@ a.rf-search-item, a.rf-search-item:hover { color: var(--navy); text-decoration: 
 .rf-scr-check:hover { border-color: var(--navy); color: var(--navy); }
 .rf-scr-check.is-on, .rf-scr-check:has(input:checked) { background: var(--navy); border-color: var(--navy); color: var(--cream); }
 .rf-scr-check:has(input:focus-visible) { outline: 2px solid var(--gold); outline-offset: 2px; }
-/* Add a filter: the picker. */
-.rf-scr-add { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 16px 0; border-top: 1px solid var(--rule); }
-.rf-scr-picker { display: flex; flex-direction: column; gap: 14px; padding: 16px; margin-bottom: 16px; border: 1px solid var(--rule-2); background: var(--paper); }
-.rf-scr-search { display: flex; flex-direction: column; gap: 6px; max-width: 360px; }
+/* Add a filter: a quiet button, then the picker. */
+.rf-scr-add { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 8px 0; border-top: 1px solid var(--rule); }
+.rf-scr-addbtn { padding-left: 0; font-size: 14.5px; color: var(--navy); }
+.rf-scr-picker { display: flex; flex-direction: column; gap: 14px; padding: 16px; margin: 16px 0; border: 1px solid var(--rule-2); background: var(--paper); }
+.rf-scr-picker-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; min-width: 0; }
+.rf-scr-done { margin: -10px -10px 0 0; white-space: nowrap; }
+.rf-scr-search { display: flex; flex-direction: column; gap: 6px; flex: 1 1 auto; min-width: 0; max-width: 360px; }
 .rf-scr-search-label { font-size: 13px; color: var(--muted); }
-.rf-scr-search input { height: 42px; padding: 0 12px; border: 1px solid var(--rule-2); background: var(--surface); font: inherit; font-size: 15px; color: var(--navy); }
+.rf-scr-search input { width: 100%; min-width: 0; height: 42px; padding: 0 12px; border: 1px solid var(--rule-2); background: var(--surface); font: inherit; font-size: 15px; color: var(--navy); }
 .rf-scr-search input:focus { outline: 0; border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-wash); }
 .rf-scr-picker-groups { display: flex; flex-wrap: wrap; gap: 8px; }
 .rf-scr-pgroup { display: inline-flex; align-items: center; min-height: 38px; padding: 0 12px; border: 1px solid var(--rule-2); background: transparent; color: var(--ink-2); font: inherit; font-size: 14px; cursor: pointer; }
 .rf-scr-pgroup:hover { border-color: var(--navy); color: var(--navy); }
 .rf-scr-pgroup.is-on { background: var(--navy); border-color: var(--navy); color: var(--cream); }
 .rf-scr-pgroup-n { margin-left: 4px; opacity: 0.7; }
-.rf-scr-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 4px 20px; margin: 0; padding: 0; list-style: none; }
+/* The list fills the box, equal columns and equal row heights. */
+.rf-scr-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); grid-auto-rows: 1fr; gap: 4px 20px; width: 100%; margin: 0; padding: 0; list-style: none; }
+.rf-scr-picks > li { display: flex; min-width: 0; }
 .rf-scr-pick { display: flex; flex-direction: column; gap: 2px; width: 100%; min-height: 48px; padding: 8px 6px; border: 0; border-bottom: 1px solid var(--rule); background: none; font: inherit; text-align: left; cursor: pointer; }
 .rf-scr-pick:hover .rf-scr-pick-name { color: var(--gold-ink); }
 .rf-scr-pick.is-on { cursor: default; }
@@ -929,15 +933,22 @@ a.rf-search-item, a.rf-search-item:hover { color: var(--navy); text-decoration: 
   .rf-scr-sortmenu { display: block; min-width: 0; }
   .rf-scr-sortmenu select { width: 100%; padding: 0 10px; font-size: 15px; text-overflow: ellipsis; }
   .rf-scr-copy { margin-left: 0; padding-left: 0; }
-  .rf-scr-panel { padding: 4px 16px 18px; }
+  .rf-scr-panel { padding: 0 16px 18px; }
   .rf-scr-states { grid-template-columns: 1fr 1fr; }
-  /* A row wraps: name and remove on one line, the boxes on the next. */
-  .rf-scr-row-name { flex-basis: calc(100% - 50px); }
-  .rf-scr-row-x { margin-left: 0; }
-  .rf-scr-row-line .rf-scr-median { flex: 0 1 auto; }
-  .rf-scr-range-boxes { width: 100%; }
-  .rf-scr-box-wrap { flex: 1; min-width: 0; }
-  .rf-scr-box { flex: 1; width: auto; min-width: 0; }
+  /* A row wraps onto three lines: name and remove; min, to, max, unit; median. */
+  .rf-scr-row-line { grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr) 32px 36px; gap: 6px 8px; }
+  .rf-scr-row-choice { grid-template-columns: minmax(0, 1fr) 36px; }
+  .rf-scr-row-choice .rf-scr-statebar { grid-column: 1 / -1; grid-row: 2; }
+  .rf-scr-row-name { grid-column: 1 / 5; grid-row: 1; }
+  .rf-scr-row-x { grid-column: 5; grid-row: 1; }
+  .rf-scr-row-choice .rf-scr-row-x { grid-column: 2; }
+  .rf-scr-box-min { grid-column: 1; grid-row: 2; }
+  .rf-scr-to { grid-column: 2; grid-row: 2; }
+  .rf-scr-box-max { grid-column: 3; grid-row: 2; }
+  .rf-scr-unit { grid-column: 4; grid-row: 2; }
+  .rf-scr-row-line .rf-scr-median { grid-column: 1 / -1; grid-row: 3; }
+  .rf-scr-row-line .rf-scr-median:empty { display: none; }
+  .rf-scr-row-fixed { grid-column: 1 / 5; grid-row: 2; }
   .rf-scr-box input { font-size: 16px; }
   .rf-scr-picker { padding: 12px; }
   .rf-scr-search { max-width: none; }

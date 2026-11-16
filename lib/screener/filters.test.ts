@@ -56,13 +56,22 @@ describe("the filter list", () => {
     expect(new Set(RANGE_FILTERS.map((x) => x.param)).size).toBe(RANGE_FILTERS.length);
   });
 
-  it("puts return on invested capital among the main filters, and eighteen more behind More filters", () => {
-    expect(f("roic").group).toBe("Margins and returns");
-    const more = RANGE_FILTERS.filter((x) => ["Profitability", "Spending", "Shareholder returns", "Balance sheet health", "Longer history"].includes(x.group));
-    // The brief's seventeen are fifteen ranges, "pays a dividend" and the
-    // state; the addendum adds three ranges, and The Compounder one more
-    // (years of free cash flow to repay net debt, 14 November 2026).
-    expect(more.length).toBe(15 + 3 + 1);
+  it("places every filter in one of the six picker groups, as Eli set them (16 November 2026)", () => {
+    const by = (g: string) => RANGE_FILTERS.filter((x) => x.group === g).map((x) => x.param);
+    expect(by("Size and growth")).toEqual(["revenue", "growth1y", "growth3y", "nigrowth", "epsgrowth", "growth5y", "growth10y", "years"]);
+    expect(by("Margins and returns")).toEqual(["gross", "operating", "net", "fcf", "roic", "roe", "roa", "marginchange", "rule40", "cashconv"]);
+    expect(by("Spending")).toEqual(["rnd", "capex", "sga"]);
+    expect(by("Balance sheet")).toEqual(["netcash", "de", "current", "ndfcf", "coverage"]);
+    expect(by("Shareholder returns")).toEqual(["shares", "divfcf", "buyfcf"]);
+    expect(by("Sector and headquarters")).toEqual([]);
+    expect(PICKER_GROUPS).toEqual(["Size and growth", "Margins and returns", "Spending", "Balance sheet", "Shareholder returns", "Sector and headquarters"]);
+    expect(PICKER_ENTRIES.filter((e) => e.group === "Shareholder returns").map((e) => e.key)).toEqual(["shares", "divfcf", "buyfcf", "dividend"]);
+  });
+
+  it("shortens one column head only: the full name stays in the panel", () => {
+    expect(f("ndfcf").heading).toBe("Years to repay net debt");
+    expect(f("ndfcf").label).toBe("Years of free cash flow to repay net debt");
+    expect(RANGE_FILTERS.filter((x) => x.heading).map((x) => x.param)).toEqual(["ndfcf"]);
   });
 
   it("gives every filter a short description for the picker: a few plain words, no abbreviations", () => {
@@ -302,6 +311,11 @@ describe("words", () => {
     expect(medianText(f("revenue"), 412_300_000)).toBe("Half of companies: above $412.3M");
     expect(medianText(f("years"), 1)).toBe("Half of companies: 1 year or more");
     expect(medianShort(f("roic"), 0.0912)).toBe("Half above 9.1%");
+    // No plus sign on a median; a minus stays.
+    expect(medianText(f("growth1y"), 0.04)).toBe("Half of companies: above 4.0%");
+    expect(medianShort(f("growth1y"), 0.04)).toBe("Half above 4.0%");
+    expect(medianShort(f("shares"), -0.012)).toBe("Half above -1.2%");
+    expect(medianShort(f("marginchange"), 0.021)).toBe("Half above 2.1 pts");
     expect(medianShort(f("ndfcf"), 1.84)).toBe("Half above 1.8 years");
     expect(medianShort(f("years"), 1)).toBe("Half at 1 year or more");
     expect(dividendShort(0.417)).toBe("Paid by 42%");

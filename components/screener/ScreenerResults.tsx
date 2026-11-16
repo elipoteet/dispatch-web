@@ -233,7 +233,7 @@ function ResultsTable({ rows, columns, showState, view, link }: { rows: ResultRo
           <tr>
             <SortHead label="Company" sortKey="name" view={view} link={link} />
             {columns.map((f) => (
-              <SortHead key={f.param} label={f.label} sortKey={f.param} view={view} link={link} className={f.param === view.sort ? "is-key" : undefined} />
+              <SortHead key={f.param} label={f.heading ?? f.label} sortKey={f.param} view={view} link={link} className={f.param === view.sort ? "is-key" : undefined} />
             ))}
             <SortHead label="Sector" sortKey="sector" view={view} link={link} className="rf-scr-left" />
             {showState && <th scope="col" className="rf-scr-left">Headquarters</th>}

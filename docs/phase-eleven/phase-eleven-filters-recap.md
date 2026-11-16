@@ -101,3 +101,19 @@ Read `app/about/page.tsx` against the site after the change. The screener paragr
 ## Left open
 
 - Nothing in the code. Merge on Eli's go; no migration, no cron change, no About change.
+
+## Eli's audit of the combined preview (16 November 2026), fixed
+
+1. **The class collision.** The panel's "?" button and the opening page's group heading both used `.rf-scr-q`, so every heading rendered as a 24px bordered box. The button is now `.rf-scr-qbtn`. A new test, `lib/screener/stylesheet.test.ts`, reads `app/research-file.css` and fails if any screener class has two top-level rules; run against the stylesheet as it was, it reports `.rf-scr-q` at lines 743 and 804. The browser check (`homecheck.mjs`) and the screenshot script also fail if a group heading is narrower than its column.
+2. **The eight panel fixes.**
+   a. "Clear all" sits on the "Your filters · N" line, right-aligned and centred, inside the panel.
+   b. Every row is one grid: name and ?, min, "to", max, unit, median, ×, in fixed columns, so boxes and medians line up down the panel.
+   c. The unit follows the max box for every filter ($, %, yrs, ×, pts); nothing inside the boxes. Empty boxes read "Min" and "Max". The boxes still take "500M", "1.5B" and "$2B".
+   d. The ? is centred in a 24px box on the label line.
+   e. Medians carry no plus sign ("Half above 4.0%"); a minus stays ("Half above -1.2%"). The full line behind the ? follows the same rule.
+   f. Six picker groups, as set: Size and growth (8: revenue, the four revenue growth measures, years in a row, net income and earnings per share growth); Margins and returns (10: the four margins, return on invested capital, equity and assets, margin change, growth plus free cash flow margin, cash conversion); Spending (3); Balance sheet (5: net cash, years to repay net debt, debt to equity, current ratio, interest coverage); Shareholder returns (4: share count change, pays a dividend, dividends and buybacks as a share of free cash flow); Sector and headquarters (2). The link's fixed order is unchanged: only each filter's `group` moved, not its place in `RANGE_FILTERS`. The tests name every group's members.
+   g. The picker list fills the box: `auto-fill, minmax(260px, 1fr)`, equal row heights.
+   h. "Done adding" is a quiet text button in the picker's top-right corner; "+ Add a filter" is quiet too. "Show results" is the only button that goes solid, and only once something has changed.
+3. **Smaller.** The results column head reads "Years to repay net debt" (`heading` on that one filter; the panel keeps the full name). "Open the filters" on the opening page is the outlined button, so The Compounder's row stands alone.
+
+Checks after: tsc clean, 680 tests (two new files' worth), lint at baseline, build clean, the panel walk-through and all 14 starting screens reproduced, the opening-page check with the heading assertion. Screenshots in `docs/phase-eleven/screenshots/`: `screener-{1280,390}-{light,dark}.png` (whole page) and `the-compounder-filters-{1280,390}-{light,dark}.png` (panel open, picker open, one definition open).

@@ -118,7 +118,7 @@ export async function ScreenerHome() {
               dividends, sector and headquarters. Each filter says what it measures and where the middle company sits.
             </p>
           </div>
-          <Link href={BUILD_YOUR_OWN_HREF} className="rf-btn rf-btn-solid" prefetch={false}>
+          <Link href={BUILD_YOUR_OWN_HREF} className="rf-btn" prefetch={false}>
             Open the filters
           </Link>
         </section>

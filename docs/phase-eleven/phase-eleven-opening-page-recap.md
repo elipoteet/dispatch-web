@@ -67,3 +67,7 @@ Read `app/about/page.tsx` against the site after the change. Its screener paragr
 ## Left open
 
 - Nothing in the code. Merge on Eli's go; no migration, no cron change, no About change. `feat/filter-panel` is a separate branch and touches different files (`ScreenerControls.tsx`, `filters.ts`, the panel's CSS), so the two merge independently.
+
+## Eli's audit of the combined preview (16 November 2026)
+
+The group headings had collapsed into 24px boxes: the panel's "?" button shared the heading's class. Fixed on the combined branch (see the filter-panel recap's audit section); `lib/screener/stylesheet.test.ts` now fails on any screener class defined twice, and the browser check fails if a heading is narrower than its column. "Open the filters" is now the outlined button. Screenshots of /screener at 1280 and 390, light and dark, are in `docs/phase-eleven/screenshots/`.
