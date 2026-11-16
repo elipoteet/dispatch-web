@@ -105,7 +105,7 @@ export async function ScreenerResults({ view, screen }: { view: View; screen: St
           <Link href="/screener" className="rf-scr-back" prefetch={false}>
             <span aria-hidden="true">←</span> Starting screens
           </Link>
-          <div className="rf-lbl rf-kicker">Screener</div>
+          <div className="rf-lbl rf-kicker">{named?.kicker ?? "Screener"}</div>
           <h1 className="rf-scr-title">{title}</h1>
           <p className="rf-scr-says">{describeScreen(view.filters)}</p>
           {named?.why && <p className="rf-scr-why">{named.why}</p>}

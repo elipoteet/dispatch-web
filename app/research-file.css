@@ -753,6 +753,9 @@ a.rf-search-item, a.rf-search-item:hover { color: var(--navy); text-decoration: 
 .rf-scr-card-title { font-size: 18px; font-weight: 600; line-height: 1.35; text-wrap: balance; }
 .rf-scr-card-why { font-size: 14.5px; line-height: 1.5; color: var(--ink-2); text-wrap: pretty; }
 .rf-scr-card-filters { display: flex; flex-direction: column; gap: 2px; padding-top: 4px; font-size: 13px; line-height: 1.5; color: var(--muted); }
+/* Eli's own screen: one card, same style, on its own above the groups. */
+.rf-scr-favorite { padding-top: 8px; }
+.rf-scr-cards-one { grid-template-columns: minmax(0, 1fr); max-width: 720px; }
 /* The opening view's starting screens, under the question each answers. */
 .rf-scr-question { display: flex; flex-direction: column; gap: 14px; padding-top: 12px; }
 .rf-scr-q { display: flex; flex-direction: column; gap: 2px; margin: 0; }

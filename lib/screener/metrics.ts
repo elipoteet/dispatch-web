@@ -49,6 +49,7 @@ export const MORE_METRICS = [
   "operating_margin_change_3y",
   "growth_plus_fcf_margin",
   "cash_conversion",
+  "net_debt_to_fcf",
 ] as const;
 
 export type MetricKey = (typeof MAIN_METRICS)[number] | (typeof MORE_METRICS)[number];
@@ -87,6 +88,7 @@ const INPUTS: Partial<Record<MetricKey, { latest?: DurationItem[]; prior?: Durat
   roic: { latest: ["revenue"] },
   growth_plus_fcf_margin: { latest: ["revenue", "operating_cash_flow"], prior: ["revenue"] },
   cash_conversion: { latest: ["operating_cash_flow", "net_income"] },
+  net_debt_to_fcf: { latest: ["operating_cash_flow"] },
 };
 
 export type ScreenerMetrics = {
@@ -579,6 +581,20 @@ export function computeMetrics(company: Assembled, kind: FilerKind, context: Met
   else if (ocf == null || netIncome == null) results.cash_conversion = na("missing");
   else if (netIncome <= 0) results.cash_conversion = na("base");
   else results.cash_conversion = ok(ocf / netIncome);
+
+  // —— Years of free cash flow to repay net debt (Eli's screen, The
+  // Compounder, 14 November 2026) ——
+  // Net debt (debt less cash and short-term investments) over free cash
+  // flow. 0 for a company with net cash: nothing to repay. n/a wherever net
+  // cash or free cash flow is n/a (banks, customer-money companies), and
+  // when free cash flow is zero or below: no repayment from no cash.
+  const nc = results.net_cash;
+  if (nc.value == null) results.net_debt_to_fcf = na(nc.na ?? "missing");
+  else if (!fcfApplies) results.net_debt_to_fcf = na("not-applicable");
+  else if (fcf == null) results.net_debt_to_fcf = na("missing");
+  else if (nc.value >= 0) results.net_debt_to_fcf = ok(0);
+  else if (fcf <= 0) results.net_debt_to_fcf = na("base");
+  else results.net_debt_to_fcf = ok(-nc.value / fcf);
 
   const latestBad = new Set(company.latest.inconsistent);
   const priorBad = new Set(company.prior?.inconsistent ?? []);

@@ -72,3 +72,11 @@ In a fresh browser context on www.dispatchresearch.com (nothing stored, as in an
 - Both production deploys succeeded (be5e513 at 15:55 UTC, 3228e5c at 15:58), then the About page's.
 
 **Cron and secret.** The screener cron is in `vercel.json` on master (`/api/cron/screener`, 09:00 UTC), so Vercel registers it with this deploy; the Vercel CLI isn't signed in on this machine, so the dashboard wasn't read directly. `CRON_SECRET` is set on production: the alerts cron, which checks the same secret, ran at 21:47 UTC on 13 November (its `ticker_snapshot` writes), and the screener route on production answers 401 without it. The screener's first production run is at 09:00 UTC on 15 November; until then the table holds the run of 9 November.
+
+## Added 16 November 2026: The Compounder
+
+Eli's own screen, one card above the grouped screens on /screener and its own page at /screener/the-compounder: return on invested capital 20% or more, 3-year revenue growth 8% or more, free cash flow margin 15% or more, net debt of no more than 2 years of free cash flow, revenue $500 million or more, sorted by ROIC. 29 companies on 15 November. A set of filters like every other screen, with no highlighting; its line says it finds strong companies, not cheap ones.
+
+It brought one new measure, "Years of free cash flow to repay net debt" (migration 0030, pasted 15 November), under More filters, Balance sheet health: 0 with net cash, n/a when free cash flow is zero or below or wherever net cash is n/a. Five spot-checks against 10-Ks (Apple 0.17 years, Alphabet 0, Mastercard 0.49, Visa 0.41, Moody's 1.77) matched.
+
+About page: one sentence added to the screener paragraph, naming The Compounder as Eli's choice and a set of filters, not a recommendation.

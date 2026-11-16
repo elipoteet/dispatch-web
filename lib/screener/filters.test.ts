@@ -48,12 +48,13 @@ describe("the filter list", () => {
     expect(new Set(RANGE_FILTERS.map((x) => x.param)).size).toBe(RANGE_FILTERS.length);
   });
 
-  it("puts return on invested capital among the main filters, and seventeen more behind More filters", () => {
+  it("puts return on invested capital among the main filters, and eighteen more behind More filters", () => {
     expect(f("roic").group).toBe("Margins and returns");
     const more = RANGE_FILTERS.filter((x) => ["Profitability", "Spending", "Shareholder returns", "Balance sheet health", "Longer history"].includes(x.group));
     // The brief's seventeen are fifteen ranges, "pays a dividend" and the
-    // state; the addendum adds three ranges.
-    expect(more.length).toBe(15 + 3);
+    // state; the addendum adds three ranges, and The Compounder one more
+    // (years of free cash flow to repay net debt, 14 November 2026).
+    expect(more.length).toBe(15 + 3 + 1);
   });
 });
 
@@ -325,16 +326,19 @@ describe("database conditions", () => {
 });
 
 describe("starting screens", () => {
-  it("has the addendum's thirteen, grouped by question, each with a unique slug", () => {
-    expect(STARTING_SCREENS).toHaveLength(13);
-    expect(new Set(STARTING_SCREENS.map((s) => s.slug)).size).toBe(13);
-    for (const s of STARTING_SCREENS) expect(SCREEN_GROUPS.map((g) => g.key)).toContain(s.group);
+  it("has the addendum's thirteen grouped by question, plus Eli's own, each with a unique slug", () => {
+    expect(STARTING_SCREENS).toHaveLength(14);
+    expect(new Set(STARTING_SCREENS.map((s) => s.slug)).size).toBe(14);
+    for (const s of STARTING_SCREENS) expect([...SCREEN_GROUPS.map((g) => g.key), "favorite"]).toContain(s.group);
+    expect(STARTING_SCREENS.filter((s) => s.group === "favorite").map((s) => s.slug)).toEqual(["the-compounder"]);
     for (const slug of RETIRED_SCREENS) expect(startingScreen(slug)).toBeUndefined();
   });
 
   it("words each as a description, never as a pick", () => {
     for (const s of STARTING_SCREENS) {
-      expect(`${s.title} ${s.why ?? ""} ${describeScreen(s.filters)}`).not.toMatch(/\b(best|top|picks?|winners?|buy|sell|hold|undervalued|overvalued|target|cheap)\b/i);
+      // The Compounder says it finds strong companies, "not cheap ones": a
+      // disclaimer, not a pick.
+      expect(`${s.title} ${(s.why ?? "").replace("not cheap ones", "")} ${describeScreen(s.filters)}`).not.toMatch(/\b(best|top|picks?|winners?|buy|sell|hold|undervalued|overvalued|target|cheap)\b/i);
     }
   });
 
@@ -350,6 +354,9 @@ describe("starting screens", () => {
     expect(describeScreen(s.filters)).toBe("Companies with revenue of at least $500 million and a return on invested capital of 25% or more.");
     expect(screenDescription(s, describeScreen(s.filters))).toContain("Many long-term investors start here.");
     expect(describeScreen(startingScreen("based-in-new-england")!.filters)).toBe("Companies based in New England, with revenue of at least $100 million.");
+    expect(describeScreen(startingScreen("the-compounder")!.filters)).toBe(
+      "Companies with revenue of at least $500 million, average revenue growth over three years of 8% or more, a free cash flow margin of 15% or more, a return on invested capital of 20% or more and net debt of no more than 2 years of free cash flow.",
+    );
   });
 
   it("round-trips each screen through a link, and names a link that matches one", () => {
