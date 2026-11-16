@@ -808,6 +808,8 @@ a.rf-search-item, a.rf-search-item:hover { color: var(--navy); text-decoration: 
 .rf-scr-row-x:hover { color: var(--accent); }
 .rf-scr-row-x:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .rf-scr-median { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 400; letter-spacing: 0.02em; color: var(--gold-ink); }
+/* A fixed median column, so the boxes line up down the panel. */
+.rf-scr-row-line .rf-scr-median { flex: 0 0 170px; }
 .rf-scr-statebar { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: -10px; }
 .rf-scr-states { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 2px 16px; max-height: 260px; overflow-y: auto; padding: 10px 12px; border: 1px solid var(--rule-2); background: var(--paper); }
 .rf-scr-state { display: flex; align-items: center; gap: 8px; min-height: 34px; font-size: 14px; color: var(--ink-2); cursor: pointer; }
@@ -925,6 +927,7 @@ a.rf-search-item, a.rf-search-item:hover { color: var(--navy); text-decoration: 
   /* A row wraps: name and remove on one line, the boxes on the next. */
   .rf-scr-row-name { flex-basis: calc(100% - 50px); }
   .rf-scr-row-x { margin-left: 0; }
+  .rf-scr-row-line .rf-scr-median { flex: 0 1 auto; }
   .rf-scr-range-boxes { width: 100%; }
   .rf-scr-box-wrap { flex: 1; min-width: 0; }
   .rf-scr-box { flex: 1; width: auto; min-width: 0; }
