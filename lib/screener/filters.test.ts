@@ -338,8 +338,20 @@ describe("starting screens", () => {
     for (const s of STARTING_SCREENS) {
       // The Compounder says it finds strong companies, "not cheap ones": a
       // disclaimer, not a pick.
-      expect(`${s.title} ${(s.why ?? "").replace("not cheap ones", "")} ${describeScreen(s.filters)}`).not.toMatch(/\b(best|top|picks?|winners?|buy|sell|hold|undervalued|overvalued|target|cheap)\b/i);
+      expect(`${s.title} ${s.description} ${(s.why ?? "").replace("not cheap ones", "")} ${describeScreen(s.filters)}`).not.toMatch(
+        /\b(best|top|picks?|winners?|buy|sell|hold|undervalued|overvalued|target|cheap)\b/i,
+      );
     }
+  });
+
+  it("gives each a one-line description for the opening page, about eight words", () => {
+    for (const s of STARTING_SCREENS) {
+      expect(s.description.split(/\s+/).length).toBeLessThanOrEqual(12);
+      expect(s.description).toMatch(/\.$/);
+      expect(s.description).not.toMatch(/\n/);
+    }
+    expect(startingScreen("high-return-on-capital")!.description).toBe("Earns a lot on the money tied up in it.");
+    expect(startingScreen("the-compounder")!.description).toBe("High returns on capital, steady growth, strong cash flow and little debt.");
   });
 
   it("sorts each by its own measure, which is one of its filters (or revenue)", () => {

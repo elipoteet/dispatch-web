@@ -53,7 +53,10 @@ export type StartingScreen = {
   // Shown above the title where it isn't the group's.
   kicker?: string;
   title: string;
+  // One line under the title on the opening page, about eight words.
+  description: string;
   // Why investors look at this: a fact about the measure, never advice.
+  // Shown under the title on the screen's own page.
   why: string | null;
   filters: Filters;
   sort: SortKey;
@@ -76,6 +79,7 @@ export const STARTING_SCREENS: readonly StartingScreen[] = [
     group: "favorite",
     kicker: "Eli's favorite screen",
     title: "The Compounder",
+    description: "High returns on capital, steady growth, strong cash flow and little debt.",
     why: "The one I'd start with. Businesses that earn a lot on the money tied up in them, grow every year, and pay their own way. It finds strong companies, not cheap ones, so check what the price assumes before forming a view.",
     filters: F({
       revenue: { min: 5e8, max: null },
@@ -92,6 +96,7 @@ export const STARTING_SCREENS: readonly StartingScreen[] = [
     slug: "high-return-on-capital",
     group: "quality",
     title: "High return on capital",
+    description: "Earns a lot on the money tied up in it.",
     why: "Earns a lot on the money tied up in it, so it can grow without needing much more. Many long-term investors start here.",
     filters: F({ revenue: { min: 5e8, max: null }, roic: { min: 25, max: null } }),
     sort: "roic",
@@ -101,6 +106,7 @@ export const STARTING_SCREENS: readonly StartingScreen[] = [
     slug: "revenue-up-ten-years-in-a-row",
     group: "quality",
     title: "Revenue up ten years in a row",
+    description: "Sales grew every year for a decade.",
     why: "Sales grew every year for a decade, through 2020 and everything since.",
     filters: F({ revenue: { min: 2e9, max: null }, years: { min: 10, max: null } }),
     sort: "growth10y",
@@ -110,6 +116,7 @@ export const STARTING_SCREENS: readonly StartingScreen[] = [
     slug: "strong-free-cash-flow",
     group: "quality",
     title: "Strong free cash flow",
+    description: "Keeps a large share of every sale as cash.",
     why: "Keeps a large share of every sale as cash after running and reinvesting in the business.",
     filters: F({ revenue: { min: 1e9, max: null }, fcf: { min: 25, max: null } }),
     sort: "fcf",
@@ -120,6 +127,7 @@ export const STARTING_SCREENS: readonly StartingScreen[] = [
     slug: "fast-growth-already-profitable",
     group: "growth",
     title: "Fast growth, already profitable",
+    description: "Growing quickly without losing money to do it.",
     why: "Growing quickly without losing money to do it.",
     filters: F({ revenue: { min: 2e8, max: null }, growth1y: { min: 20, max: null }, operating: { min: 10, max: null } }),
     sort: "growth1y",
@@ -129,6 +137,7 @@ export const STARTING_SCREENS: readonly StartingScreen[] = [
     slug: "rule-of-40",
     group: "growth",
     title: "Rule of 40",
+    description: "Growth plus free cash flow margin of 40% or more.",
     why: "A common yardstick for software: growth plus free cash flow margin adds up to 40% or more.",
     filters: F({ revenue: { min: 2e8, max: null }, rule40: { min: 40, max: null } }, { sectors: ["Technology"] }),
     sort: "rule40",
@@ -138,6 +147,7 @@ export const STARTING_SCREENS: readonly StartingScreen[] = [
     slug: "margins-widening",
     group: "growth",
     title: "Margins widening",
+    description: "Each dollar of sales earns more than three years ago.",
     why: "Each new dollar of sales is earning more than it did three years ago.",
     filters: F({ revenue: { min: 2e9, max: null }, marginchange: { min: 10, max: null } }),
     sort: "marginchange",
@@ -147,6 +157,7 @@ export const STARTING_SCREENS: readonly StartingScreen[] = [
     slug: "fast-growth-still-losing-money",
     group: "growth",
     title: "Fast growth, still losing money",
+    description: "Earlier-stage companies, not yet profitable.",
     why: "Earlier-stage companies. The question is when, or whether, profit follows.",
     filters: F({ revenue: { min: 1e8, max: null }, growth1y: { min: 30, max: null }, net: { min: null, max: 0 } }),
     sort: "growth1y",
@@ -157,6 +168,7 @@ export const STARTING_SCREENS: readonly StartingScreen[] = [
     slug: "buying-back-shares",
     group: "returns",
     title: "Buying back shares",
+    description: "Fewer shares, so each one owns more.",
     why: "Fewer shares means each remaining one owns more of the company.",
     filters: F({ revenue: { min: 5e8, max: null }, fcf: { min: 0, max: null }, shares: { min: null, max: -6 } }),
     sort: "shares",
@@ -166,6 +178,7 @@ export const STARTING_SCREENS: readonly StartingScreen[] = [
     slug: "dividends-covered-by-cash-flow",
     group: "returns",
     title: "Dividends covered by cash flow",
+    description: "Pays its dividend with room to spare.",
     why: "Pays its dividend out of free cash flow with room to spare if a year goes badly.",
     filters: F({ revenue: { min: 1e10, max: null }, divfcf: { min: null, max: 40 } }, { dividend: true }),
     sort: "divfcf",
@@ -176,6 +189,7 @@ export const STARTING_SCREENS: readonly StartingScreen[] = [
     slug: "more-cash-than-debt",
     group: "balance",
     title: "More cash than debt",
+    description: "Holds more cash than it owes.",
     why: "Holds more cash and short-term investments than it owes.",
     filters: F({ revenue: { min: 1e9, max: null }, fcf: { min: 0, max: null }, netcash: { min: 0, max: null } }),
     sort: "netcash",
@@ -186,6 +200,7 @@ export const STARTING_SCREENS: readonly StartingScreen[] = [
     slug: "profits-without-the-cash",
     group: "scrutiny",
     title: "Profits without the cash",
+    description: "Reported profit isn't turning into cash.",
     why: "Reported profit isn't turning into cash. Sometimes it's timing, sometimes accounting. Worth knowing which.",
     filters: F({ revenue: { min: 2e8, max: null }, net: { min: 0, max: null }, cashconv: { min: null, max: 0.5 } }),
     sort: "cashconv",
@@ -195,6 +210,7 @@ export const STARTING_SCREENS: readonly StartingScreen[] = [
     slug: "issuing-shares-fast",
     group: "scrutiny",
     title: "Issuing shares fast",
+    description: "New shares split ownership more ways.",
     why: "New shares split ownership more ways. Investors check what the money paid for.",
     filters: F({ revenue: { min: 1e8, max: null }, shares: { min: 30, max: null } }),
     sort: "shares",
@@ -205,6 +221,7 @@ export const STARTING_SCREENS: readonly StartingScreen[] = [
     slug: "based-in-new-england",
     group: "home",
     title: "Based in New England",
+    description: "Headquartered in the six New England states.",
     why: null,
     filters: F({ revenue: { min: 1e8, max: null } }, { states: [...NEW_ENGLAND] }),
     sort: "revenue",

@@ -1,43 +1,45 @@
 import Link from "next/link";
-import { dayLabel, filterLines } from "@/lib/screener/filters";
+import { dayLabel } from "@/lib/screener/filters";
 import { loadOverview } from "@/lib/screener/query";
-import { FAVORITE_SCREEN, GROUPED_SCREENS, SCREEN_GROUPS, type StartingScreen } from "@/lib/screener/screens";
+import { FAVORITE_SCREEN, GROUPED_SCREENS, SCREEN_GROUPS, type ScreenGroup, type StartingScreen } from "@/lib/screener/screens";
 import { BUILD_YOUR_OWN_HREF } from "@/components/screener/ScreenerResults";
 
 // The screener's opening view: what it is, the starting screens grouped under
-// the question each answers (the addendum, 7 November 2026), each card with
-// its title, why investors look, its filters in plain words and a live
-// count; then a way to build your own, and three things to know. Eli's own
-// screen sits first, on its own, in the same card as the others (14
-// November 2026).
-function ScreenCard({ s, n, count }: { s: StartingScreen; n: number | null; count: number | undefined }) {
+// the question each answers (the addendum, 7 November 2026), one slim row
+// each with its title, a one-line description and a live count, in two
+// columns at desktop width so the whole set fits on about one screen (Eli's
+// mockup, 16 November 2026); then a way to build your own, and three things
+// to know. Eli's own screen sits first, full width, with a gold border. Each
+// screen's filters and its longer why-line are on its own page.
+function ScreenRow({ s, count }: { s: StartingScreen; count: number | undefined }) {
   return (
     <li>
-      <Link href={`/screener/${s.slug}`} className="rf-scr-card" prefetch={false}>
-        <span className="rf-scr-card-n">{n == null ? "" : String(n).padStart(2, "0")}</span>
-        <span className="rf-scr-card-title">{s.title}</span>
-        {s.why && <span className="rf-scr-card-why">{s.why}</span>}
-        <span className="rf-scr-card-filters">
-          {filterLines(s.filters, { plain: true }).map((line) => (
-            <span key={line.key}>{line.text}</span>
-          ))}
+      <Link href={`/screener/${s.slug}`} className="rf-scr-row-link" prefetch={false}>
+        <span className="rf-scr-row-text">
+          <span className="rf-scr-row-title">{s.title}</span>
+          <span className="rf-scr-row-desc">{s.description}</span>
         </span>
-        <span className="rf-scr-card-foot">
-          <span>{count != null ? `${count.toLocaleString("en-US")} ${count === 1 ? "company" : "companies"}` : " "}</span>
-          <span aria-hidden="true" className="rf-scr-card-arrow">
-            →
-          </span>
+        <span className="rf-scr-row-count">{count != null ? `${count.toLocaleString("en-US")} ${count === 1 ? "company" : "companies"}` : ""}</span>
+        <span aria-hidden="true" className="rf-scr-row-arrow">
+          →
         </span>
       </Link>
     </li>
   );
 }
 
+// Left: quality and growth. Right: the other four.
+const COLUMNS: readonly (readonly ScreenGroup[])[] = [
+  ["quality", "growth"],
+  ["returns", "balance", "scrutiny", "home"],
+];
+
 export async function ScreenerHome() {
   const overview = await loadOverview();
   const counts = overview.ok ? overview.data.counts : null;
   const about = overview.ok ? `about ${(Math.round(overview.data.total / 100) * 100).toLocaleString("en-US")}` : "about 4,600";
   const updated = overview.ok ? dayLabel(overview.data.updated) : null;
+  const favCount = counts?.[FAVORITE_SCREEN.slug];
 
   return (
     <section className="page active rf" id="page-screener">
@@ -58,43 +60,51 @@ export async function ScreenerHome() {
           </p>
         )}
 
-        <section className="rf-scr-section rf-scr-favorite" aria-labelledby="scr-favorite">
+        <section className="rf-scr-section rf-scr-start" aria-labelledby="scr-start">
           <div>
-            <div className="rf-lbl rf-kicker" id="scr-favorite">
-              {FAVORITE_SCREEN.kicker}
-            </div>
-          </div>
-          <ol className="rf-scr-cards rf-scr-cards-one">
-            <ScreenCard s={FAVORITE_SCREEN} n={null} count={counts?.[FAVORITE_SCREEN.slug]} />
-          </ol>
-        </section>
-
-        <section className="rf-scr-section" aria-labelledby="scr-start">
-          <div>
-            <div className="rf-lbl rf-kicker">Starting screens</div>
             <h2 className="rf-h2" id="scr-start">
               Start with a question
             </h2>
             <p className="rf-dek">Each screen is a set of filters you can open, sort and change.</p>
           </div>
-          {SCREEN_GROUPS.map((g) => {
-            const screens = GROUPED_SCREENS.filter((s) => s.group === g.key);
-            if (!screens.length) return null;
-            return (
-              <section key={g.key} className="rf-scr-question" aria-labelledby={`scr-q-${g.key}`}>
-                <h3 className="rf-scr-q" id={`scr-q-${g.key}`}>
-                  <span className="rf-lbl">{g.label}</span>
-                  <span className="rf-scr-q-text">{g.question}</span>
-                </h3>
-                <ol className="rf-scr-cards" start={GROUPED_SCREENS.indexOf(screens[0]) + 1}>
-                  {screens.map((s) => (
-                    // Numbered through all the groups, in the list's order.
-                    <ScreenCard key={s.slug} s={s} n={GROUPED_SCREENS.indexOf(s) + 1} count={counts?.[s.slug]} />
-                  ))}
-                </ol>
-              </section>
-            );
-          })}
+
+          <Link href={`/screener/${FAVORITE_SCREEN.slug}`} className="rf-scr-row-link rf-scr-fav" prefetch={false} aria-label={`${FAVORITE_SCREEN.kicker}: ${FAVORITE_SCREEN.title}`}>
+            <span className="rf-lbl rf-scr-fav-kicker">{FAVORITE_SCREEN.kicker}</span>
+            <span className="rf-scr-row-text">
+              <span className="rf-scr-row-title">{FAVORITE_SCREEN.title}</span>
+              <span className="rf-scr-row-desc">{FAVORITE_SCREEN.description}</span>
+            </span>
+            <span className="rf-scr-row-count">{favCount != null ? `${favCount.toLocaleString("en-US")} ${favCount === 1 ? "company" : "companies"}` : ""}</span>
+            <span aria-hidden="true" className="rf-scr-row-arrow">
+              →
+            </span>
+          </Link>
+
+          <div className="rf-scr-columns">
+            {COLUMNS.map((keys, i) => (
+              <div key={i} className="rf-scr-column">
+                {keys.map((key) => {
+                  const g = SCREEN_GROUPS.find((x) => x.key === key)!;
+                  const screens = GROUPED_SCREENS.filter((s) => s.group === key);
+                  if (!screens.length) return null;
+                  return (
+                    <section key={key} className="rf-scr-question" aria-labelledby={`scr-q-${key}`}>
+                      <h3 className="rf-scr-q" id={`scr-q-${key}`}>
+                        <span className="rf-lbl">{g.label}</span>
+                        <span className="rf-scr-q-text">{g.question}</span>
+                      </h3>
+                      <ul className="rf-scr-rows-list">
+                        {screens.map((s) => (
+                          <ScreenRow key={s.slug} s={s} count={counts?.[s.slug]} />
+                        ))}
+                      </ul>
+                    </section>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+          {counts && <p className="rf-scr-updated">Numbers are companies matching each screen tonight. Open any screen to see its exact filters.</p>}
         </section>
 
         <section className="rf-scr-section rf-scr-build" aria-labelledby="scr-build">
