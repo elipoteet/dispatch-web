@@ -1,6 +1,6 @@
 # Phase eleven: the opening page, compact (16 November 2026)
 
-Branch `feat/screener-home` from master (24bc5da), not merged. **Combined with the filter panel redesign on Eli's word (16 November): `feat/filter-panel` is merged into this branch (ff51ab5), so one preview carries both: https://dispatch-7grhdsouf-dispatchteam.vercel.app.** The opening page alone was first previewed at https://dispatch-r36kxc6c2-dispatchteam.vercel.app. Brief: Eli's message of 16 November with the "Opening page, compact" mockup.
+Branch `feat/screener-home` from master (24bc5da), not merged. **Combined with the filter panel redesign on Eli's word (16 November): `feat/filter-panel` is merged into this branch (ff51ab5), so one preview carries both. After the audit fixes (bdf800d) the preview is https://dispatch-kpnnfhhc7-dispatchteam.vercel.app; the first combined preview was https://dispatch-7grhdsouf-dispatchteam.vercel.app.** The opening page alone was first previewed at https://dispatch-r36kxc6c2-dispatchteam.vercel.app. Brief: Eli's message of 16 November with the "Opening page, compact" mockup.
 
 ## What changed on /screener
 

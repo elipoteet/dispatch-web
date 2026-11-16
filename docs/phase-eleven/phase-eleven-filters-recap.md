@@ -1,6 +1,6 @@
 # Phase eleven: the filter panel, redesigned (16 November 2026)
 
-Branch `feat/filter-panel` (1d651f2), first previewed at https://dispatch-afsm7yior-dispatchteam.vercel.app, not merged. **Since merged into `feat/screener-home` (ff51ab5) on Eli's word, so the combined preview https://dispatch-7grhdsouf-dispatchteam.vercel.app carries the panel and the compact opening page together.** Brief: Eli's message of 16 November with the mockup, plus two additions at the plan stage (a change count on the submit button; a hint under an empty new row).
+Branch `feat/filter-panel` (1d651f2), first previewed at https://dispatch-afsm7yior-dispatchteam.vercel.app, not merged. **Since merged into `feat/screener-home` (ff51ab5) on Eli's word, so one preview carries the panel and the compact opening page together: after the audit fixes (bdf800d), https://dispatch-kpnnfhhc7-dispatchteam.vercel.app.** Brief: Eli's message of 16 November with the mockup, plus two additions at the plan stage (a change count on the submit button; a hint under an empty new row).
 
 ## What changed on the page
 
