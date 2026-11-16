@@ -70,7 +70,7 @@ npx vitest run lib/sec/normalize.test.ts -t "name"  # one test by name
 - The page: `/screener` and `/screener/[screen]` (`app/screener/`, `components/screener/`).
   - The whole screen lives in the link. `filters.ts` reads and writes it (pure, shared by the page and the browser's filter panel); nonsense in a link is ignored, never an error.
   - `query.ts` filters, sorts and pages in the database with the public key, and returns a failure reason instead of throwing, so the page answers 200 with an inline message.
-  - The starting screens are defined in `screens.ts` (thirteen, from `docs/phase-eleven/phase-eleven-screens.md`, each sorted by its own measure); each has its own indexable page, and retired ones redirect in `next.config.ts`. Any other combination in the link is `noindex` with `/screener` as canonical.
+  - The starting screens are defined in `screens.ts` (thirteen from `docs/phase-eleven/phase-eleven-screens.md`, plus The Compounder, Eli's own, shown alone at the top of /screener; each sorted by its own measure); each has its own indexable page, and retired ones redirect in `next.config.ts`. Any other combination in the link is `noindex` with `/screener` as canonical.
   - Every filter's plain name, one-line definition and unit live in `filters.ts` (`RANGE_FILTERS`); a new measure needs a column (a migration), a `METRICS` entry and a filter there.
   - Links to a company's research file use `prefetch={false}`: prefetching a file loads its data.
 - Frames traps:
@@ -91,7 +91,7 @@ npx vitest run lib/sec/normalize.test.ts -t "name"  # one test by name
   - `lib/supabase/server.ts`: per request, with the user's session.
   - `client.ts`: in the browser.
   - `service.ts`: `createServiceRoleClient` bypasses row-level security, for SEC writes and the cron; `createPublicClient` does anonymous reads.
-- Migrations are SQL files in `supabase/migrations/` that Eli pastes into the Supabase dashboard by hand; there is no migration runner. Everything through `0029` (the screener's tables, publish function, new measures and medians, pasted 5 to 7 November 2026) is applied, and the next is `0030`.
+- Migrations are SQL files in `supabase/migrations/` that Eli pastes into the Supabase dashboard by hand; there is no migration runner. Everything through `0030` (the screener's tables, publish function, measures and medians, pasted 5 to 15 November 2026) is applied, and the next is `0031`.
 - The database still holds the social, leaderboard and paper-trading tables. Leave them in place, and don't alter a live table without Eli's sign-off (which is why the version stamps reuse an existing column).
 - The untracked top-level `migrations/` folder is a stray copy of the older migrations.
 
