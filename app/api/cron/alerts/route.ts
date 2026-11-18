@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { refuseCron } from "@/lib/cron";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { loadReport } from "@/lib/analysis/loadReport";
 import { detectAlerts, maState, rsiState, type TickerState } from "@/lib/analysis/alertState";
@@ -116,13 +117,12 @@ async function runAlerts(db: ReturnType<typeof createServiceRoleClient>): Promis
 }
 
 // Vercel Cron sends a GET request with `Authorization: Bearer $CRON_SECRET`
-// when CRON_SECRET is set — verified here so the endpoint can't be
-// triggered by a random visitor hitting the URL.
+// when CRON_SECRET is set — verified in refuseCron (lib/cron.ts) so the
+// endpoint can't be triggered by a random visitor hitting the URL, and never
+// runs on a preview deployment.
 export async function GET(request: Request) {
-  const auth = request.headers.get("authorization");
-  if (!process.env.CRON_SECRET || auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const refused = refuseCron(request);
+  if (refused) return refused;
   const started = Date.now();
   const db = createServiceRoleClient();
 

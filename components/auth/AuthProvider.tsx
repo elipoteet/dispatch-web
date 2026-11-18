@@ -11,14 +11,11 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue>({ user: null, refreshUser: async () => {} });
 
-export function AuthProvider({
-  initialUser,
-  children,
-}: {
-  initialUser: User | null;
-  children: React.ReactNode;
-}) {
-  const [user, setUser] = useState<User | null>(initialUser);
+// Who is signed in, read in the browser. The server no longer passes the
+// user down (app/layout.tsx), so pages can be cached; the session arrives
+// with the first auth event, a moment after the page loads.
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     const supabase = createClient();

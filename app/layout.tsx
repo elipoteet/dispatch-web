@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./research-file.css";
-import { createClient } from "@/lib/supabase/server";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { AuthModalProvider } from "@/components/auth/AuthModalContext";
 import { AuthModal } from "@/components/auth/AuthModal";
@@ -53,15 +52,16 @@ const THEME_INIT_SCRIPT = `
 })();
 `;
 
-export default async function RootLayout({
+// No request-time reads here (no session, cookies or headers): anything the
+// root layout reads per request makes every page on the site render per
+// request, which spent the Hobby plan's 4 hours of Active CPU a month
+// (account paused 17 November 2026). Who is signed in is read in the browser
+// (components/auth/AuthProvider.tsx).
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   return (
     <html lang="en">
@@ -75,7 +75,7 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body>
-        <AuthProvider initialUser={user}>
+        <AuthProvider>
           <AuthModalProvider>
             <Masthead />
             <TopNav />

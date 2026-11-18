@@ -14,6 +14,10 @@ import { MarketsTape } from "@/components/home/MarketsTape";
 // loads; example companies with one fact each from their filings; what a file
 // holds; the tools to come; and how it works.
 
+// Cached and rebuilt at most every five minutes, the life of the markets
+// tape's quotes (lib/research/markets.ts); the example cards keep for an hour.
+export const revalidate = 300;
+
 export const metadata: Metadata = {
   title: { absolute: "The Dispatch — Free research on every U.S. public company" },
   description:

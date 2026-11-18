@@ -44,6 +44,45 @@ describe("splitSteps", () => {
     expect(flat[0].factor).toBe(1);
   });
 
+  it("gives exactly the answer the old whole-segment sort gave, on twelve years of noisy sessions", () => {
+    // The previous splitSteps, which sorted each segment again for every
+    // session: the reference the faster version must match number for number.
+    const reference = (raw: DatedClose[], adj: DatedClose[]) => {
+      const med = (v: number[]) => {
+        const s = v.slice().sort((a, b) => a - b);
+        const m = Math.floor(s.length / 2);
+        return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+      };
+      const byDate = new Map(adj.map((b) => [b.date, b.close]));
+      const ratios: { date: string; r: number }[] = [];
+      for (const u of raw.slice().sort((a, b) => (a.date < b.date ? -1 : 1))) {
+        const a = byDate.get(u.date);
+        if (a && a > 0 && u.close > 0) ratios.push({ date: u.date, r: u.close / a });
+      }
+      if (ratios.length === 0) return [];
+      const segs: { from: string; values: number[] }[] = [{ from: ratios[0].date, values: [ratios[0].r] }];
+      for (let i = 1; i < ratios.length; i++) {
+        const seg = segs[segs.length - 1];
+        const { r } = ratios[i];
+        if (Math.abs(r / med(seg.values) - 1) <= 0.02) {
+          seg.values.push(r);
+          continue;
+        }
+        const next = ratios.slice(i + 1, i + 3);
+        if (next.length === 2 && next.every((n) => Math.abs(n.r / r - 1) <= 0.01)) segs.push({ from: ratios[i].date, values: [r] });
+      }
+      return segs.filter((s, i) => s.values.length >= 3 || i === segs.length - 1).map((s) => ({ from: s.from, factor: med(s.values) }));
+    };
+    const long = sessions("2014-01-01", "2026-11-13");
+    // Rounded closes and a few bad prints make the ratios noisy, as real ones are.
+    const adj: DatedClose[] = long.map((date, i) => ({ date, close: Math.round((20 + i * 0.07 + Math.sin(i / 5) * 3) * 100) / 100 }));
+    const factor = (date: string) => (date < "2018-05-14" ? 6 : date < "2021-07-20" ? 3 : date < "2024-06-10" ? 1.5 : 1);
+    const raw: DatedClose[] = adj.map((b, i) => ({ date: b.date, close: Math.round(b.close * factor(b.date) * (i % 97 === 41 ? 1.4 : 1) * 100) / 100 }));
+    const got = splitSteps(raw, adj);
+    expect(got).toEqual(reference(raw, adj));
+    expect(got.map((s) => s.from)).toEqual(["2014-01-01", "2018-05-14", "2021-07-20", "2024-06-10"]);
+  });
+
   it("handles a reverse split, where old shares become fewer", () => {
     // 1-for-8 on 1 March 2023: before it, one share counted is an eighth today.
     const t = (date: string) => (date < "2023-03-01" ? 1 / 8 : 1);

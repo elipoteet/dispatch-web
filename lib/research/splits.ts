@@ -27,10 +27,43 @@ const JUMP = 0.02;
 const CONFIRM = 2;
 const AGREE = 0.01;
 
-function median(values: number[]): number {
-  const s = values.slice().sort((a, b) => a - b);
+function medianOfSorted(s: number[]): number {
   const mid = Math.floor(s.length / 2);
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+}
+
+// A segment's ratios, kept in order as they arrive, so its median is read
+// without sorting. Sorting the whole segment again for every new session was
+// quadratic: about half a second of CPU on every Valuation and Earnings visit
+// for a company with twelve years of prices and a split (NVIDIA, measured 17
+// November 2026). The median is the same number either way.
+class SortedRatios {
+  readonly sorted: number[] = [];
+
+  add(value: number): void {
+    let lo = 0;
+    let hi = this.sorted.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (this.sorted[mid] <= value) lo = mid + 1;
+      else hi = mid;
+    }
+    this.sorted.splice(lo, 0, value);
+  }
+
+  get length(): number {
+    return this.sorted.length;
+  }
+
+  median(): number {
+    return medianOfSorted(this.sorted);
+  }
+}
+
+function ratiosSegment(from: string, first: number): { from: string; values: SortedRatios } {
+  const values = new SortedRatios();
+  values.add(first);
+  return { from, values };
 }
 
 export function splitSteps(unadjusted: DatedClose[], adjusted: DatedClose[]): SplitStep[] {
@@ -42,17 +75,17 @@ export function splitSteps(unadjusted: DatedClose[], adjusted: DatedClose[]): Sp
   }
   if (ratios.length === 0) return [];
 
-  const segments: { from: string; values: number[] }[] = [{ from: ratios[0].date, values: [ratios[0].r] }];
+  const segments = [ratiosSegment(ratios[0].date, ratios[0].r)];
   for (let i = 1; i < ratios.length; i++) {
     const seg = segments[segments.length - 1];
     const { r } = ratios[i];
-    if (Math.abs(r / median(seg.values) - 1) <= JUMP) {
-      seg.values.push(r);
+    if (Math.abs(r / seg.values.median() - 1) <= JUMP) {
+      seg.values.add(r);
       continue;
     }
     const next = ratios.slice(i + 1, i + 1 + CONFIRM);
     if (next.length === CONFIRM && next.every((n) => Math.abs(n.r / r - 1) <= AGREE)) {
-      segments.push({ from: ratios[i].date, values: [r] });
+      segments.push(ratiosSegment(ratios[i].date, r));
     }
     // Otherwise a one-off bad print: skipped.
   }
@@ -60,7 +93,7 @@ export function splitSteps(unadjusted: DatedClose[], adjusted: DatedClose[]): Sp
   // A confirmed level always has at least three sessions, so a shorter segment
   // is a bad print on the very first day. Drop it.
   const kept = segments.filter((s, i) => s.values.length >= 3 || i === segments.length - 1);
-  return kept.map((s) => ({ from: s.from, factor: median(s.values) }));
+  return kept.map((s) => ({ from: s.from, factor: s.values.median() }));
 }
 
 // The factor for a share count dated `date`. Before the first step, the first
