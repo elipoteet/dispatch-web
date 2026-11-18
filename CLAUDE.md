@@ -27,11 +27,12 @@ npx vitest run lib/sec/normalize.test.ts -t "name"  # one test by name
 - `TWELVE_DATA_FORCE_BUSY=1` simulates a used-up Twelve Data allowance, for testing the fallbacks.
 - `SCREENER_FORCE_FAILURE=unavailable` (or `not-built`) makes the screener page show its inline failure message, for checking it on `next start`.
 - On Windows, Git Bash rewrites arguments that start with `/` (e.g. `/research/nvda`) into file paths. Use PowerShell for scripts that take URL paths.
+- `node scripts/cpu/measure.mjs <repo> <port> <out.json>` measures server CPU per page on a production build. It runs `next start` behind `scripts/cpu/local-guard.mjs`, which reads the live database but refuses every write. Preload the guard (`NODE_OPTIONS=--import=file:///…/local-guard.mjs`) to run the site locally against production data safely.
 
 ## Architecture
 
 ### The research file: `/research/[ticker]`
-- `proxy.ts` (Next 16's name for middleware) sends any uppercase `/research/...` path to its lowercase form with a 308, then refreshes the Supabase session.
+- `proxy.ts` (Next 16's name for middleware) runs only on research, screener and member API paths (its `matcher`). It sends any uppercase `/research/...` path to its lowercase form with a 308, rewrites screener links that carry a query string to `app/screener-view`, and refreshes the Supabase session only for `/api/watchlist` and `/api/alerts`.
 - `app/research/[ticker]/layout.tsx` resolves the ticker once for every tab: redirect, 404, header, tabs. There is deliberately **no `loading.tsx` at or above this level**. A loading boundary starts streaming before the layout runs, and then `notFound()` and `permanentRedirect()` answer 200 instead of a real 404 or 308.
 - `loadCompanyPage` (`lib/research/company.ts`) gathers everything about one company. It is wrapped in React `cache()` so the layout and the tab page share one set of lookups per request. Funds, ETFs and other symbols without SEC reports get only the Overview with a price chart; `filesReports` gates the other five tabs (Financials, Valuation, Earnings, Insiders, Filings).
 - Each tab's data shaping lives in `lib/research/*` (pure, unit-tested), and its UI in `components/company/`. The file's styles are in `app/research-file.css`, scoped under `.rf`.
@@ -68,6 +69,7 @@ npx vitest run lib/sec/normalize.test.ts -t "name"  # one test by name
   - Hand-checked lists, each in one file: `sectorCorrections.ts` (sectors SIC gets wrong, checked against GICS for every company over $5B revenue; a move into or out of Technology moves a company into or out of the Rule of 40 screen) and `customerMoney.ts` (the rule for payments, payroll and fintech companies holding customers' money, whose free cash flow margin and net cash are n/a as at a bank, plus its two exceptions).
   - Balance sheet pages: where a company tags securities or debt due within a year with its own element, or splits them by business, the frames miss them (NVIDIA's $52.0B of marketable securities; Caterpillar's $7.1B of debt due within a year). The job reads the balance sheet page of that annual report (`lib/sec/statementPage.ts`, `rows.ts`, `needsStatementRead`), trusts it only when its cash line matches the frames' cash, and carries the read over until the filing changes; a failed read leaves net cash n/a. Interest expense for ROIC's pretax fallback is fetched the same way from the company's concept file (`needsInterestFix`).
 - The page: `/screener` and `/screener/[screen]` (`app/screener/`, `components/screener/`).
+  - Both are cached (ISR, six hours) and refreshed when the nightly job publishes (`lib/screener/revalidate.ts`: `revalidateTag("screener", "max")` plus `revalidatePath`; `/api/revalidate/screener` does the same after a run started elsewhere). A link with anything after `?` is rewritten by `proxy.ts` to `app/screener-view/` and rendered per request behind the same address. The shortest cache timer inside a cached page sets how often the whole page rebuilds, so the counts and medians in `query.ts` are cached for six hours too.
   - The whole screen lives in the link. `filters.ts` reads and writes it (pure, shared by the page and the browser's filter panel); nonsense in a link is ignored, never an error.
   - `query.ts` filters, sorts and pages in the database with the public key, and returns a failure reason instead of throwing, so the page answers 200 with an inline message.
   - The starting screens are defined in `screens.ts` (thirteen from `docs/phase-eleven/phase-eleven-screens.md`, plus The Compounder, Eli's own, shown alone at the top of /screener; each sorted by its own measure); each has its own indexable page, and retired ones redirect in `next.config.ts`. Any other combination in the link is `noindex` with `/screener` as canonical.
@@ -83,17 +85,29 @@ npx vitest run lib/sec/normalize.test.ts -t "name"  # one test by name
 
 ### Background work
 - A person's first visit to a tab can start storage work through `after()`: loading peers' SEC files, two years of insider filings, the 10-K comparison. It runs only when `isCrawler()` (`lib/research/crawler.ts`) is false, so crawlers can't fill the database. Headless browsers count as crawlers, so test this with a desktop User-Agent.
+- Both cron routes go through `refuseCron` (`lib/cron.ts`): the secret is required, and a preview deployment refuses even with it. Vercel calls crons on production only; this stops a call to a preview's copy of the route.
 - `/api/cron/screener` runs daily at 09:00 UTC (`vercel.json`; see Screener above).
 - `/api/cron/alerts` runs daily (`vercel.json`). It first runs the watchlist RSI and moving-average alerts, which still use the old memo engine in `lib/analysis/` and wait 8 s between tickers to stay inside the Twelve Data allowance. It then refreshes insider filings and filing changes until a 50 s deadline.
 
 ### Supabase
 - Clients:
-  - `lib/supabase/server.ts`: per request, with the user's session.
+  - `lib/supabase/server.ts`: per request, with the user's session. Only the auth callback and the member API routes use it. The root layout must not: who is signed in is read in the browser (`components/auth/AuthProvider.tsx`), so pages can be cached.
   - `client.ts`: in the browser.
   - `service.ts`: `createServiceRoleClient` bypasses row-level security, for SEC writes and the cron; `createPublicClient` does anonymous reads.
 - Migrations are SQL files in `supabase/migrations/` that Eli pastes into the Supabase dashboard by hand; there is no migration runner. Everything through `0030` (the screener's tables, publish function, measures and medians, pasted 5 to 15 November 2026) is applied, and the next is `0031`.
 - The database still holds the social, leaderboard and paper-trading tables. Leave them in place, and don't alter a live table without Eli's sign-off (which is why the version stamps reuse an existing column).
 - The untracked top-level `migrations/` folder is a stray copy of the older migrations.
+
+## Active CPU budget (Vercel Hobby)
+
+- The Hobby plan allows **4 hours of Active CPU a month** for the whole account. Going over pauses every deployment, and a paused Hobby account stays paused until Vercel support unpauses it. That happened on 17 November 2026, at 13 h 53 min: every page rendered per request, and crawlers read research files for nearly all 4,600 companies the screener links to. Read `docs/cpu-budget/cpu-budget-recap.md`.
+- Rules that follow from it:
+  - Nothing in the root layout may read cookies, headers or the session. One request-time read there makes every page on the site render per request.
+  - A page that is the same for everyone is cached (ISR, or static) and refreshed on an event or a long timer. Check the build's route table: such pages must show ○ or ●, not ƒ.
+  - Keep the proxy's `matcher` narrow: it runs, and is billed, on every request it matches, cached pages included.
+  - Measure a heavy page's CPU before and after a change (`scripts/cpu/measure.mjs`). A quadratic loop over price history cost 0.5 s a visit until 18 November 2026.
+  - robots.txt keeps crawlers out of query-string variants and turns away AI training crawlers; the Vercel Firewall's AI Crawlers rule should be on Deny.
+- `.github/workflows/vercel-usage.yml` checks Active CPU daily (`scripts/vercel-usage-check.mjs`, the `VERCEL_TOKEN` secret) and opens a GitHub issue at 70% of the limit.
 
 ## Product rules (settled, don't reopen)
 
@@ -118,7 +132,7 @@ npx vitest run lib/sec/normalize.test.ts -t "name"  # one test by name
 ## Workflow
 
 - `master` auto-deploys to production on Vercel, and every pushed branch gets a preview deploy. Work on a branch and merge to `master` only when Eli explicitly says to go live.
-- **Done checklist, before any merge to master:** `npx tsc --noEmit`, `npm test`, `npm run build` and lint at baseline; a real `next start` checked with curl; and the About page. Read `app/about/page.tsx` against what the site actually does after the change. If a feature was added, removed or renamed, update the About page in the same branch, and say in the recap what changed on it. A merge that leaves the About page describing something the site no longer does, or missing something it now does, is not done. Every future build brief carries this rule in its "before calling any stage done" list.
+- **Done checklist, before any merge to master:** `npx tsc --noEmit`, `npm test`, `npm run build` and lint at baseline; the build's route table (pages that are the same for everyone still ○ or ●; see Active CPU budget); a real `next start` checked with curl; and the About page. Read `app/about/page.tsx` against what the site actually does after the change. If a feature was added, removed or renamed, update the About page in the same branch, and say in the recap what changed on it. A merge that leaves the About page describing something the site no longer does, or missing something it now does, is not done. Every future build brief carries this rule in its "before calling any stage done" list.
 - Phased work follows a brief in its own `docs/phase-<name>/` folder. Each stage ends with a recap in that folder (`docs/phase-<name>/phase-<name>-stage-X-recap.md`), a push, and a stop for Eli to check the preview.
 - To find a commit's preview URL without the gh CLI: `GET https://api.github.com/repos/elipoteet/dispatch-web/deployments?sha=<sha>`, then read that deployment's statuses for `environment_url`.
 - Eli often has `next start -p 3000` running locally. Ask before rebuilding `.next` or restarting it.
