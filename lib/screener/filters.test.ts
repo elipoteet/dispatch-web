@@ -1,18 +1,25 @@
 import { describe, expect, it } from "vitest";
 import {
+  CHOICE_FILTERS,
   MAX_SHOW,
   NO_FILTERS,
   PAGE_SIZE,
+  PICKER_ENTRIES,
+  PICKER_GROUPS,
   RANGE_FILTERS,
+  activeKeys,
   boundLabel,
   boxText,
   chipText,
   conditions,
   dayLabel,
   describeScreen,
+  dividendShort,
   filterLines,
+  filtersFromPanel,
   formatFigure,
   isOpeningView,
+  medianShort,
   medianText,
   moneyParam,
   moneyWords,
@@ -23,6 +30,7 @@ import {
   parseView,
   rangeFilter,
   resultColumns,
+  searchFilters,
   sortPhrase,
   sortTarget,
   viewQuery,
@@ -48,13 +56,52 @@ describe("the filter list", () => {
     expect(new Set(RANGE_FILTERS.map((x) => x.param)).size).toBe(RANGE_FILTERS.length);
   });
 
-  it("puts return on invested capital among the main filters, and eighteen more behind More filters", () => {
-    expect(f("roic").group).toBe("Margins and returns");
-    const more = RANGE_FILTERS.filter((x) => ["Profitability", "Spending", "Shareholder returns", "Balance sheet health", "Longer history"].includes(x.group));
-    // The brief's seventeen are fifteen ranges, "pays a dividend" and the
-    // state; the addendum adds three ranges, and The Compounder one more
-    // (years of free cash flow to repay net debt, 14 November 2026).
-    expect(more.length).toBe(15 + 3 + 1);
+  it("places every filter in one of the six picker groups, as Eli set them (16 November 2026)", () => {
+    const by = (g: string) => RANGE_FILTERS.filter((x) => x.group === g).map((x) => x.param);
+    expect(by("Size and growth")).toEqual(["revenue", "growth1y", "growth3y", "nigrowth", "epsgrowth", "growth5y", "growth10y", "years"]);
+    expect(by("Margins and returns")).toEqual(["gross", "operating", "net", "fcf", "roic", "roe", "roa", "marginchange", "rule40", "cashconv"]);
+    expect(by("Spending")).toEqual(["rnd", "capex", "sga"]);
+    expect(by("Balance sheet")).toEqual(["netcash", "de", "current", "ndfcf", "coverage"]);
+    expect(by("Shareholder returns")).toEqual(["shares", "divfcf", "buyfcf"]);
+    expect(by("Sector and headquarters")).toEqual([]);
+    expect(PICKER_GROUPS).toEqual(["Size and growth", "Margins and returns", "Spending", "Balance sheet", "Shareholder returns", "Sector and headquarters"]);
+    expect(PICKER_ENTRIES.filter((e) => e.group === "Shareholder returns").map((e) => e.key)).toEqual(["shares", "divfcf", "buyfcf", "dividend"]);
+  });
+
+  it("shortens one column head only: the full name stays in the panel", () => {
+    expect(f("ndfcf").heading).toBe("Years to repay net debt");
+    expect(f("ndfcf").label).toBe("Years of free cash flow to repay net debt");
+    expect(RANGE_FILTERS.filter((x) => x.heading).map((x) => x.param)).toEqual(["ndfcf"]);
+  });
+
+  it("gives every filter a short description for the picker: a few plain words, no abbreviations", () => {
+    const shorts = PICKER_ENTRIES.map((e) => e.short);
+    expect(PICKER_ENTRIES).toHaveLength(RANGE_FILTERS.length + CHOICE_FILTERS.length);
+    expect(new Set(shorts).size).toBe(shorts.length);
+    for (const e of PICKER_ENTRIES) {
+      expect(e.short.split(/\s+/).length).toBeLessThanOrEqual(8);
+      expect(e.short).not.toMatch(/\.$/);
+      expect(e.short).not.toMatch(/\b(FCF|ROIC|ROE|ROA|EPS|R&D|SG&A|yr|Op\.|Rev\.)\b/);
+      expect(PICKER_GROUPS).toContain(e.group);
+    }
+    expect(rangeFilter("fcf")?.short).toBe("Cash kept from each sale after investing");
+  });
+
+  it("offers every filter in the picker once, by group, with sector and headquarters under their own heading", () => {
+    expect(new Set(PICKER_ENTRIES.map((e) => e.key)).size).toBe(PICKER_ENTRIES.length);
+    expect(PICKER_ENTRIES.map((e) => e.key)).toContain("dividend");
+    expect(PICKER_ENTRIES.filter((e) => e.group === "Sector and headquarters").map((e) => e.key)).toEqual(["sector", "state"]);
+    expect(PICKER_ENTRIES.find((e) => e.key === "dividend")?.group).toBe("Shareholder returns");
+    for (const g of PICKER_GROUPS) expect(PICKER_ENTRIES.some((e) => e.group === g)).toBe(true);
+  });
+
+  it("searches names and short descriptions, every word typed, in any case", () => {
+    expect(searchFilters("debt").map((e) => e.key)).toEqual(["netcash", "de", "current", "ndfcf"]);
+    expect(searchFilters("repay").map((e) => e.key)).toEqual(["ndfcf"]);
+    expect(searchFilters("Sales GREW").map((e) => e.key)).toEqual(["growth1y"]);
+    expect(searchFilters("dividend").map((e) => e.key)).toEqual(["divfcf", "dividend"]);
+    expect(searchFilters("")).toHaveLength(PICKER_ENTRIES.length);
+    expect(searchFilters("zzz")).toEqual([]);
   });
 });
 
@@ -259,10 +306,19 @@ describe("words", () => {
     expect(formatFigure(f("gross"), Number.NaN)).toBe("n/a");
   });
 
-  it("says where the middle company sits", () => {
+  it("says where the middle company sits, in full behind the ? and short beside the boxes", () => {
     expect(medianText(f("roic"), 0.0912)).toBe("Half of companies: above 9.1%");
     expect(medianText(f("revenue"), 412_300_000)).toBe("Half of companies: above $412.3M");
     expect(medianText(f("years"), 1)).toBe("Half of companies: 1 year or more");
+    expect(medianShort(f("roic"), 0.0912)).toBe("Half above 9.1%");
+    // No plus sign on a median; a minus stays.
+    expect(medianText(f("growth1y"), 0.04)).toBe("Half of companies: above 4.0%");
+    expect(medianShort(f("growth1y"), 0.04)).toBe("Half above 4.0%");
+    expect(medianShort(f("shares"), -0.012)).toBe("Half above -1.2%");
+    expect(medianShort(f("marginchange"), 0.021)).toBe("Half above 2.1 pts");
+    expect(medianShort(f("ndfcf"), 1.84)).toBe("Half above 1.8 years");
+    expect(medianShort(f("years"), 1)).toBe("Half at 1 year or more");
+    expect(dividendShort(0.417)).toBe("Paid by 42%");
   });
 
   it("says a card's filters the way a person would", () => {
@@ -338,8 +394,20 @@ describe("starting screens", () => {
     for (const s of STARTING_SCREENS) {
       // The Compounder says it finds strong companies, "not cheap ones": a
       // disclaimer, not a pick.
-      expect(`${s.title} ${(s.why ?? "").replace("not cheap ones", "")} ${describeScreen(s.filters)}`).not.toMatch(/\b(best|top|picks?|winners?|buy|sell|hold|undervalued|overvalued|target|cheap)\b/i);
+      expect(`${s.title} ${s.description} ${(s.why ?? "").replace("not cheap ones", "")} ${describeScreen(s.filters)}`).not.toMatch(
+        /\b(best|top|picks?|winners?|buy|sell|hold|undervalued|overvalued|target|cheap)\b/i,
+      );
     }
+  });
+
+  it("gives each a one-line description for the opening page, about eight words", () => {
+    for (const s of STARTING_SCREENS) {
+      expect(s.description.split(/\s+/).length).toBeLessThanOrEqual(12);
+      expect(s.description).toMatch(/\.$/);
+      expect(s.description).not.toMatch(/\n/);
+    }
+    expect(startingScreen("high-return-on-capital")!.description).toBe("Earns a lot on the money tied up in it.");
+    expect(startingScreen("the-compounder")!.description).toBe("High returns on capital, steady growth, strong cash flow and little debt.");
   });
 
   it("sorts each by its own measure, which is one of its filters (or revenue)", () => {
@@ -357,6 +425,40 @@ describe("starting screens", () => {
     expect(describeScreen(startingScreen("the-compounder")!.filters)).toBe(
       "Companies with revenue of at least $500 million, average revenue growth over three years of 8% or more, a free cash flow margin of 15% or more, a return on invested capital of 20% or more and net debt of no more than 2 years of free cash flow.",
     );
+  });
+
+  // The panel shows a row per filter in use and rebuilds the link from those
+  // rows on Show results. A link opened and applied untouched must come back
+  // the same, for every starting screen and the other kinds of filter.
+  const SAMPLE_LINKS = [
+    "revenue=100m..",
+    "growth1y=-10..5&netcash=-2b..&shares=..-2",
+    "revenue=1b..&sector=technology,health-care&state=ma,nh,outside&dividend=yes",
+    "marginchange=3..&cashconv=0.5..2&ndfcf=..1.5&years=5..",
+  ];
+  it("reproduces every starting screen and sample link from the panel's rows", () => {
+    const links = [...STARTING_SCREENS.map((s) => viewQuery({ filters: s.filters, sort: "revenue", order: "desc", show: PAGE_SIZE, edit: false })), ...SAMPLE_LINKS];
+    for (const q of links) {
+      const { filters } = parseView(Object.fromEntries(new URLSearchParams(q)));
+      const keys = activeKeys(filters);
+      expect(keys).toEqual(filterLines(filters).map((l) => l.key));
+      const boxes = Object.fromEntries(
+        keys.filter((k) => rangeFilter(k)).map((k) => [k, { min: boxText(f(k).unit, filters.ranges[k]?.min ?? null), max: boxText(f(k).unit, filters.ranges[k]?.max ?? null) }]),
+      );
+      const back = filtersFromPanel({ boxes, sectors: filters.sectors, states: filters.states, dividend: filters.dividend });
+      expect(back).toEqual(filters);
+      expect(viewQuery({ filters: back, sort: "revenue", order: "desc", show: PAGE_SIZE, edit: false })).toBe(q);
+    }
+  });
+
+  it("leaves out a row with empty boxes, and reads the rest as a link would", () => {
+    const back = filtersFromPanel({
+      boxes: { roic: { min: "20%", max: "" }, de: { min: "", max: "" }, revenue: { min: "$500M", max: " " } },
+      sectors: ["Technology", "Nonsense"],
+      states: ["MA"],
+      dividend: false,
+    });
+    expect(back).toEqual({ ranges: { revenue: { min: 5e8, max: null }, roic: { min: 20, max: null } }, sectors: ["Technology"], states: ["MA"], dividend: false });
   });
 
   it("round-trips each screen through a link, and names a link that matches one", () => {

@@ -4,13 +4,16 @@ import {
   MAX_SHOW,
   PAGE_SIZE,
   RANGE_FILTERS,
+  activeKeys,
   boxText,
   dayLabel,
   describeScreen,
   dividendShareText,
+  dividendShort,
   filterLines,
   formatFigure,
   hasFilters,
+  medianShort,
   medianText,
   rangeFilter,
   resultColumns,
@@ -81,8 +84,16 @@ export async function ScreenerResults({ view, screen }: { view: View; screen: St
     }),
   );
   const medianLines: Record<string, string> = {};
-  for (const f of RANGE_FILTERS) if (medians[f.column] != null) medianLines[f.param] = medianText(f, medians[f.column]);
-  if (medians.pays_dividend != null) medianLines.dividend = dividendShareText(medians.pays_dividend);
+  const mediansShort: Record<string, string> = {};
+  for (const f of RANGE_FILTERS) {
+    if (medians[f.column] == null) continue;
+    medianLines[f.param] = medianText(f, medians[f.column]);
+    mediansShort[f.param] = medianShort(f, medians[f.column]);
+  }
+  if (medians.pays_dividend != null) {
+    medianLines.dividend = dividendShareText(medians.pays_dividend);
+    mediansShort.dividend = dividendShort(medians.pays_dividend);
+  }
 
   // A phone's Sort menu: the columns shown, each way, then name.
   const sortKeys: SortKey[] = [...columns.map((f) => f.param), "name"];
@@ -123,11 +134,13 @@ export async function ScreenerResults({ view, screen }: { view: View; screen: St
           key={viewQuery(view)}
           chips={chips}
           note={note}
+          active={activeKeys(view.filters)}
           boxes={boxes}
           sectors={view.filters.sectors}
           states={view.filters.states}
           dividend={view.filters.dividend}
-          medians={medianLines}
+          medians={mediansShort}
+          medianLines={medianLines}
           sort={view.sort}
           order={view.order}
           open={view.edit}
@@ -220,7 +233,7 @@ function ResultsTable({ rows, columns, showState, view, link }: { rows: ResultRo
           <tr>
             <SortHead label="Company" sortKey="name" view={view} link={link} />
             {columns.map((f) => (
-              <SortHead key={f.param} label={f.label} sortKey={f.param} view={view} link={link} className={f.param === view.sort ? "is-key" : undefined} />
+              <SortHead key={f.param} label={f.heading ?? f.label} sortKey={f.param} view={view} link={link} className={f.param === view.sort ? "is-key" : undefined} />
             ))}
             <SortHead label="Sector" sortKey="sector" view={view} link={link} className="rf-scr-left" />
             {showState && <th scope="col" className="rf-scr-left">Headquarters</th>}

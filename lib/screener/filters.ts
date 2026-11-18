@@ -21,9 +21,10 @@ import { SECTORS, type Sector } from "@/lib/screener/sectors";
 // money:   dollars
 export type Unit = "money" | "percent" | "points" | "ratio" | "count" | "years";
 
-export const MAIN_GROUPS = ["Size and growth", "Margins and returns", "Balance sheet and shares"] as const;
-export const MORE_GROUPS = ["Profitability", "Spending", "Shareholder returns", "Balance sheet health", "Longer history"] as const;
-export type Group = (typeof MAIN_GROUPS)[number] | (typeof MORE_GROUPS)[number];
+// The picker's six groups (Eli, 16 November 2026). The last holds sector
+// and headquarters, which aren't ranges.
+export const GROUPS = ["Size and growth", "Margins and returns", "Spending", "Balance sheet", "Shareholder returns", "Sector and headquarters"] as const;
+export type Group = (typeof GROUPS)[number];
 
 export type RangeFilter = {
   // Its name in the link.
@@ -33,8 +34,13 @@ export type RangeFilter = {
   // Its plain name: in the filter panel, on a chip, at the head of a column.
   // Never an abbreviation a student wouldn't know.
   label: string;
-  // One line on what it measures, under its name in the panel.
+  // A shorter name for a column head, where the full one is long.
+  heading?: string;
+  // One line on what it measures, behind the "?" in the panel.
   definition: string;
+  // A few words for the picker, under about eight: "Cash kept from each sale
+  // after investing".
+  short: string;
   // After "Sorted by": "return on invested capital".
   noun: string;
   // In the sentence that restates a screen: "a return on invested capital"
@@ -46,40 +52,38 @@ export type RangeFilter = {
   group: Group;
 };
 
-// In the brief's order: the main ten (with return on invested capital, the
-// addendum's addition) up front, the rest behind "More filters".
+// In the brief's order, which is also the link's fixed order (filterQuery):
+// moving an entry would change every link, so new filters go at the end.
 export const RANGE_FILTERS: readonly RangeFilter[] = [
-  // —— Main ——
-  { param: "revenue", column: "revenue", label: "Revenue", definition: "Sales in the latest fiscal year.", noun: "revenue", phrase: "revenue", unit: "money", signed: false, group: "Size and growth" },
-  { param: "growth1y", column: "revenue_growth_1y", label: "Revenue growth, 1 year", definition: "How much sales grew over the latest fiscal year. n/a when the year before had under $10 million of sales.", noun: "1-year revenue growth", phrase: "1-year revenue growth", unit: "percent", signed: true, group: "Size and growth" },
-  { param: "growth3y", column: "revenue_growth_3y", label: "Revenue growth, 3-year average", definition: "Average yearly sales growth over the last three fiscal years. n/a when the first year had under $10 million of sales.", noun: "3-year revenue growth", phrase: "average revenue growth over three years", unit: "percent", signed: true, group: "Size and growth" },
-  { param: "gross", column: "gross_margin", label: "Gross margin", definition: "Share of sales left after the direct cost of what was sold. n/a for banks, insurers, REITs and utilities, and where the cost a company files leaves most of its costs out.", noun: "gross margin", phrase: "a gross margin", unit: "percent", signed: false, group: "Margins and returns" },
-  { param: "operating", column: "operating_margin", label: "Operating margin", definition: "Share of sales left as profit from running the business, before interest and tax.", noun: "operating margin", phrase: "an operating margin", unit: "percent", signed: false, group: "Margins and returns" },
-  { param: "net", column: "net_margin", label: "Net margin", definition: "Share of sales left as profit after every cost, interest and tax.", noun: "net margin", phrase: "a net margin", unit: "percent", signed: false, group: "Margins and returns" },
-  { param: "fcf", column: "fcf_margin", label: "Free cash flow margin", definition: "Cash the business brought in, less what it spent on equipment and buildings, as a share of sales. Calculated by The Dispatch. n/a for banks, insurers and REITs, and for companies holding their customers' money (payments, payroll).", noun: "free cash flow margin", phrase: "a free cash flow margin", unit: "percent", signed: false, group: "Margins and returns" },
-  { param: "roic", column: "roic", label: "Return on invested capital", definition: "Operating profit after tax, as a share of the money tied up in the business: debt plus equity, less cash. Tax at the company's own rate, or 21% where that can't be worked out. n/a for banks, insurers, REITs and companies holding their customers' money; and when that money is under a tenth of total assets, or the return is above 100% and it's under a quarter.", noun: "return on invested capital", phrase: "a return on invested capital", unit: "percent", signed: false, group: "Margins and returns" },
-  { param: "netcash", column: "net_cash", label: "Net cash or debt", definition: "Cash and short-term investments, less all debt. Below zero means more debt than cash. n/a for banks and insurers, and for companies holding their customers' money.", noun: "net cash", phrase: "net cash", unit: "money", signed: false, group: "Balance sheet and shares" },
-  { param: "shares", column: "share_change_1y", label: "Share count change, 1 year", definition: "Change in the number of shares over the year. Below zero usually means buybacks; above, new shares issued.", noun: "1-year share count change", phrase: "a 1-year change in share count", unit: "percent", signed: true, group: "Balance sheet and shares" },
-  // —— More filters ——
-  { param: "roe", column: "roe", label: "Return on equity", definition: "Net income as a share of shareholders' equity. n/a when equity is zero or below.", noun: "return on equity", phrase: "a return on equity", unit: "percent", signed: false, group: "Profitability" },
-  { param: "roa", column: "roa", label: "Return on assets", definition: "Net income as a share of everything the company owns.", noun: "return on assets", phrase: "a return on assets", unit: "percent", signed: false, group: "Profitability" },
-  { param: "nigrowth", column: "net_income_growth_1y", label: "Net income growth, 1 year", definition: "How much net income grew over the year. n/a when last year was a loss.", noun: "1-year net income growth", phrase: "1-year net income growth", unit: "percent", signed: true, group: "Profitability" },
-  { param: "epsgrowth", column: "eps_growth_1y", label: "Earnings per share growth, 1 year", definition: "How much diluted earnings per share grew over the year. n/a when last year was a loss.", noun: "1-year earnings per share growth", phrase: "1-year earnings per share growth", unit: "percent", signed: true, group: "Profitability" },
-  { param: "marginchange", column: "operating_margin_change_3y", label: "Operating margin change, 3 years", definition: "This year's operating margin less the margin three fiscal years earlier, in percentage points.", noun: "change in operating margin over three years", phrase: "a change in operating margin over three years", unit: "points", signed: true, group: "Profitability" },
-  { param: "rule40", column: "growth_plus_fcf_margin", label: "Revenue growth plus free cash flow margin", definition: "1-year revenue growth and free cash flow margin added together. Software investors call 40% or more the Rule of 40.", noun: "revenue growth plus free cash flow margin", phrase: "revenue growth plus free cash flow margin", unit: "percent", signed: true, group: "Profitability" },
-  { param: "cashconv", column: "cash_conversion", label: "Cash conversion", definition: "Cash brought in by the business for each dollar of net income. Under 1× means some of the profit hasn't arrived as cash. n/a at a loss.", noun: "cash conversion", phrase: "cash conversion", unit: "ratio", signed: false, group: "Profitability" },
-  { param: "rnd", column: "rnd_to_revenue", label: "Research and development, share of revenue", definition: "Spending on research and development as a share of sales.", noun: "research and development as a share of revenue", phrase: "research and development spending", unit: "percent", signed: false, group: "Spending" },
-  { param: "capex", column: "capex_to_revenue", label: "Capital spending, share of revenue", definition: "Spending on equipment and buildings as a share of sales.", noun: "capital spending as a share of revenue", phrase: "capital spending", unit: "percent", signed: false, group: "Spending" },
-  { param: "sga", column: "sga_to_revenue", label: "Sales and admin costs, share of revenue", definition: "Selling, general and administrative costs as a share of sales.", noun: "sales and admin costs as a share of revenue", phrase: "sales and admin costs", unit: "percent", signed: false, group: "Spending" },
-  { param: "divfcf", column: "dividends_to_fcf", label: "Dividends, share of free cash flow", definition: "Dividends paid as a share of free cash flow. n/a when free cash flow is zero or below.", noun: "dividends as a share of free cash flow", phrase: "dividends", unit: "percent", signed: false, group: "Shareholder returns" },
-  { param: "buyfcf", column: "buybacks_to_fcf", label: "Buybacks, share of free cash flow", definition: "Cash spent buying back shares, as a share of free cash flow. n/a when free cash flow is zero or below.", noun: "buybacks as a share of free cash flow", phrase: "buybacks", unit: "percent", signed: false, group: "Shareholder returns" },
-  { param: "de", column: "debt_to_equity", label: "Debt to equity", definition: "Debt for each dollar of shareholders' equity. n/a for banks and insurers, and when equity is zero or below.", noun: "debt to equity", phrase: "debt to equity", unit: "ratio", signed: false, group: "Balance sheet health" },
-  { param: "current", column: "current_ratio", label: "Current ratio", definition: "What the company owns that turns into cash within a year, over what it owes within a year.", noun: "current ratio", phrase: "a current ratio", unit: "ratio", signed: false, group: "Balance sheet health" },
-  { param: "ndfcf", column: "net_debt_to_fcf", label: "Years of free cash flow to repay net debt", definition: "Debt less cash and short-term investments, divided by a year's free cash flow. 0 means more cash than debt. n/a when free cash flow is zero or below, and wherever net cash is n/a.", noun: "years of free cash flow to repay net debt", phrase: "net debt", unit: "years", signed: false, group: "Balance sheet health" },
-  { param: "coverage", column: "interest_coverage", label: "Interest coverage", definition: "Operating profit over interest expense: how many times over the interest is paid.", noun: "interest coverage", phrase: "interest coverage", unit: "ratio", signed: false, group: "Balance sheet health" },
-  { param: "growth5y", column: "revenue_growth_5y", label: "Revenue growth, 5-year average", definition: "Average yearly sales growth over the last five fiscal years.", noun: "5-year revenue growth", phrase: "average revenue growth over five years", unit: "percent", signed: true, group: "Longer history" },
-  { param: "growth10y", column: "revenue_growth_10y", label: "Revenue growth, 10-year average", definition: "Average yearly sales growth over the last ten fiscal years.", noun: "10-year revenue growth", phrase: "average revenue growth over ten years", unit: "percent", signed: true, group: "Longer history" },
-  { param: "years", column: "revenue_growth_years", label: "Years in a row of revenue growth", definition: "Fiscal years in a row that sales grew, counting back from the latest, up to ten.", noun: "years in a row of revenue growth", phrase: "revenue growth", unit: "count", signed: false, group: "Longer history" },
+  { param: "revenue", column: "revenue", label: "Revenue", definition: "Sales in the latest fiscal year.", short: "Total sales in the latest year", noun: "revenue", phrase: "revenue", unit: "money", signed: false, group: "Size and growth" },
+  { param: "growth1y", column: "revenue_growth_1y", label: "Revenue growth, 1 year", definition: "How much sales grew over the latest fiscal year. n/a when the year before had under $10 million of sales.", short: "How fast sales grew last year", noun: "1-year revenue growth", phrase: "1-year revenue growth", unit: "percent", signed: true, group: "Size and growth" },
+  { param: "growth3y", column: "revenue_growth_3y", label: "Revenue growth, 3-year average", definition: "Average yearly sales growth over the last three fiscal years. n/a when the first year had under $10 million of sales.", short: "Yearly sales growth, averaged over three years", noun: "3-year revenue growth", phrase: "average revenue growth over three years", unit: "percent", signed: true, group: "Size and growth" },
+  { param: "gross", column: "gross_margin", label: "Gross margin", definition: "Share of sales left after the direct cost of what was sold. n/a for banks, insurers, REITs and utilities, and where the cost a company files leaves most of its costs out.", short: "Sales minus the direct cost of goods", noun: "gross margin", phrase: "a gross margin", unit: "percent", signed: false, group: "Margins and returns" },
+  { param: "operating", column: "operating_margin", label: "Operating margin", definition: "Share of sales left as profit from running the business, before interest and tax.", short: "Profit from running the business, per sale", noun: "operating margin", phrase: "an operating margin", unit: "percent", signed: false, group: "Margins and returns" },
+  { param: "net", column: "net_margin", label: "Net margin", definition: "Share of sales left as profit after every cost, interest and tax.", short: "Bottom-line profit per dollar of sales", noun: "net margin", phrase: "a net margin", unit: "percent", signed: false, group: "Margins and returns" },
+  { param: "fcf", column: "fcf_margin", label: "Free cash flow margin", definition: "Cash the business brought in, less what it spent on equipment and buildings, as a share of sales. Calculated by The Dispatch. n/a for banks, insurers and REITs, and for companies holding their customers' money (payments, payroll).", short: "Cash kept from each sale after investing", noun: "free cash flow margin", phrase: "a free cash flow margin", unit: "percent", signed: false, group: "Margins and returns" },
+  { param: "roic", column: "roic", label: "Return on invested capital", definition: "Operating profit after tax, as a share of the money tied up in the business: debt plus equity, less cash. Tax at the company's own rate, or 21% where that can't be worked out. n/a for banks, insurers, REITs and companies holding their customers' money; and when that money is under a tenth of total assets, or the return is above 100% and it's under a quarter.", short: "Profit earned on the money tied up", noun: "return on invested capital", phrase: "a return on invested capital", unit: "percent", signed: false, group: "Margins and returns" },
+  { param: "netcash", column: "net_cash", label: "Net cash or debt", definition: "Cash and short-term investments, less all debt. Below zero means more debt than cash. n/a for banks and insurers, and for companies holding their customers' money.", short: "Cash and investments, less all debt", noun: "net cash", phrase: "net cash", unit: "money", signed: false, group: "Balance sheet" },
+  { param: "shares", column: "share_change_1y", label: "Share count change, 1 year", definition: "Change in the number of shares over the year. Below zero usually means buybacks; above, new shares issued.", short: "Buybacks or new shares over the year", noun: "1-year share count change", phrase: "a 1-year change in share count", unit: "percent", signed: true, group: "Shareholder returns" },
+  { param: "roe", column: "roe", label: "Return on equity", definition: "Net income as a share of shareholders' equity. n/a when equity is zero or below.", short: "Profit as a share of shareholders' money", noun: "return on equity", phrase: "a return on equity", unit: "percent", signed: false, group: "Margins and returns" },
+  { param: "roa", column: "roa", label: "Return on assets", definition: "Net income as a share of everything the company owns.", short: "Profit as a share of everything owned", noun: "return on assets", phrase: "a return on assets", unit: "percent", signed: false, group: "Margins and returns" },
+  { param: "nigrowth", column: "net_income_growth_1y", label: "Net income growth, 1 year", definition: "How much net income grew over the year. n/a when last year was a loss.", short: "How fast net income grew last year", noun: "1-year net income growth", phrase: "1-year net income growth", unit: "percent", signed: true, group: "Size and growth" },
+  { param: "epsgrowth", column: "eps_growth_1y", label: "Earnings per share growth, 1 year", definition: "How much diluted earnings per share grew over the year. n/a when last year was a loss.", short: "Growth in profit per share last year", noun: "1-year earnings per share growth", phrase: "1-year earnings per share growth", unit: "percent", signed: true, group: "Size and growth" },
+  { param: "marginchange", column: "operating_margin_change_3y", label: "Operating margin change, 3 years", definition: "This year's operating margin less the margin three fiscal years earlier, in percentage points.", short: "Whether margins are widening", noun: "change in operating margin over three years", phrase: "a change in operating margin over three years", unit: "points", signed: true, group: "Margins and returns" },
+  { param: "rule40", column: "growth_plus_fcf_margin", label: "Revenue growth plus free cash flow margin", definition: "1-year revenue growth and free cash flow margin added together. Software investors call 40% or more the Rule of 40.", short: "The software industry's \"Rule of 40\"", noun: "revenue growth plus free cash flow margin", phrase: "revenue growth plus free cash flow margin", unit: "percent", signed: true, group: "Margins and returns" },
+  { param: "cashconv", column: "cash_conversion", label: "Cash conversion", definition: "Cash brought in by the business for each dollar of net income. Under 1× means some of the profit hasn't arrived as cash. n/a at a loss.", short: "Cash brought in per dollar of profit", noun: "cash conversion", phrase: "cash conversion", unit: "ratio", signed: false, group: "Margins and returns" },
+  { param: "rnd", column: "rnd_to_revenue", label: "Research and development, share of revenue", definition: "Spending on research and development as a share of sales.", short: "Research spending as a share of sales", noun: "research and development as a share of revenue", phrase: "research and development spending", unit: "percent", signed: false, group: "Spending" },
+  { param: "capex", column: "capex_to_revenue", label: "Capital spending, share of revenue", definition: "Spending on equipment and buildings as a share of sales.", short: "Spending on equipment, as a share of sales", noun: "capital spending as a share of revenue", phrase: "capital spending", unit: "percent", signed: false, group: "Spending" },
+  { param: "sga", column: "sga_to_revenue", label: "Sales and admin costs, share of revenue", definition: "Selling, general and administrative costs as a share of sales.", short: "Selling and admin costs per dollar of sales", noun: "sales and admin costs as a share of revenue", phrase: "sales and admin costs", unit: "percent", signed: false, group: "Spending" },
+  { param: "divfcf", column: "dividends_to_fcf", label: "Dividends, share of free cash flow", definition: "Dividends paid as a share of free cash flow. n/a when free cash flow is zero or below.", short: "How much free cash goes to dividends", noun: "dividends as a share of free cash flow", phrase: "dividends", unit: "percent", signed: false, group: "Shareholder returns" },
+  { param: "buyfcf", column: "buybacks_to_fcf", label: "Buybacks, share of free cash flow", definition: "Cash spent buying back shares, as a share of free cash flow. n/a when free cash flow is zero or below.", short: "How much free cash goes to buybacks", noun: "buybacks as a share of free cash flow", phrase: "buybacks", unit: "percent", signed: false, group: "Shareholder returns" },
+  { param: "de", column: "debt_to_equity", label: "Debt to equity", definition: "Debt for each dollar of shareholders' equity. n/a for banks and insurers, and when equity is zero or below.", short: "Debt for each dollar of shareholders' money", noun: "debt to equity", phrase: "debt to equity", unit: "ratio", signed: false, group: "Balance sheet" },
+  { param: "current", column: "current_ratio", label: "Current ratio", definition: "What the company owns that turns into cash within a year, over what it owes within a year.", short: "Short-term assets over short-term debts", noun: "current ratio", phrase: "a current ratio", unit: "ratio", signed: false, group: "Balance sheet" },
+  { param: "ndfcf", column: "net_debt_to_fcf", label: "Years of free cash flow to repay net debt", heading: "Years to repay net debt", definition: "Debt less cash and short-term investments, divided by a year's free cash flow. 0 means more cash than debt. n/a when free cash flow is zero or below, and wherever net cash is n/a.", short: "Years of cash flow to clear the debt", noun: "years of free cash flow to repay net debt", phrase: "net debt", unit: "years", signed: false, group: "Balance sheet" },
+  { param: "coverage", column: "interest_coverage", label: "Interest coverage", definition: "Operating profit over interest expense: how many times over the interest is paid.", short: "How many times profit covers interest", noun: "interest coverage", phrase: "interest coverage", unit: "ratio", signed: false, group: "Balance sheet" },
+  { param: "growth5y", column: "revenue_growth_5y", label: "Revenue growth, 5-year average", definition: "Average yearly sales growth over the last five fiscal years.", short: "Yearly sales growth, averaged over five years", noun: "5-year revenue growth", phrase: "average revenue growth over five years", unit: "percent", signed: true, group: "Size and growth" },
+  { param: "growth10y", column: "revenue_growth_10y", label: "Revenue growth, 10-year average", definition: "Average yearly sales growth over the last ten fiscal years.", short: "Yearly sales growth, averaged over ten years", noun: "10-year revenue growth", phrase: "average revenue growth over ten years", unit: "percent", signed: true, group: "Size and growth" },
+  { param: "years", column: "revenue_growth_years", label: "Years in a row of revenue growth", definition: "Fiscal years in a row that sales grew, counting back from the latest, up to ten.", short: "Straight years of rising sales, up to ten", noun: "years in a row of revenue growth", phrase: "revenue growth", unit: "count", signed: false, group: "Size and growth" },
 ];
 
 const BY_PARAM = new Map(RANGE_FILTERS.map((f) => [f.param, f]));
@@ -88,8 +92,72 @@ export function rangeFilter(param: string): RangeFilter | undefined {
   return BY_PARAM.get(param);
 }
 
-export function isMoreGroup(group: Group): boolean {
-  return (MORE_GROUPS as readonly string[]).includes(group);
+// —— The picker ——
+// The panel shows only the filters in use; "Add a filter" offers the rest,
+// by group. The three that aren't ranges (pays a dividend, sector,
+// headquarters) are offered there too, the last two under their own heading.
+export const CHOICE_GROUP: Group = "Sector and headquarters";
+export type PickerGroup = Group;
+export const PICKER_GROUPS: readonly Group[] = GROUPS;
+
+export type PickerEntry = {
+  // A range's param, or "dividend", "sector", "state".
+  key: string;
+  label: string;
+  short: string;
+  definition: string;
+  group: Group;
+};
+
+export const CHOICE_FILTERS: readonly PickerEntry[] = [
+  { key: "dividend", label: "Pays a dividend", short: "Paid any dividend in the latest year", definition: "Paid any dividend to shareholders in the latest fiscal year.", group: "Shareholder returns" },
+  { key: "sector", label: "Sector", short: "Technology, health care, energy and so on", definition: "The sector the SEC's industry code places the company in. None ticked means every sector.", group: CHOICE_GROUP },
+  { key: "state", label: "Headquarters", short: "The state the company is based in", definition: "From the business address the company gives the SEC. None ticked means anywhere.", group: CHOICE_GROUP },
+];
+
+// Every filter the picker offers, in group order.
+export const PICKER_ENTRIES: readonly PickerEntry[] = PICKER_GROUPS.flatMap((g) => [
+  ...RANGE_FILTERS.filter((f) => f.group === g).map((f) => ({ key: f.param, label: f.label, short: f.short, definition: f.definition, group: f.group })),
+  ...CHOICE_FILTERS.filter((c) => c.group === g),
+]);
+
+export function pickerEntry(key: string): PickerEntry | undefined {
+  return PICKER_ENTRIES.find((e) => e.key === key);
+}
+
+// The entries whose name or short description holds every word typed:
+// "debt" finds net cash or debt, debt to equity and the years to repay it.
+export function searchFilters(query: string): PickerEntry[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return [...PICKER_ENTRIES];
+  return PICKER_ENTRIES.filter((e) => {
+    const text = `${e.label} ${e.short}`.toLowerCase();
+    return words.every((w) => text.includes(w));
+  });
+}
+
+// The order the panel's rows start in: the same as the chips (filterLines).
+export function activeKeys(filters: Filters): string[] {
+  return filterLines(filters).map((l) => l.key);
+}
+
+// What the panel holds, turned into filters with the rules a link is read
+// with: the boxes as typed, the sector and state choices, pays a dividend.
+export type PanelState = { boxes: Record<string, { min: string; max: string } | undefined>; sectors: string[]; states: string[]; dividend: boolean };
+
+export function filtersFromPanel(panel: PanelState): Filters {
+  const filters: Filters = {
+    ranges: {},
+    sectors: SECTOR_OPTIONS.filter((s) => panel.sectors.includes(s)) as Sector[],
+    states: STATE_OPTIONS.filter((s) => panel.states.includes(s)),
+    dividend: panel.dividend,
+  };
+  for (const f of RANGE_FILTERS) {
+    const box = panel.boxes[f.param];
+    const range = box && makeRange(parseValue(f.unit, box.min), parseValue(f.unit, box.max));
+    if (range) filters.ranges[f.param] = range;
+  }
+  return filters;
 }
 
 // —— Choices ——
@@ -583,14 +651,30 @@ export function formatFigure(f: RangeFilter, value: number | null): string {
 
 // Where the middle company sits, under a filter's name: "Half of companies:
 // above 38.2%". For "pays a dividend", the share that do.
+// No plus sign on a median ("above 4.0%", not "above +4.0%"); a minus stays.
+function medianFigure(f: RangeFilter, median: number): string {
+  return formatFigure(f, median).replace(/^\+/, "");
+}
+
 export function medianText(f: RangeFilter, median: number): string {
   // A count's middle is a whole number many companies share: "1 year or more".
   if (f.unit === "count") return `Half of companies: ${boundLabel("count", Math.round(median))} or more`;
-  return `Half of companies: above ${formatFigure(f, median)}`;
+  return `Half of companies: above ${medianFigure(f, median)}`;
 }
 
 export function dividendShareText(share: number): string {
   return `Paid by ${Math.round(share * 100)}% of companies`;
+}
+
+// The same, short, beside a filter's boxes: "Half above 9.1%", "Half at 1
+// year or more", "Paid by 42%".
+export function medianShort(f: RangeFilter, median: number): string {
+  if (f.unit === "count") return `Half at ${boundLabel("count", Math.round(median))} or more`;
+  return `Half above ${medianFigure(f, median)}`;
+}
+
+export function dividendShort(share: number): string {
+  return `Paid by ${Math.round(share * 100)}%`;
 }
 
 // —— Results columns ——
