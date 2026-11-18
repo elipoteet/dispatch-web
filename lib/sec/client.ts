@@ -146,9 +146,25 @@ async function fetchTickerMapRaw(): Promise<Record<string, CompanyRef>> {
 // 24 hours, per the brief. New listings are rare and a day late is harmless.
 const cachedTickerMap = unstable_cache(fetchTickerMapRaw, ["secTickerMap"], { revalidate: 60 * 60 * 24 });
 
+// The parsed map is also kept in this server instance for ten minutes. Read
+// back from the data cache, it is about 900KB of JSON to parse, and a single
+// Valuation visit looks up a dozen tickers (the company and each candidate
+// peer): about 150 ms of CPU a visit before this (18 November 2026), against
+// the Hobby plan's 4 hours of Active CPU a month. Callers only read it.
+const TICKER_MAP_MEMO_MS = 10 * 60 * 1000;
+let tickerMapMemo: { at: number; map: Promise<Record<string, CompanyRef>> } | null = null;
+
 export async function getTickerMap(): Promise<Record<string, CompanyRef> | null> {
   try {
-    return await cachedTickerMap();
+    if (!tickerMapMemo || Date.now() - tickerMapMemo.at > TICKER_MAP_MEMO_MS) {
+      const map = cachedTickerMap();
+      tickerMapMemo = { at: Date.now(), map };
+      // A failed read isn't kept: the next call tries again.
+      map.catch(() => {
+        if (tickerMapMemo?.map === map) tickerMapMemo = null;
+      });
+    }
+    return await tickerMapMemo.map;
   } catch {
     return null;
   }
