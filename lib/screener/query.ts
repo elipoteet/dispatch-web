@@ -7,6 +7,7 @@
 // 200, since error.tsx boundaries have been unreliable here.
 
 import { unstable_cache } from "next/cache";
+import { SCREENER_TAG } from "@/lib/screener/revalidate";
 import { createPublicClient } from "@/lib/supabase/service";
 import { NO_FILTERS, RANGE_FILTERS, conditions, filterLines, rangeFilter, type Filters, type View } from "@/lib/screener/filters";
 import { STARTING_SCREENS } from "@/lib/screener/screens";
@@ -165,12 +166,16 @@ async function readOverview(): Promise<Overview> {
 }
 
 // The table changes once a night, so the opening view's reads are shared for
-// fifteen minutes. A failed read isn't cached.
-const cachedOverview = unstable_cache(readOverview, ["screener-overview", "v2"], { revalidate: 900 });
+// six hours, and refreshed by tag as soon as the nightly job publishes
+// (lib/screener/revalidate.ts). Six hours, not less: the shortest timer in a
+// cached page sets how often the whole page is rebuilt (app/screener). A
+// failed read isn't cached.
+// Tagged so the nightly job's publish refreshes them (lib/screener/revalidate.ts).
+const cachedOverview = unstable_cache(readOverview, ["screener-overview", "v2"], { revalidate: 21600, tags: [SCREENER_TAG] });
 
 // —— Where the middle company sits, by measure (migration 0029) ——
 // metric column -> median, as stored (fractions, dollars). Shared for
-// fifteen minutes like the counts. Missing or unreadable: an empty map, and
+// six hours like the counts. Missing or unreadable: an empty map, and
 // the filter panel simply leaves the line out.
 async function readMedians(): Promise<Record<string, number>> {
   const { data, error } = await createPublicClient().from("screener_medians").select("metric,median").abortSignal(AbortSignal.timeout(TIMEOUT_MS));
@@ -178,7 +183,7 @@ async function readMedians(): Promise<Record<string, number>> {
   return Object.fromEntries(((data ?? []) as { metric: string; median: number }[]).map((r) => [r.metric, Number(r.median)]));
 }
 
-const cachedMedians = unstable_cache(readMedians, ["screener-medians", "v1"], { revalidate: 900 });
+const cachedMedians = unstable_cache(readMedians, ["screener-medians", "v1"], { revalidate: 21600, tags: [SCREENER_TAG] });
 
 export async function loadMedians(): Promise<Record<string, number>> {
   if (forcedFailure()) return {};
