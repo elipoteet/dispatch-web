@@ -10,7 +10,20 @@ import { updateSession } from "@/lib/supabase/proxy";
 // session on the server (components/auth/AuthProvider.tsx reads it in the
 // browser), so pages can be cached.
 export async function proxy(request: NextRequest) {
-  const { pathname, search } = request.nextUrl;
+  const { pathname, search, searchParams } = request.nextUrl;
+
+  // The research desk's old shareable form, /research?ticker=NVDA, goes to the
+  // company's own address. Here rather than in the page, so the page is cached.
+  if (pathname === "/research") {
+    const ticker = searchParams.get("ticker")?.trim();
+    if (ticker) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/research/${encodeURIComponent(ticker.toLowerCase())}`;
+      url.search = "";
+      return NextResponse.redirect(url, 307);
+    }
+    return NextResponse.next();
+  }
 
   // Research file addresses are lowercase. Redirected here rather than in the
   // [ticker] layout because only this level sees the whole path: a layout
@@ -40,5 +53,13 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/research/:path*", "/screener", "/screener/:path*", "/api/watchlist/:path*", "/api/alerts/:path*"],
+  matcher: [
+    "/research/:path*",
+    // /research itself only when it carries the old ?ticker= form.
+    { source: "/research", has: [{ type: "query", key: "ticker" }] },
+    "/screener",
+    "/screener/:path*",
+    "/api/watchlist/:path*",
+    "/api/alerts/:path*",
+  ],
 };
