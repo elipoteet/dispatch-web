@@ -1,8 +1,9 @@
 "use client";
 
 import { useId, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ScreenerLink } from "@/components/screener/ScreenerLink";
+import { goTo } from "@/lib/screener/links";
 import {
   NEW_ENGLAND,
   PAGE_SIZE,
@@ -95,7 +96,7 @@ export function ScreenerControls(props: Props) {
     e.preventDefault();
     const filters = filtersFromPanel({ boxes: Object.fromEntries(active.map((k) => [k, boxes[k]])), sectors, states, dividend });
     const q = viewQuery({ filters, sort: props.sort, order: props.order, show: PAGE_SIZE, edit: false });
-    router.push(q ? `/screener?${q}` : "/screener?edit=1");
+    goTo(q ? `/screener?${q}` : "/screener?edit=1", (href) => router.push(href));
   }
 
   async function copy() {
@@ -279,7 +280,7 @@ export function ScreenerControls(props: Props) {
           </button>
           <label className="rf-scr-sortmenu">
             <span className="visually-hidden">Sort the results</span>
-            <select className="rf-btn" value={props.sortHref} onChange={(e) => router.push(e.target.value, { scroll: false })}>
+            <select className="rf-btn" value={props.sortHref} onChange={(e) => goTo(e.target.value, (href) => router.push(href, { scroll: false }))}>
               {props.sortChoices.map((c) => (
                 <option key={c.href} value={c.href}>
                   {c.label}
@@ -292,12 +293,12 @@ export function ScreenerControls(props: Props) {
           <ul className="rf-scr-chips" aria-label="Active filters">
             {props.chips.map((c) => (
               <li key={c.key}>
-                <Link href={c.href} className="rf-chip rf-scr-chip" aria-label={`Remove filter: ${c.text}`} prefetch={false}>
+                <ScreenerLink href={c.href} className="rf-chip rf-scr-chip" aria-label={`Remove filter: ${c.text}`}>
                   <span>{c.text}</span>
                   <span aria-hidden="true" className="rf-scr-chip-x">
                     ×
                   </span>
-                </Link>
+                </ScreenerLink>
               </li>
             ))}
           </ul>
@@ -312,9 +313,9 @@ export function ScreenerControls(props: Props) {
         <form id="screener-filters" className="rf-scr-panel" method="get" action="/screener" onSubmit={apply} onKeyDown={onKeyDown}>
           <div className="rf-scr-panel-head">
             <span className="rf-lbl">Your filters · {active.length}</span>
-            <Link href={props.clearHref} className="rf-linkbtn" prefetch={false}>
+            <ScreenerLink href={props.clearHref} className="rf-linkbtn">
               Clear all
-            </Link>
+            </ScreenerLink>
           </div>
           {active.length === 0 ? (
             <p className="rf-scr-hint rf-scr-none">No filters yet. Add one below.</p>

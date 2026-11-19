@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { CompanySearch } from "@/components/company/CompanySearch";
 import { RecentlyViewed } from "@/components/company/RecentlyViewed";
 import { HOME_EXAMPLES } from "@/lib/research/home";
 
 // The research desk: search, the screener's way in, and the visitor's
-// recently viewed companies.
+// recently viewed companies. Cached: the same for everyone. The old shareable
+// form (?ticker=NVDA) is redirected by proxy.ts, so this page reads nothing
+// from the request.
 export const metadata: Metadata = {
   title: "Research",
   description: "Search any U.S. public company by ticker or name and open its free research file, built from its SEC filings.",
@@ -14,11 +15,7 @@ export const metadata: Metadata = {
   openGraph: { url: "/research" },
 };
 
-export default async function ResearchPage({ searchParams }: { searchParams: Promise<{ ticker?: string }> }) {
-  const { ticker } = await searchParams;
-  // Old shareable form (?ticker=NVDA) goes to the company's own address.
-  if (ticker && ticker.trim()) redirect(`/research/${encodeURIComponent(ticker.trim().toLowerCase())}`);
-
+export default function ResearchPage() {
   return (
     <section className="page active rf" id="page-research">
       <div className="rf-wrap rf-narrow">

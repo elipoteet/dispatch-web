@@ -3,6 +3,7 @@ import { dayLabel } from "@/lib/screener/filters";
 import { loadOverview } from "@/lib/screener/query";
 import { FAVORITE_SCREEN, GROUPED_SCREENS, SCREEN_GROUPS, type ScreenGroup, type StartingScreen } from "@/lib/screener/screens";
 import { BUILD_YOUR_OWN_HREF } from "@/components/screener/ScreenerResults";
+import { ScreenerLink } from "@/components/screener/ScreenerLink";
 
 // The screener's opening view: what it is, the starting screens grouped under
 // the question each answers (the addendum, 7 November 2026), one slim row
@@ -118,9 +119,9 @@ export async function ScreenerHome() {
               dividends, sector and headquarters. Each filter says what it measures and where the middle company sits.
             </p>
           </div>
-          <Link href={BUILD_YOUR_OWN_HREF} className="rf-btn" prefetch={false}>
+          <ScreenerLink href={BUILD_YOUR_OWN_HREF} className="rf-btn">
             Open the filters
-          </Link>
+          </ScreenerLink>
         </section>
 
         <section className="rf-scr-section" aria-labelledby="scr-how">

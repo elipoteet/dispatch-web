@@ -33,6 +33,7 @@ import {
 import { filtersAlone, loadMedians, loadOverview, loadResults, type ResultRow } from "@/lib/screener/query";
 import { matchingScreen, type StartingScreen } from "@/lib/screener/screens";
 import { ScreenerControls, type Chip, type SortChoice } from "@/components/screener/ScreenerControls";
+import { ScreenerLink } from "@/components/screener/ScreenerLink";
 
 const REVENUE = rangeFilter("revenue") as RangeFilter;
 
@@ -196,12 +197,12 @@ function SortHead({ label, sortKey, view, link, className }: { label: string; so
   const active = view.sort === sortKey;
   return (
     <th scope="col" className={className} aria-sort={active ? (view.order === "asc" ? "ascending" : "descending") : undefined}>
-      <Link href={link.at(sortTarget(view, sortKey))} className={`rf-scr-sort${active ? " is-active" : ""}`} scroll={false} prefetch={false}>
+      <ScreenerLink href={link.at(sortTarget(view, sortKey))} className={`rf-scr-sort${active ? " is-active" : ""}`} scroll={false}>
         {label}
         <span aria-hidden="true" className="rf-scr-arrow">
           {active ? (view.order === "asc" ? "↑" : "↓") : ""}
         </span>
-      </Link>
+      </ScreenerLink>
     </th>
   );
 }
@@ -320,9 +321,9 @@ function More({ shown, total, view, link }: { shown: number; total: number; view
   return (
     <div className="rf-scr-more">
       <span className="rf-muted">{`Showing ${shown.toLocaleString("en-US")} of ${total.toLocaleString("en-US")}.`}</span>
-      <Link href={link.at({ ...view, show: view.show + PAGE_SIZE, edit: false })} className="rf-btn" scroll={false} replace prefetch={false}>
+      <ScreenerLink href={link.at({ ...view, show: view.show + PAGE_SIZE, edit: false })} className="rf-btn" scroll={false} replace>
         Show {next} more
-      </Link>
+      </ScreenerLink>
     </div>
   );
 }
@@ -342,13 +343,13 @@ async function NoMatches({ view, link }: { view: View; link: Linker }) {
       )}
       <div className="rf-scr-empty-actions">
         {tightest && (alone?.length ?? 0) > 1 && (
-          <Link href={link.custom(withoutFilter(view.filters, tightest.key))} className="rf-btn rf-btn-solid" prefetch={false}>
+          <ScreenerLink href={link.custom(withoutFilter(view.filters, tightest.key))} className="rf-btn rf-btn-solid">
             Remove that filter
-          </Link>
+          </ScreenerLink>
         )}
-        <Link href="/screener?edit=1" className="rf-btn" prefetch={false}>
+        <ScreenerLink href="/screener?edit=1" className="rf-btn">
           Clear all filters
-        </Link>
+        </ScreenerLink>
       </div>
     </div>
   );
