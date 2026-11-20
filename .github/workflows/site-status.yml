@@ -1,0 +1,37 @@
+# Checks every hour that dispatchresearch.com answers, and opens a GitHub
+# issue (GitHub emails the owner) if Vercel has paused it or it doesn't answer;
+# closes the issue when it is back. scripts/site-status-check.mjs says why this
+# replaced a usage alert: a Hobby team can't read its usage through Vercel's
+# API. It needs no secrets.
+#
+# GitHub turns scheduled workflows off after 60 days without a commit to a
+# public repository; it emails before it does.
+name: Site status check
+
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch: {}
+  # Also whenever the check itself changes, on any branch.
+  push:
+    paths:
+      - scripts/site-status-check.mjs
+      - .github/workflows/site-status.yml
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Check dispatchresearch.com
+        run: node scripts/site-status-check.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

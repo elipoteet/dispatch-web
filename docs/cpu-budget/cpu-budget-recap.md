@@ -113,3 +113,14 @@ Read against the site after the change. No feature was added, removed or renamed
 
 - `scripts/cpu/local-guard.mjs`: preload it to run the site locally against the live database without writing.
 - `scripts/cpu/measure.mjs`: CPU per page on a production build.
+
+## Update, 20 November 2026: no usage alert is possible on Hobby
+
+The daily usage check (point 5 above) failed on its first scheduled run, and it can't be fixed:
+
+- The CLI asked for the personal account's usage (no team given), then, with the team given, failed looking up the token's user ("User not found", HTTP 404).
+- Calling Vercel's billing API directly for the dispatchteam team (`POST /v2/billing/costs?slug=dispatchteam`, the endpoint the CLI uses) answers **"Plan not found", HTTP 404**. A Hobby team has no billing plan behind that endpoint, so it has no usage to give. Per-route metrics need the paid Observability Plus.
+
+So the usage check and its `VERCEL_TOKEN` secret are removed. In their place, `.github/workflows/site-status.yml` checks the live site every hour, needs no secrets, and opens a GitHub issue (which GitHub emails) if Vercel shows "Deployment Paused" or the site doesn't answer three times a minute apart; it closes the issue when the site is back. It can't warn before a pause, only within the hour after one. The only early warning left is Vercel's: its docs say usage notifications are set up automatically, without saying at what level for Hobby, and none was noticed before the pause, so check which address Vercel emails and its spam folder. And look at the Usage page now and then.
+
+Points 4 and 5 under "What Eli needs to do" no longer apply: delete the `VERCEL_TOKEN` repository secret and revoke that token at vercel.com/account/tokens.

@@ -107,7 +107,7 @@ npx vitest run lib/sec/normalize.test.ts -t "name"  # one test by name
   - Keep the proxy's `matcher` narrow: it runs, and is billed, on every request it matches, cached pages included.
   - Measure a heavy page's CPU before and after a change (`scripts/cpu/measure.mjs`). A quadratic loop over price history cost 0.5 s a visit until 18 November 2026.
   - robots.txt keeps crawlers out of query-string variants and turns away AI training crawlers; the Vercel Firewall's AI Crawlers rule should be on Deny.
-- `.github/workflows/vercel-usage.yml` checks Active CPU daily (`scripts/vercel-usage-check.mjs`, the `VERCEL_TOKEN` secret) and opens a GitHub issue at 70% of the limit.
+- There is no usage alert: a Hobby team can't read its usage through Vercel's API (`POST /v2/billing/costs`, which `vercel billing usage` calls, answers "Plan not found", HTTP 404; per-route metrics need the paid Observability Plus; checked 20 November 2026). Watch the dashboard's Usage page instead. `.github/workflows/site-status.yml` (`scripts/site-status-check.mjs`, no secrets) checks the live site hourly and opens a GitHub issue if Vercel has paused it or it isn't answering, and closes it when it's back.
 
 ## Product rules (settled, don't reopen)
 
