@@ -104,8 +104,10 @@ export function cliArgs(args, scope = SCOPE) {
 }
 
 // The CLI's own JSON error ({ status, reason, message, data: { httpStatus } })
-// as one line, or the start of whatever it printed.
-export function cliFailure(stdout) {
+// as one line; failing that, the end of what it wrote to stderr, where it
+// reports problems it hits before the command runs (a scope it can't use, for
+// one), without colour codes. The caller scrubs the token from it.
+export function cliFailure(stdout, stderr = "") {
   const said = String(stdout ?? "");
   const start = said.indexOf("{");
   if (start >= 0) {
@@ -116,7 +118,14 @@ export function cliFailure(stdout) {
       /* not JSON */
     }
   }
-  return said.trim().slice(0, 300) || "no output";
+  const plain = (text) =>
+    String(text ?? "")
+      .replace(/\u001b\[[0-9;]*m/g, "")
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l && !/^npm (warn|notice)/i.test(l))
+      .join(" / ");
+  return plain(said).slice(0, 300) || plain(stderr).slice(-400) || "no output";
 }
 
 function readUsage(args) {
@@ -129,7 +138,7 @@ function readUsage(args) {
     });
   } catch (err) {
     const label = `vercel billing usage ${[...args, ...(SCOPE ? ["--scope", SCOPE] : [])].join(" ")}`.trim();
-    throw new Error(scrub(`${label} failed: ${cliFailure(err.stdout)}`));
+    throw new Error(scrub(`${label} failed (exit ${err.status ?? "?"}): ${cliFailure(err.stdout, err.stderr)}`));
   }
   // The JSON is the last thing printed; anything before it is the CLI's notices.
   const start = out.indexOf("{");

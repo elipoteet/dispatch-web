@@ -64,6 +64,9 @@ describe("calling the Vercel CLI", () => {
     const out = JSON.stringify({ status: "error", reason: "api_error", message: "Couldn't complete the invoices command.", data: { httpStatus: 404 } });
     expect(cliFailure(out)).toBe("api_error | Couldn't complete the invoices command. | HTTP 404");
     expect(cliFailure("")).toBe("no output");
+    expect(cliFailure("", "npm warn exec x
+[31mError:[39m The specified scope does not exist
+")).toBe("Error: The specified scope does not exist");
   });
 
   it("scrubs the token from anything it prints", () => {
