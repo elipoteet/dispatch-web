@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activeCpu, bandFor, formatHours, issueText, toHours } from "./vercel-usage-check.mjs";
+import { activeCpu, bandFor, cliArgs, cliFailure, formatHours, issueText, scrub, toHours } from "./vercel-usage-check.mjs";
 
 // The service rows `vercel billing usage --json` prints (vercel@65.11.0,
 // serializeService): name and unit come from Vercel's API.
@@ -49,5 +49,28 @@ describe("when to warn", () => {
     expect(body).toContain("2 h 48 min");
     expect(body).toContain("Firewall");
     expect(body).toContain("<!-- band:0.7 -->");
+  });
+});
+
+describe("calling the Vercel CLI", () => {
+  it("asks for the team's usage and never puts the token on the command line", () => {
+    const args = cliArgs(["--since", "30d"], "dispatchteam");
+    expect(args).toEqual(["--yes", "vercel@65.11.0", "billing", "usage", "--since", "30d", "--scope", "dispatchteam", "--json", "--non-interactive"]);
+    expect(args.join(" ")).not.toMatch(/--token/);
+    expect(cliArgs([], null)).not.toContain("--scope");
+  });
+
+  it("reads the CLI's JSON error as one line", () => {
+    const out = JSON.stringify({ status: "error", reason: "api_error", message: "Couldn't complete the invoices command.", data: { httpStatus: 404 } });
+    expect(cliFailure(out)).toBe("api_error | Couldn't complete the invoices command. | HTTP 404");
+    expect(cliFailure("")).toBe("no output");
+  });
+
+  it("scrubs the token from anything it prints", () => {
+    const saved = process.env.VERCEL_TOKEN;
+    process.env.VERCEL_TOKEN = "tok_ABC123";
+    expect(scrub("failed with tok_ABC123 twice: tok_ABC123")).toBe("failed with *** twice: ***");
+    if (saved === undefined) delete process.env.VERCEL_TOKEN;
+    else process.env.VERCEL_TOKEN = saved;
   });
 });

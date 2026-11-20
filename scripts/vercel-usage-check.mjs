@@ -86,15 +86,54 @@ export function issueText({ hours, share, band, period }) {
 
 // —— Wiring ——
 
+// The Vercel team the project belongs to (VERCEL_SCOPE, "dispatchteam" in the
+// workflow). Without it the CLI asks for the personal account's costs, which
+// have nothing to show: HTTP 404 on the first scheduled run (19 November 2026).
+const SCOPE = process.env.VERCEL_SCOPE?.trim() || null;
+
+// Never print the token: it travels in VERCEL_TOKEN, which the CLI reads by
+// itself, not on the command line (a failed command's message repeats its
+// arguments), and anything the CLI prints is scrubbed of it before it is shown.
+export function scrub(text) {
+  const token = process.env.VERCEL_TOKEN;
+  return token ? String(text).split(token).join("***") : String(text);
+}
+
+export function cliArgs(args, scope = SCOPE) {
+  return ["--yes", CLI, "billing", "usage", ...args, ...(scope ? ["--scope", scope] : []), "--json", "--non-interactive"];
+}
+
+// The CLI's own JSON error ({ status, reason, message, data: { httpStatus } })
+// as one line, or the start of whatever it printed.
+export function cliFailure(stdout) {
+  const said = String(stdout ?? "");
+  const start = said.indexOf("{");
+  if (start >= 0) {
+    try {
+      const j = JSON.parse(said.slice(start));
+      return [j.reason, j.message, j.data?.httpStatus != null ? `HTTP ${j.data.httpStatus}` : null, j.hint].filter(Boolean).join(" | ");
+    } catch {
+      /* not JSON */
+    }
+  }
+  return said.trim().slice(0, 300) || "no output";
+}
+
 function readUsage(args) {
-  const out = execFileSync("npx", ["--yes", CLI, "billing", "usage", ...args, "--json", "--non-interactive", "--token", process.env.VERCEL_TOKEN ?? ""], {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "inherit"],
-    shell: process.platform === "win32",
-  });
+  let out;
+  try {
+    out = execFileSync("npx", cliArgs(args), {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      shell: process.platform === "win32",
+    });
+  } catch (err) {
+    const label = `vercel billing usage ${[...args, ...(SCOPE ? ["--scope", SCOPE] : [])].join(" ")}`.trim();
+    throw new Error(scrub(`${label} failed: ${cliFailure(err.stdout)}`));
+  }
   // The JSON is the last thing printed; anything before it is the CLI's notices.
   const start = out.indexOf("{");
-  if (start < 0) throw new Error(`The Vercel CLI printed no JSON: ${out.slice(0, 300)}`);
+  if (start < 0) throw new Error(scrub(`The Vercel CLI printed no JSON: ${out.slice(0, 300)}`));
   return JSON.parse(out.slice(start));
 }
 
@@ -144,6 +183,8 @@ async function main() {
   const line = `Active CPU: ${formatHours(worst.hours)} of ${LIMIT_HOURS} h (${Math.round(share * 100)}%), ${worst.label}.`;
   console.log(line);
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${line}\n`);
+  // Also as an annotation on the run, readable from the run's page.
+  if (process.env.GITHUB_ACTIONS) console.log(`::notice title=Vercel Active CPU::${line}`);
   if (band == null) return;
   if (!process.env.GITHUB_TOKEN || !process.env.GITHUB_REPOSITORY) throw new Error(`${line} Over ${Math.round(BANDS[0] * 100)}%, but there's no GitHub token to file the issue with.`);
   console.log(await alert({ hours: worst.hours, share, band, period: worst.period }));
@@ -151,7 +192,9 @@ async function main() {
 
 if (import.meta.url === `file://${process.argv[1]}` || import.meta.url.endsWith(process.argv[1]?.replace(/\\/g, "/") ?? "\0")) {
   main().catch((err) => {
-    console.error(err instanceof Error ? err.message : err);
+    const message = scrub(err instanceof Error ? err.message : err);
+    console.error(message);
+    if (process.env.GITHUB_ACTIONS) console.log(`::error title=Vercel usage check failed::${message.replace(/\r?\n/g, " ")}`);
     process.exit(1);
   });
 }
