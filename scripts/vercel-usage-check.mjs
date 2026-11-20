@@ -120,12 +120,17 @@ async function vercel(path, init = {}) {
   return json;
 }
 
-// The team's ID and billing period, from the teams the token can see.
-async function findTeam(slug) {
-  const { teams = [] } = await vercel("/v2/teams?limit=100");
-  const team = teams.find((t) => t.slug === slug || t.id === slug);
-  if (!team) throw new Error(`The token can't see a Vercel team "${slug}". Teams it can see: ${teams.map((t) => t.slug).join(", ") || "none"}.`);
-  return team;
+// The team's billing period, where the token may read the team; otherwise
+// only the last 30 days are checked. A token limited to one team can't list
+// teams (HTTP 403, 20 November 2026), so the team is named by its slug, which
+// Vercel's API takes in place of its ID.
+async function teamDetails(slug) {
+  try {
+    return await vercel(`/v2/teams/${encodeURIComponent(slug)}?slug=${encodeURIComponent(slug)}`);
+  } catch (err) {
+    console.log(`The team's details aren't readable with this token (${err.message}); checking the last 30 days only.`);
+    return null;
+  }
 }
 
 // The costs response, turned into the rows activeCpu reads: one per product,
@@ -152,8 +157,8 @@ export function servicesFromCosts(response) {
     });
 }
 
-async function readUsage(team, from, to) {
-  const costs = await vercel(`/v2/billing/costs?teamId=${encodeURIComponent(team.id)}`, {
+async function readUsage(slug, from, to) {
+  const costs = await vercel(`/v2/billing/costs?slug=${encodeURIComponent(slug)}`, {
     method: "POST",
     body: JSON.stringify({
       from,
@@ -199,15 +204,15 @@ async function alert({ hours, share, band, period }) {
 async function main() {
   if (!process.env.VERCEL_TOKEN) throw new Error("VERCEL_TOKEN is not set. Add it under the repository's Settings, Secrets and variables, Actions.");
   if (!SCOPE) throw new Error("VERCEL_SCOPE is not set: the Vercel team's slug (dispatchteam).");
-  const team = await findTeam(SCOPE);
+  const team = await teamDetails(SCOPE);
   const now = new Date();
   const windows = [["last 30 days", new Date(now.getTime() - 30 * 864e5), now]];
   // The team's own billing period, where the API gives one.
-  const period = team.billing?.period;
+  const period = team?.billing?.period;
   if (period?.start && period?.end) windows.unshift(["current period", new Date(period.start), new Date(Math.min(Number(new Date(period.end)), now.getTime()))]);
   const readings = [];
   for (const [label, from, to] of windows) {
-    const usage = await readUsage(team, from.toISOString(), to.toISOString());
+    const usage = await readUsage(SCOPE, from.toISOString(), to.toISOString());
     const cpu = activeCpu(usage);
     readings.push({ label, ...cpu });
     console.log(`${label} (${from.toISOString().slice(0, 10)} to ${to.toISOString().slice(0, 10)}): ${formatHours(cpu.hours)} of Active CPU, from "${cpu.rows.map((r) => `${r.name}: ${r.quantity} ${r.unit}`).join("; ")}"`);
