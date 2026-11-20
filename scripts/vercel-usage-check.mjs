@@ -5,23 +5,22 @@
 // opens a GitHub issue in this repository, and GitHub emails the owner. It
 // comments on that issue again at 85% and 100%.
 //
-// Reads usage with the Vercel CLI (`vercel billing usage --json`), for the
-// current billing period and for the last 30 days, and uses the larger. Needs
-// VERCEL_TOKEN (a Vercel access token for the account) and, to file the
-// issue, GITHUB_TOKEN and GITHUB_REPOSITORY, which Actions provides.
+// Reads usage from Vercel's billing API for the team in VERCEL_SCOPE, for the
+// last 30 days and for the team's billing period where the API gives one, and
+// uses the larger. Needs VERCEL_TOKEN (a Vercel access token that can see the
+// team) and, to file the issue, GITHUB_TOKEN and GITHUB_REPOSITORY, which
+// Actions provides.
 //
 // If it can't find or read the Active CPU line, it fails: GitHub emails a
 // failed scheduled run too, so a broken check is never silent.
 
-import { execFileSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
 
 export const LIMIT_HOURS = Number(process.env.LIMIT_HOURS ?? 4);
 export const BANDS = [0.7, 0.85, 1];
-const CLI = "vercel@65.11.0";
 const TITLE_PREFIX = "Vercel Active CPU at";
 
-// —— Pure: reading the CLI's JSON ——
+// —— Pure: reading the usage rows ——
 
 // Hours from a quantity in the unit Vercel's API names for it.
 export function toHours(quantity, unit) {
@@ -33,9 +32,8 @@ export function toHours(quantity, unit) {
   return null;
 }
 
-// The Active CPU line: { name, product, quantity, unit, cost, included,
-// category } in `services` (vercel@65.11.0, dist/chunks/usage-*.js,
-// serializeService). Its name comes from Vercel's API, so it is matched
+// The Active CPU line: { name, product, quantity, unit } in `services`
+// (servicesFromCosts). Its name comes from Vercel's API, so it is matched
 // loosely ("Fluid Active CPU", "Active CPU", product "fluid_active_cpu").
 export function activeCpu(usage) {
   const services = Array.isArray(usage?.services) ? usage.services : [];
@@ -87,63 +85,86 @@ export function issueText({ hours, share, band, period }) {
 // —— Wiring ——
 
 // The Vercel team the project belongs to (VERCEL_SCOPE, "dispatchteam" in the
-// workflow). Without it the CLI asks for the personal account's costs, which
-// have nothing to show: HTTP 404 on the first scheduled run (19 November 2026).
+// workflow), by its slug.
 const SCOPE = process.env.VERCEL_SCOPE?.trim() || null;
+const API = "https://api.vercel.com";
 
-// Never print the token: it travels in VERCEL_TOKEN, which the CLI reads by
-// itself, not on the command line (a failed command's message repeats its
-// arguments), and anything the CLI prints is scrubbed of it before it is shown.
+// Never print the token: anything shown is scrubbed of it first.
 export function scrub(text) {
   const token = process.env.VERCEL_TOKEN;
   return token ? String(text).split(token).join("***") : String(text);
 }
 
-export function cliArgs(args, scope = SCOPE) {
-  return ["--yes", CLI, "billing", "usage", ...args, ...(scope ? ["--scope", scope] : []), "--json", "--non-interactive"];
-}
-
-// The CLI's own JSON error ({ status, reason, message, data: { httpStatus } })
-// as one line; failing that, the end of what it wrote to stderr, where it
-// reports problems it hits before the command runs (a scope it can't use, for
-// one), without colour codes. The caller scrubs the token from it.
-export function cliFailure(stdout, stderr = "") {
-  const said = String(stdout ?? "");
-  const start = said.indexOf("{");
-  if (start >= 0) {
-    try {
-      const j = JSON.parse(said.slice(start));
-      return [j.reason, j.message, j.data?.httpStatus != null ? `HTTP ${j.data.httpStatus}` : null, j.hint].filter(Boolean).join(" | ");
-    } catch {
-      /* not JSON */
-    }
-  }
-  const plain = (text) =>
-    String(text ?? "")
-      .replace(/\u001b\[[0-9;]*m/g, "")
-      .split(/\r?\n/)
-      .map((l) => l.trim())
-      .filter((l) => l && !/^npm (warn|notice)/i.test(l))
-      .join(" / ");
-  return plain(said).slice(0, 300) || plain(stderr).slice(-400) || "no output";
-}
-
-function readUsage(args) {
-  let out;
+// Usage comes straight from Vercel's billing API, the endpoint `vercel billing
+// usage` itself calls (vercel@65.11.0: POST /v2/billing/costs). The CLI was
+// tried first and failed twice on GitHub's runner (19 and 20 November 2026):
+// without a team it asked for the personal account's costs, and with
+// --scope it first looks up the token's user, which Vercel answered with
+// "User not found" (HTTP 404). The API needs only the team's ID.
+async function vercel(path, init = {}) {
+  const res = await fetch(`${API}${path}`, {
+    ...init,
+    headers: { Authorization: `Bearer ${process.env.VERCEL_TOKEN}`, "Content-Type": "application/json", "User-Agent": "dispatch-usage-check" },
+  });
+  const text = await res.text();
+  let json = null;
   try {
-    out = execFileSync("npx", cliArgs(args), {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-      shell: process.platform === "win32",
-    });
-  } catch (err) {
-    const label = `vercel billing usage ${[...args, ...(SCOPE ? ["--scope", SCOPE] : [])].join(" ")}`.trim();
-    throw new Error(scrub(`${label} failed (exit ${err.status ?? "?"}): ${cliFailure(err.stdout, err.stderr)}`));
+    json = JSON.parse(text);
+  } catch {
+    /* not JSON */
   }
-  // The JSON is the last thing printed; anything before it is the CLI's notices.
-  const start = out.indexOf("{");
-  if (start < 0) throw new Error(scrub(`The Vercel CLI printed no JSON: ${out.slice(0, 300)}`));
-  return JSON.parse(out.slice(start));
+  if (!res.ok) {
+    const why = json?.error ? [json.error.code, json.error.message].filter(Boolean).join(": ") : text.slice(0, 200);
+    throw new Error(scrub(`Vercel API ${init.method ?? "GET"} ${path.split("?")[0]}: HTTP ${res.status} ${why}`));
+  }
+  return json;
+}
+
+// The team's ID and billing period, from the teams the token can see.
+async function findTeam(slug) {
+  const { teams = [] } = await vercel("/v2/teams?limit=100");
+  const team = teams.find((t) => t.slug === slug || t.id === slug);
+  if (!team) throw new Error(`The token can't see a Vercel team "${slug}". Teams it can see: ${teams.map((t) => t.slug).join(", ") || "none"}.`);
+  return team;
+}
+
+// The costs response, turned into the rows activeCpu reads: one per product,
+// with its display name, quantity and unit (as the CLI's processCosts and
+// getQuantityUnits do).
+export function servicesFromCosts(response) {
+  const results = response?.results ?? {};
+  const products = results.dimensionsMeta?.product?.values ?? {};
+  const view = results.views?.byProduct?.results ?? [];
+  const metrics = response?.metrics ?? [];
+  return view
+    .filter((r) => r?.dimensionValues?.product)
+    .map((r) => {
+      const product = r.dimensionValues.product;
+      const qIndex = (r.metrics ?? []).findIndex((m) => m !== "gross_cost");
+      const metric = metrics.find((m) => m.slug === r.metrics?.[qIndex]);
+      const unit = metric?.unit?.kind === "custom" ? (metric.unit.plural ?? metric.unit.singular) : metric?.unit?.name;
+      return {
+        name: products[product]?.title ?? product,
+        product,
+        quantity: qIndex === -1 ? 0 : Number(r.totalValue?.[qIndex] ?? 0),
+        unit: unit ?? metric?.title ?? "",
+      };
+    });
+}
+
+async function readUsage(team, from, to) {
+  const costs = await vercel(`/v2/billing/costs?teamId=${encodeURIComponent(team.id)}`, {
+    method: "POST",
+    body: JSON.stringify({
+      from,
+      to,
+      metrics: ["gross_cost", "quantity"],
+      format: "timeseries",
+      views: { byProduct: { groupBy: ["product"] } },
+      userAgent: "dispatch-usage-check",
+    }),
+  });
+  return { period: { from, to }, services: servicesFromCosts(costs) };
 }
 
 async function github(path, init = {}) {
@@ -177,14 +198,19 @@ async function alert({ hours, share, band, period }) {
 
 async function main() {
   if (!process.env.VERCEL_TOKEN) throw new Error("VERCEL_TOKEN is not set. Add it under the repository's Settings, Secrets and variables, Actions.");
+  if (!SCOPE) throw new Error("VERCEL_SCOPE is not set: the Vercel team's slug (dispatchteam).");
+  const team = await findTeam(SCOPE);
+  const now = new Date();
+  const windows = [["last 30 days", new Date(now.getTime() - 30 * 864e5), now]];
+  // The team's own billing period, where the API gives one.
+  const period = team.billing?.period;
+  if (period?.start && period?.end) windows.unshift(["current period", new Date(period.start), new Date(Math.min(Number(new Date(period.end)), now.getTime()))]);
   const readings = [];
-  for (const [label, args] of [
-    ["current period", []],
-    ["last 30 days", ["--since", "30d"]],
-  ]) {
-    const cpu = activeCpu(readUsage(args));
+  for (const [label, from, to] of windows) {
+    const usage = await readUsage(team, from.toISOString(), to.toISOString());
+    const cpu = activeCpu(usage);
     readings.push({ label, ...cpu });
-    console.log(`${label}: ${formatHours(cpu.hours)} of Active CPU`);
+    console.log(`${label} (${from.toISOString().slice(0, 10)} to ${to.toISOString().slice(0, 10)}): ${formatHours(cpu.hours)} of Active CPU, from "${cpu.rows.map((r) => `${r.name}: ${r.quantity} ${r.unit}`).join("; ")}"`);
   }
   const worst = readings.reduce((a, b) => (b.hours > a.hours ? b : a));
   const share = worst.hours / LIMIT_HOURS;

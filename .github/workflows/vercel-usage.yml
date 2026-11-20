@@ -40,8 +40,6 @@ jobs:
         run: node scripts/vercel-usage-check.mjs
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          # The Vercel team the project belongs to; without it the CLI reads the
-          # personal account, which has no usage (HTTP 404).
+          # The Vercel team whose usage is read, by its slug.
           VERCEL_SCOPE: dispatchteam
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERCEL_TELEMETRY_DISABLED: "1"
