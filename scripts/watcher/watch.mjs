@@ -42,7 +42,7 @@ const SECRETS = ["SUPABASE_SERVICE_ROLE_KEY", "VERCEL_TOKEN", "TWELVE_DATA_API_K
 // moves a little every night as filings arrive; one that halves or doubles,
 // or a screen that disappears, means something broke.
 export const BASELINES = {
-  "the-compounder": 300, // DELIBERATELY WRONG: proves the alert fires; reverted next commit
+  "the-compounder": 29,
   "high-return-on-capital": 97,
   "revenue-up-ten-years-in-a-row": 128,
   "strong-free-cash-flow": 117,
