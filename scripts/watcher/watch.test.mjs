@@ -164,6 +164,7 @@ describe("issues", () => {
   it("names what needs action and what to do, and remembers which checks failed", () => {
     const issue = actionIssue(results, NOW);
     expect(issue.title).toBe("Watcher: 1 thing needs attention");
+    expect(issue.body).toContain("found one thing that needs action");
     expect(issue.body).toContain("**Screen counts.** the-compounder shows 29");
     expect(issue.body).toContain("What to do: Open the screen.");
     expect(issue.body).toContain("<!-- watcher:action counts -->");

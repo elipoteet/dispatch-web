@@ -240,7 +240,7 @@ export function actionIssue(results, now = new Date()) {
     title: `${ACTION_PREFIX} ${plural(failing.length)}`,
     keys,
     body: [
-      `The daily watcher found ${failing.length === 1 ? "one thing" : `${failing.length} things`} that need action (${when(now.toISOString())}):`,
+      `The daily watcher found ${failing.length === 1 ? "one thing that needs" : `${failing.length} things that need`} action (${when(now.toISOString())}):`,
       "",
       ...failing.flatMap((r) => [`**${r.name}.** ${r.detail}`, `What to do: ${r.todo}`, ""]),
       "This issue is edited when the list changes, and closes itself when everything is clear.",
