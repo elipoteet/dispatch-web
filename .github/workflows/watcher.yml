@@ -1,0 +1,47 @@
+# The daily watcher (scripts/watcher/watch.mjs; docs/watcher/watcher.md).
+# Checks the live site, its cached pages, the screener and alerts jobs, the
+# starting screens' counts, Supabase, and Twelve Data's credits, read-only.
+# Opens one GitHub issue when something needs action (GitHub emails the
+# owner), and on Mondays a short weekly summary.
+#
+# Repository secrets it reads (Settings, Secrets and variables, Actions):
+# SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, TWELVE_DATA_API_KEY, and optionally
+# VERCEL_TOKEN. A missing one makes its check "skipped", not a failure.
+#
+# GitHub turns scheduled workflows off after 60 days without a commit to a
+# public repository; it emails before it does.
+name: Watcher
+
+on:
+  schedule:
+    # After the screener job (09:00 UTC, about an hour late on Hobby) and
+    # about 14 hours after the alerts job (21:30 UTC).
+    - cron: "17 12 * * *"
+  workflow_dispatch: {}
+  # Also whenever the watcher itself changes, on any branch.
+  push:
+    paths:
+      - scripts/watcher/**
+      - .github/workflows/watcher.yml
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Run the watcher
+        run: node scripts/watcher/watch.mjs
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TWELVE_DATA_API_KEY: ${{ secrets.TWELVE_DATA_API_KEY }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

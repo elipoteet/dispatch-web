@@ -107,7 +107,8 @@ npx vitest run lib/sec/normalize.test.ts -t "name"  # one test by name
   - Keep the proxy's `matcher` narrow: it runs, and is billed, on every request it matches, cached pages included.
   - Measure a heavy page's CPU before and after a change (`scripts/cpu/measure.mjs`). A quadratic loop over price history cost 0.5 s a visit until 18 November 2026.
   - robots.txt keeps crawlers out of query-string variants and turns away AI training crawlers; the Vercel Firewall's AI Crawlers rule should be on Deny.
-- `.github/workflows/vercel-usage.yml` checks Active CPU daily (`scripts/vercel-usage-check.mjs`, the `VERCEL_TOKEN` secret) and opens a GitHub issue at 70% of the limit.
+- A Hobby team can't read its usage through Vercel's API: `POST /v2/billing/costs`, which `vercel billing usage` calls, answers "Plan not found" (HTTP 404), and per-route metrics need the paid Observability Plus (checked 20 November 2026). Watch the dashboard's Usage page.
+- The daily watcher (`.github/workflows/watcher.yml`, `scripts/watcher/watch.mjs`, `docs/watcher/watcher.md`) reads, never writes. It checks the live site and the paused page, that /screener and The Compounder are served from cache, that the screener and alerts jobs ran in 26 hours and the screener published, each starting screen's count against `BASELINES`, Supabase answering, and Twelve Data's daily credits. It opens one GitHub issue when something needs action and a weekly summary on Mondays. Secrets: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `TWELVE_DATA_API_KEY`. Update `BASELINES` when a starting screen changes on purpose.
 
 ## Product rules (settled, don't reopen)
 

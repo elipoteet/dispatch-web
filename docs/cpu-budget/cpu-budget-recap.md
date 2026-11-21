@@ -113,3 +113,14 @@ Read against the site after the change. No feature was added, removed or renamed
 
 - `scripts/cpu/local-guard.mjs`: preload it to run the site locally against the live database without writing.
 - `scripts/cpu/measure.mjs`: CPU per page on a production build.
+
+## Update, 21 November 2026: the watcher replaces the usage check
+
+The daily usage check (point 5 above) failed on its first run, and it can't work on Hobby. Run from GitHub Actions with Eli's token, Vercel answered:
+- 404 for the personal account.
+- "User not found" when given the team.
+- "Plan not found" (404) from the billing endpoint itself, `POST /v2/billing/costs`, for dispatchteam.
+
+A Hobby team exposes no usage numbers through the API or the CLI.
+
+In its place is the daily watcher (`docs/watcher/watcher.md`). It checks the site and the paused page, the cached pages, both jobs, the starting screens' counts, Supabase and Twelve Data's credits, and it opens a GitHub issue when something needs action. Points 4 and 5 under "What Eli needs to do" are replaced by the watcher's secrets: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `TWELVE_DATA_API_KEY`.
