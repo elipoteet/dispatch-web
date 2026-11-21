@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "About",
   description:
-    "The Dispatch is a free research file on every U.S. public company, built from what each company reports to the SEC. No account, no paywall, no ratings.",
+    "Dispatch Research is a free research file on every U.S. public company, built from what each company reports to the SEC. No account, no paywall, no ratings.",
   alternates: { canonical: "/about" },
   openGraph: { url: "/about" },
 };
@@ -15,10 +15,10 @@ export default function AboutPage() {
     <section className="page active" id="page-about">
       <div className="about">
         <div className="label">About</div>
-        <h1>About The Dispatch.</h1>
+        <h1>About Dispatch Research.</h1>
         <div className="about-body">
           <p>
-            The Dispatch is a free research file on every U.S. public company, built from what
+            Dispatch Research is a free research file on every U.S. public company, built from what
             each company reports to the SEC. There is no account, no paywall, and no rating
             telling you what to buy. It started from a small, unfashionable conviction: most
             investors would make better decisions if they did less, read more, and stared at
@@ -59,7 +59,7 @@ export default function AboutPage() {
           <p>
             Every figure traces back to a filing on SEC EDGAR, refreshed as new reports arrive.
             Prices come from Twelve Data and Finnhub. Free cash flow is operating cash flow minus
-            capital spending, and it is labelled as calculated by The Dispatch, because it
+            capital spending, and it is labelled as calculated by Dispatch Research, because it
             isn&rsquo;t a reported line. Where a measure doesn&rsquo;t fit a business, such as
             gross margin at a bank, the file shows n/a rather than a number that looks right and
             isn&rsquo;t. Companies file errors too; where one is caught, the file shows the
@@ -69,7 +69,7 @@ export default function AboutPage() {
           <h2>What we are not.</h2>
 
           <p>
-            The Dispatch does not offer investment advice. Nothing here rates a stock, scores it,
+            Dispatch Research does not offer investment advice. Nothing here rates a stock, scores it,
             ranks it, or sets a target price. The valuation tool tells you what growth
             today&rsquo;s price requires. Whether that growth is likely is the judgment, and the
             judgment should be yours.
@@ -79,7 +79,7 @@ export default function AboutPage() {
 
           <p>
             Everything above reads as &ldquo;we,&rdquo; because that&rsquo;s how research usually
-            reads, but The Dispatch is built and run by one person. I&rsquo;m Eli Poteet, a
+            reads, but Dispatch Research is built and run by one person. I&rsquo;m Eli Poteet, a
             finance student at the University of New Hampshire. I built this because I got tired
             of juggling six tabs and a spreadsheet to get a straight answer on a company I already
             cared about, and because the sites that did have the answer either sold me a verdict

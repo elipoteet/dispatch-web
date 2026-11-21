@@ -213,7 +213,7 @@ export function FinancialsView({
 
         <div className="rf-sourceline">
           <p>{sourceLine}</p>
-          {hasFreeCashFlow && <p>Free cash flow is calculated by The Dispatch: operating cash flow minus capital expenditure.</p>}
+          {hasFreeCashFlow && <p>Free cash flow is calculated by Dispatch Research: operating cash flow minus capital expenditure.</p>}
           {period === "quarterly" && (
             <p>
               Companies don&rsquo;t report a fourth quarter on its own, so Q4 is the full year minus the first three quarters.

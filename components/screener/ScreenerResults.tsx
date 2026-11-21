@@ -174,7 +174,7 @@ export async function ScreenerResults({ view, screen }: { view: View; screen: St
             {" Each company’s figures come from its latest full fiscal year, as reported in its annual report. Fiscal years end in different months, so the last column gives each company’s year end."}
           </p>
           <p>
-            <strong>Calculated by The Dispatch.</strong>
+            <strong>Calculated by Dispatch Research.</strong>
             {" Free cash flow is operating cash flow minus capital spending. Net cash is cash and short-term investments, less all debt, long- and short-term. Return on invested capital uses the company’s own tax rate, or 21% where that can’t be worked out; where a company files no operating income line it starts from pretax income plus interest expense, marked †. “What the price assumes” opens each company’s Valuation tab, where today’s price is set against the business."}
           </p>
           <p>

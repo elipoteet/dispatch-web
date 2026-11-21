@@ -116,7 +116,7 @@ export default async function OverviewPage({ params, searchParams }: Props) {
               <p className="rf-words-text">{described.description}</p>
             </blockquote>
             <figcaption className="rf-words-attr">
-              <span>{`How ${company.name} describes itself at the start of the business section of its latest ${described.sourceForm}, lightly trimmed. The company's words, not The Dispatch's.`}</span>
+              <span>{`How ${company.name} describes itself at the start of the business section of its latest ${described.sourceForm}, lightly trimmed. The company's words, not Dispatch Research's.`}</span>
               {annualUrl && (
                 <a href={annualUrl} target="_blank" rel="noopener noreferrer">
                   Read the filing ↗

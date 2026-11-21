@@ -214,7 +214,7 @@ export default async function EarningsPage({ params }: Props) {
         {data.epsStatus === "ok" && <p className="rf-vh-def" style={{ marginTop: 12 }}>On today&rsquo;s share basis: figures from before a stock split are divided by it, so every quarter compares.</p>}
         {data.epsStatus === "ok" && anyCalculated && (
           <p className="rf-vh-def" style={{ marginTop: 12 }}>
-            ‡ A fourth quarter is the year&rsquo;s EPS less the first three quarters&rsquo;, calculated by The Dispatch: a 10-K
+            ‡ A fourth quarter is the year&rsquo;s EPS less the first three quarters&rsquo;, calculated by Dispatch Research: a 10-K
             reports the year, not the quarter. It can differ by a cent or two from the company&rsquo;s own figure, because the share
             count moves during the year.
           </p>

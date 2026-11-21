@@ -8,7 +8,7 @@ import { Masthead } from "@/components/layout/Masthead";
 import { TopNav } from "@/components/layout/TopNav";
 import { Footer } from "@/components/layout/Footer";
 
-const SITE_NAME = "The Dispatch";
+const SITE_NAME = "Dispatch Research";
 // The title a page without its own gets (About, Give, the 404), and
 // the one shared links show. Was "Equity Research", from the retired memo.
 const SITE_TITLE = `${SITE_NAME} — Free research on every U.S. public company`;

@@ -19,7 +19,7 @@ import { MarketsTape } from "@/components/home/MarketsTape";
 export const revalidate = 300;
 
 export const metadata: Metadata = {
-  title: { absolute: "The Dispatch — Free research on every U.S. public company" },
+  title: { absolute: "Dispatch Research — Free research on every U.S. public company" },
   description:
     "A free research file on every U.S. public company, read from its SEC filings: ten years of financials, what stands out, and its price history. No ratings, no verdicts.",
   alternates: { canonical: "/" },

@@ -309,7 +309,7 @@ export default async function ValuationPage({ params }: Props) {
       <div className="rf-sourceline">
         {sharesLine && <p>{sharesLine}</p>}
         <p>
-          {`Trailing figures: the four quarters${through ? ` to ${through}` : ""}, from ${name}'s 10-Q and 10-K filings with the SEC. Free cash flow is operating cash flow minus capital expenditure, calculated by The Dispatch.`}
+          {`Trailing figures: the four quarters${through ? ` to ${through}` : ""}, from ${name}'s 10-Q and 10-K filings with the SEC. Free cash flow is operating cash flow minus capital expenditure, calculated by Dispatch Research.`}
         </p>
         <p>
           History: each quarter-end&rsquo;s closing price × the share count stated in that quarter&rsquo;s filing, with stock

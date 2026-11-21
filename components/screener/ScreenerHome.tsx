@@ -136,7 +136,7 @@ export async function ScreenerHome() {
               <strong>From the filings.</strong>
               <span>
                 Every figure comes from the annual reports companies file with the SEC, updated nightly. Free cash flow, net cash and return on
-                invested capital are calculated by The Dispatch, and each filter says how.
+                invested capital are calculated by Dispatch Research, and each filter says how.
               </span>
             </li>
             <li>

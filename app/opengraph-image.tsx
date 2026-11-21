@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "The Dispatch — Equity Research, written for readers.";
+export const alt = "Dispatch Research — Equity Research, written for readers.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -48,7 +48,7 @@ export default async function Image() {
           </svg>
           <div style={{ display: "flex", flexDirection: "column" }}>
             <div style={{ fontSize: 58, fontWeight: 700, color: "#f5f1e8", letterSpacing: -1.5 }}>
-              DISPATCH
+              DISPATCH RESEARCH
             </div>
             <div
               style={{

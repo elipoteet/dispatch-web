@@ -83,7 +83,7 @@ export function AuthModal() {
         <button className="close-x" aria-label="Close" onClick={close} type="button">
           &times;
         </button>
-        <div className="label">The Dispatch</div>
+        <div className="label">Dispatch Research</div>
         <h2 id="authModalTitle">
           {mode === "sign-in" ? "Sign in to your account." : "Create your account."}
         </h2>

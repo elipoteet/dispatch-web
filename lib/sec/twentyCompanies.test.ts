@@ -15,7 +15,7 @@ import { describe, expect, it } from "vitest";
 import { normalizeCompanyFacts, type CompanyFacts, type FinancialRow } from "@/lib/sec/normalize";
 
 const CONTACT = process.env.SEC_CONTACT_EMAIL?.trim();
-const UA = `The Dispatch (dispatchresearch.com) ${CONTACT ?? ""}`;
+const UA = `Dispatch Research (dispatchresearch.com) ${CONTACT ?? ""}`;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const COMPANIES: [string, string][] = [

@@ -2,7 +2,7 @@ export function Footer() {
   return (
     <footer>
       <div>
-        © The Dispatch <span className="fgold">·</span> 2026
+        © Dispatch Research <span className="fgold">·</span> 2026
       </div>
       <div>
         Data: SEC EDGAR <span className="fgold">·</span> Twelve Data <span className="fgold">·</span> Finnhub{" "}

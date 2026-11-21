@@ -1,4 +1,4 @@
-# The Dispatch — Claude Project Context
+# Dispatch Research — Claude Project Context
 
 Paste this file into a Claude Project's knowledge (along with `ARCHITECTURE.md` and
 `AGENTS.md` from the repo root — see "What else to upload" below). It's written so a
@@ -12,7 +12,7 @@ fresh Claude conversation can pick up this project with no prior history.
 > `docs/strategy/direction-2026-10-30.md` first. The stack, brand rules and gotchas in this file
 > still hold.
 
-**The Dispatch** is an equity-research web app. A visitor types a U.S. stock ticker and
+**Dispatch Research** is an equity-research web app. A visitor types a U.S. stock ticker and
 gets back a structured research memo in a few seconds — fundamentals, technicals,
 sentiment, risks, catalysts — built fresh from real market data every time, not
 templated boilerplate. It also has a "Time Machine" that rebuilds any past memo as it
@@ -300,7 +300,7 @@ but nothing in the app queries it anymore.
 
 ## Suggested Project custom instructions (paste into the Project's instructions field)
 
-> This project is **The Dispatch**, a solo-built equity-research web app
+> This project is **Dispatch Research**, a solo-built equity-research web app
 > (dispatchresearch.com, GitHub: elipoteet/dispatch-web, Next.js 16 + Supabase +
 > Vercel). Read `claude-project-context.md` in this Project's knowledge before
 > starting any work — it has the tech stack, brand rules, and several hard-won

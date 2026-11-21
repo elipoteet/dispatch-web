@@ -46,7 +46,7 @@ function userAgent(): string {
     }
     throw new SecNotConfiguredError("SEC_CONTACT_EMAIL is not set.");
   }
-  return `The Dispatch (dispatchresearch.com) ${email}`;
+  return `Dispatch Research (dispatchresearch.com) ${email}`;
 }
 
 // True when the SEC can be called at all. Callers that want to degrade quietly

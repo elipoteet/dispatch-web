@@ -1,4 +1,4 @@
-// The Dispatch mark — navy D with a gold candlestick-style uptrend arrow,
+// Dispatch Research mark — navy D with a gold candlestick-style uptrend arrow,
 // halo'd against the nav background. Approved shape: rounded bowl, rounded
 // arrow joints — a deliberate exception to the site's otherwise zero-radius
 // rule, the same way the mark is allowed to be the one "designed" element.

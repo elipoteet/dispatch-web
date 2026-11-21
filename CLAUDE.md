@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-The Dispatch (dispatchresearch.com): a free research file on every U.S.-listed company, built from SEC EDGAR plus the free tiers of Twelve Data, Finnhub and Tiingo. Next.js 16 (App Router, Turbopack), React 19, TypeScript, Supabase (Postgres + Auth), hosted on Vercel. Solo project run by Eli Poteet.
+Dispatch Research (dispatchresearch.com): a free research file on every U.S.-listed company, built from SEC EDGAR plus the free tiers of Twelve Data, Finnhub and Tiingo. Next.js 16 (App Router, Turbopack), React 19, TypeScript, Supabase (Postgres + Auth), hosted on Vercel. Solo project run by Eli Poteet.
 
 `ARCHITECTURE.md`, `README.md` and the product section of `docs/claude-project-context.md` still describe the retired memo product (ratings, Time Machine, paper trading). For the current product, read `docs/strategy/direction-2026-10-30.md`, then `docs/phase-nine/phase-nine.md` (the research-file plan) and `docs/phase-ten/phase-ten.md`. Each stage has a recap in its phase folder (`docs/phase-*/phase-*-recap.md`). `docs/claude-project-context.md` is still the reference for brand rules and the numbered gotchas.
 

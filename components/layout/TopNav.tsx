@@ -71,7 +71,7 @@ export function TopNav() {
       <Link href="/" className="logo" style={{ textDecoration: "none" }}>
         <Logo size={32} />
         <span>
-          DISPATCH
+          DISPATCH RESEARCH
           <span className="tag">Research on every U.S. company</span>
         </span>
       </Link>

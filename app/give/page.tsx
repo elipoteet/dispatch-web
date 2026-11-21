@@ -14,7 +14,7 @@ export default function GivePage() {
   return (
     <section className="page active" id="page-give">
       <div className="give-head">
-        <div className="label">The Dispatch Is Free</div>
+        <div className="label">Dispatch Research Is Free</div>
         <h1>We don&rsquo;t charge for this.</h1>
         <p>
           Every memo, every feature — no paywall, no trial that quietly starts billing you. If

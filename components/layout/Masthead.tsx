@@ -18,7 +18,7 @@ export function Masthead() {
   return (
     <div className="masthead">
       <span>
-        The Dispatch <span className="dot">•</span> Est. 2026
+        Dispatch Research <span className="dot">•</span> Est. 2026
       </span>
       <span>
         <span className="date-long">{date.long}</span>
