@@ -13,8 +13,19 @@ import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import http from "node:http";
 
 const LOG = process.env.GUARD_LOG;
-const SB = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
 const orig = globalThis.fetch;
+
+// The database's address is read on every request, not once at load: `next
+// start` reads .env.local only after this file is preloaded, so a copy taken
+// here was empty and the guard let everything through (found 25 November
+// 2026; the local runs of 18 to 21 November were unguarded). Any Supabase host
+// counts as well, in case the address isn't set at all.
+function supabaseBase(url) {
+  const configured = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
+  if (configured && url.startsWith(configured)) return configured;
+  const m = /^https:\/\/[a-z0-9-]+\.supabase\.co/i.exec(url);
+  return m ? m[0] : null;
+}
 
 function log(line) {
   if (LOG) appendFileSync(LOG, `${new Date().toISOString()} pid ${process.pid} ${line}\n`);
@@ -23,8 +34,9 @@ function log(line) {
 globalThis.fetch = async function guardedFetch(input, init) {
   const url = typeof input === "string" ? input : input instanceof URL ? input.href : input?.url ?? String(input);
   const method = String(init?.method ?? (typeof input === "object" && input && "method" in input ? input.method : "GET")).toUpperCase();
-  if (SB && url.startsWith(SB) && method !== "GET" && method !== "HEAD") {
-    const path = url.slice(SB.length).split("?")[0];
+  const base = supabaseBase(url);
+  if (base && method !== "GET" && method !== "HEAD") {
+    const path = url.slice(base.length).split("?")[0];
     if (!path.startsWith("/auth/v1/")) {
       log(`BLOCKED ${method} ${path}`);
       return new Response(JSON.stringify({ message: "write blocked by local guard", code: "LOCAL_GUARD" }), {
@@ -66,4 +78,4 @@ if (REG) {
   server.unref();
   server.listen(0, "127.0.0.1", () => writeFileSync(`${REG}/${process.pid}.port`, String(server.address().port)));
 }
-log("guard loaded");
+log(`guard loaded (database address ${process.env.NEXT_PUBLIC_SUPABASE_URL ? "already set" : "not set yet: read on each request"})`);

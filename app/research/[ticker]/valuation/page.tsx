@@ -261,37 +261,39 @@ export default async function ValuationPage({ params }: Props) {
         <Yields data={data} name={name} />
       </section>
 
-      <section className="rf-sec" aria-labelledby="rf-history">
-        <div className="rf-sechead">
-          <div>
-            <div className="rf-lbl rf-kicker">Against its own history</div>
-            <h2 className="rf-h2" id="rf-history">
-              Today&rsquo;s multiples against past quarter-ends
-            </h2>
+      {data.historyStatus !== "skipped" && (
+        <section className="rf-sec" aria-labelledby="rf-history">
+          <div className="rf-sechead">
+            <div>
+              <div className="rf-lbl rf-kicker">Against its own history</div>
+              <h2 className="rf-h2" id="rf-history">
+                Today&rsquo;s multiples against past quarter-ends
+              </h2>
+            </div>
+            <span className="rf-lbl">Each quarter-end since {MONTH_YEAR.format(new Date(since))}</span>
           </div>
-          <span className="rf-lbl">Each quarter-end since {MONTH_YEAR.format(new Date(since))}</span>
-        </div>
-        {data.historyStatus === "busy" ? (
-          <div className="rf-chart-pending">The price history behind this section is updating. Try again in a minute.</div>
-        ) : data.historyStatus === "no-shares" || data.historyStatus === "mismatch" ? (
-          <p className="rf-note">
-            {data.historyStatus === "no-shares"
-              ? "Past market values need a share count for each quarter, and these filings don't give one in a standard form, so there's no history to compare against."
-              : "Past market values can't be put on the same footing as today's: the filings count shares one way and the quoted price is for another (usual where a company has share classes at different prices). Rather than show figures that are off, this section is left out."}
-          </p>
-        ) : data.historyStatus === "unavailable" || data.history.length === 0 ? (
-          <p className="rf-note">The price history behind this section couldn&rsquo;t be loaded just now. Try again in a minute.</p>
-        ) : (
-          <ValuationHistory
-            metrics={metrics}
-            points={data.history}
-            ranges={data.ranges}
-            today={todayValues}
-            since={data.history[0].periodEnd}
-            missingToday={missingToday}
-          />
-        )}
-      </section>
+          {data.historyStatus === "busy" ? (
+            <div className="rf-chart-pending">The price history behind this section is updating. Try again in a minute.</div>
+          ) : data.historyStatus === "no-shares" || data.historyStatus === "mismatch" ? (
+            <p className="rf-note">
+              {data.historyStatus === "no-shares"
+                ? "Past market values need a share count for each quarter, and these filings don't give one in a standard form, so there's no history to compare against."
+                : "Past market values can't be put on the same footing as today's: the filings count shares one way and the quoted price is for another (usual where a company has share classes at different prices). Rather than show figures that are off, this section is left out."}
+            </p>
+          ) : data.historyStatus === "unavailable" || data.history.length === 0 ? (
+            <p className="rf-note">The price history behind this section couldn&rsquo;t be loaded just now. Try again in a minute.</p>
+          ) : (
+            <ValuationHistory
+              metrics={metrics}
+              points={data.history}
+              ranges={data.ranges}
+              today={todayValues}
+              since={data.history[0].periodEnd}
+              missingToday={missingToday}
+            />
+          )}
+        </section>
+      )}
 
       <section className="rf-sec" aria-labelledby="rf-peers">
         <div className="rf-sechead">

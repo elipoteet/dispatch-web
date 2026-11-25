@@ -24,7 +24,7 @@ import { loadPeers, type PeerRow } from "@/lib/research/peers";
 // price history. no-shares: the filings give no share count for past quarters.
 // mismatch: they give one, but it doesn't line up with today's (see
 // historyMatchesToday).
-export type HistoryStatus = "ok" | "busy" | "unavailable" | "no-shares" | "mismatch";
+export type HistoryStatus = "ok" | "busy" | "unavailable" | "no-shares" | "mismatch" | "skipped";
 
 export type MetricKey = "pe" | "evSales" | "fcfYield" | "pb";
 
@@ -70,7 +70,9 @@ export async function loadValuation(
 
   let history =
     company.daily && split.steps ? valuationHistory({ rows: fin.rows, daily: company.daily, steps: split.steps, asOf }) : [];
-  let historyStatus: HistoryStatus = !company.daily ? "unavailable" : split.status;
+  // A crawler's visit fetches no prices, so there's no history to draw: the
+  // page leaves the section out for it (fix/price-credits).
+  let historyStatus: HistoryStatus = company.pricesSkipped ? "skipped" : !company.daily ? "unavailable" : split.status;
   if (historyStatus === "ok" && history.length === 0) historyStatus = "no-shares";
   if (historyStatus === "ok" && company.daily && shares && !historyMatchesToday(history, company.daily, shares.shares)) {
     console.warn(`[valuation] ${company.symbol}: history's share count doesn't match today's; not shown`);

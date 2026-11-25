@@ -195,31 +195,33 @@ export default async function EarningsPage({ params }: Props) {
         </section>
       )}
 
-      <section className="rf-panel" aria-labelledby="rf-eps-q">
-        <div className="rf-panel-head">
-          <h2 className="rf-panel-title" id="rf-eps-q">
-            Diluted EPS by quarter
-          </h2>
-          <span className="rf-lbl">$ per share, as reported</span>
-        </div>
-        {data.epsStatus === "ok" ? (
-          <QuarterBars columns={epsColumns} format={(v) => v.toFixed(2)} label={`${name} diluted earnings per share by quarter`} />
-        ) : (
-          <div className="rf-chart-pending">
-            {data.epsStatus === "busy"
-              ? "Updating, try again in a minute."
-              : "EPS can't be shown just now: it has to be put on today's share basis first, and the check for stock splits didn't run."}
+      {data.epsStatus !== "skipped" && (
+        <section className="rf-panel" aria-labelledby="rf-eps-q">
+          <div className="rf-panel-head">
+            <h2 className="rf-panel-title" id="rf-eps-q">
+              Diluted EPS by quarter
+            </h2>
+            <span className="rf-lbl">$ per share, as reported</span>
           </div>
-        )}
-        {data.epsStatus === "ok" && <p className="rf-vh-def" style={{ marginTop: 12 }}>On today&rsquo;s share basis: figures from before a stock split are divided by it, so every quarter compares.</p>}
-        {data.epsStatus === "ok" && anyCalculated && (
-          <p className="rf-vh-def" style={{ marginTop: 12 }}>
-            ‡ A fourth quarter is the year&rsquo;s EPS less the first three quarters&rsquo;, calculated by The Dispatch: a 10-K
-            reports the year, not the quarter. It can differ by a cent or two from the company&rsquo;s own figure, because the share
-            count moves during the year.
-          </p>
-        )}
-      </section>
+          {data.epsStatus === "ok" ? (
+            <QuarterBars columns={epsColumns} format={(v) => v.toFixed(2)} label={`${name} diluted earnings per share by quarter`} />
+          ) : (
+            <div className="rf-chart-pending">
+              {data.epsStatus === "busy"
+                ? "Updating, try again in a minute."
+                : "EPS can't be shown just now: it has to be put on today's share basis first, and the check for stock splits didn't run."}
+            </div>
+          )}
+          {data.epsStatus === "ok" && <p className="rf-vh-def" style={{ marginTop: 12 }}>On today&rsquo;s share basis: figures from before a stock split are divided by it, so every quarter compares.</p>}
+          {data.epsStatus === "ok" && anyCalculated && (
+            <p className="rf-vh-def" style={{ marginTop: 12 }}>
+              ‡ A fourth quarter is the year&rsquo;s EPS less the first three quarters&rsquo;, calculated by The Dispatch: a 10-K
+              reports the year, not the quarter. It can differ by a cent or two from the company&rsquo;s own figure, because the share
+              count moves during the year.
+            </p>
+          )}
+        </section>
+      )}
 
       <section className="rf-sec" aria-labelledby="rf-estimates">
         <div className="rf-sechead">

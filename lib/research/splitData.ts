@@ -22,8 +22,10 @@ const cachedUnadjusted = unstable_cache(
 
 // ok: steps are known (empty when there was no split). busy: Twelve Data's
 // allowance is used up for the minute. unavailable: no price history to
-// compare against, or the request failed.
-export type SplitStatus = "ok" | "busy" | "unavailable";
+// compare against, or the request failed. skipped: a crawler's visit, for
+// which no prices are fetched (fix/price-credits); the page leaves out what
+// depends on them rather than saying "try again".
+export type SplitStatus = "ok" | "busy" | "unavailable" | "skipped";
 
 export async function loadSplitSteps(
   company: CompanyPage,
@@ -32,6 +34,7 @@ export async function loadSplitSteps(
 ): Promise<{ steps: SplitStep[] | null; status: SplitStatus }> {
   const rows = company.financials?.rows ?? [];
   if (!needsSplitCheck(shareCountsInWindow(rows, asOf), finnhubShares)) return { steps: [], status: "ok" };
+  if (company.pricesSkipped) return { steps: null, status: "skipped" };
   if (!company.daily) return { steps: null, status: "unavailable" };
   try {
     const raw = await cachedUnadjusted(company.symbol);
