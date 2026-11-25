@@ -8,6 +8,7 @@
 // minute, the profile for a day.
 
 import { cache } from "react";
+import { headers } from "next/headers";
 import { earningsReleaseDates, filesReportsFrom, getSubmissionsResult, getTickerMap, lookupCik } from "@/lib/sec/client";
 import { getCompanyFinancials, NoFinancialsError, noFinancialsMessage, type CompanyFinancials } from "@/lib/sec";
 import {
@@ -19,6 +20,7 @@ import {
   type QuoteSnapshot,
 } from "@/lib/providers";
 import { averageVolume, getDailyHistory, range52Week, type DailyBar } from "@/lib/analysis/tickerChart";
+import { isCrawler } from "@/lib/research/crawler";
 import { fiscalYearEndFromRows, titleCaseName } from "@/lib/research/format";
 
 export type CompanyPage = {
@@ -42,6 +44,13 @@ export type CompanyPage = {
   quote: QuoteSnapshot | null;
   profile: CompanyProfile | null;
   daily: DailyBar[] | null;
+  // The last session in `daily`, and whether it's the latest one: false when
+  // newer prices couldn't be fetched and the last stored ones are shown.
+  dailyThrough: string | null;
+  dailyCurrent: boolean;
+  // A crawler's visit: no price history is fetched for it at all, so the page
+  // has no chart and no 52-week range (fix/price-credits).
+  pricesSkipped: boolean;
   range52: { low: number; high: number } | null;
   avgVolume: number | null;
   // Past earnings dates from the company's own 8-K filings, and how far back
@@ -66,6 +75,12 @@ function displayExchange(sec: string | null | undefined, finnhub: string | null 
 // null when no such ticker exists anywhere: the caller turns that into a 404.
 export const loadCompanyPage = cache(async (symbolRaw: string): Promise<CompanyPage | null> => {
   const symbol = symbolRaw.trim().toUpperCase();
+  // Crawlers get the page without price history. Opening research files for
+  // thousands of companies, they were most of the 2,141 Twelve Data requests
+  // on 24 November 2026 against a daily allowance of 800. People see no
+  // difference. Research pages are rendered per request already, so reading
+  // the User-Agent here changes nothing about caching.
+  const pricesSkipped = isCrawler((await headers()).get("user-agent"));
   const [ref, quote, profile] = await Promise.all([lookupCik(symbol), fetchQuoteSnapshot(symbol), fetchCompanyProfile(symbol)]);
 
   // A symbol neither the SEC nor the quote feed knows is not a page. Checked
@@ -85,7 +100,7 @@ export const loadCompanyPage = cache(async (symbolRaw: string): Promise<CompanyP
 
   let financials: CompanyFinancials | null = null;
   let financialsUnavailable: string | null = null;
-  const [financialsResult, daily, nextEarnings] = await Promise.all([
+  const [financialsResult, history, nextEarnings] = await Promise.all([
     filesReports
       ? getCompanyFinancials(symbol).catch((err: unknown) => {
           if (err instanceof NoFinancialsError) return err;
@@ -95,9 +110,10 @@ export const loadCompanyPage = cache(async (symbolRaw: string): Promise<CompanyP
           return null;
         })
       : Promise.resolve(null),
-    getDailyHistory(symbol),
+    pricesSkipped ? Promise.resolve(null) : getDailyHistory(symbol),
     filesReports ? fetchNextEarnings(symbol) : Promise.resolve(null),
   ]);
+  const daily = history?.bars ?? null;
   const name = profile?.name ?? (submissions?.name ? titleCaseName(submissions.name) : ref ? titleCaseName(ref.name) : symbol);
 
   if (financialsResult instanceof NoFinancialsError) financialsUnavailable = noFinancialsMessage(financialsResult.reason, name);
@@ -120,6 +136,9 @@ export const loadCompanyPage = cache(async (symbolRaw: string): Promise<CompanyP
     quote,
     profile,
     daily,
+    dailyThrough: history?.through ?? null,
+    dailyCurrent: history?.current ?? false,
+    pricesSkipped,
     range52: daily ? range52Week(daily, quote?.price ?? null) : null,
     avgVolume: daily ? averageVolume(daily) : null,
     earnings: submissions && filesReports ? earningsReleaseDates(submissions) : { dates: [], completeFrom: null },

@@ -8,12 +8,14 @@ export type CompanyHeaderProps = {
   fiscalYearEnd: string | null;
   quote: { price: number; change: number; changePct: number; asOf: number } | null;
   range52: { low: number; high: number } | null;
+  range52Through?: string | null;
   nextEarnings: { date: string; hour: "bmo" | "amc" | "dmh" | null } | null;
 };
 
 const NEW_YORK = "America/New_York";
 const HOUR_WORDS = { bmo: "before the open", amc: "after the close", dmh: "during market hours" } as const;
 const DAY = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+const THROUGH = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
 // "Today" only when the last trade happened on today's New York date; on a
 // weekend or holiday, name the session the price belongs to instead.
@@ -26,7 +28,9 @@ function sessionLabel(asOf: number): string {
 
 // The 52-week range: a slim track, filled to today's price, with today as a
 // gold dot (gold marks the current figure, phase ten).
-function RangeBar({ low, high, price }: { low: number; high: number; price: number | null }) {
+// `through` is set when the range comes from the last prices stored rather
+// than the latest (fix/price-credits): the note then gives their date.
+function RangeBar({ low, high, price, through }: { low: number; high: number; price: number | null; through: string | null }) {
   const span = high - low;
   const position = price != null && span > 0 ? Math.min(100, Math.max(0, ((price - low) / span) * 100)) : null;
   const belowHigh = price != null && high > 0 ? ((high - price) / high) * 100 : null;
@@ -44,16 +48,18 @@ function RangeBar({ low, high, price }: { low: number; high: number; price: numb
           </>
         )}
       </div>
-      {belowHigh != null && (
+      {(belowHigh != null || through) && (
         <div className="rf-lbl rf-range-note">
-          {belowHigh < 0.05 ? "At its 52-week high" : `${formatPct(belowHigh)} below its 52-week high`}
+          {belowHigh != null && (belowHigh < 0.05 ? "At its 52-week high" : `${formatPct(belowHigh)} below its 52-week high`)}
+          {belowHigh != null && through ? " · " : ""}
+          {through ? `Range through ${THROUGH.format(new Date(`${through}T12:00:00Z`))}` : ""}
         </div>
       )}
     </div>
   );
 }
 
-export function CompanyHeader({ symbol, name, exchange, sector, fiscalYearEnd, quote, range52, nextEarnings }: CompanyHeaderProps) {
+export function CompanyHeader({ symbol, name, exchange, sector, fiscalYearEnd, quote, range52, range52Through = null, nextEarnings }: CompanyHeaderProps) {
   const fyMonth = fiscalYearEndMonth(fiscalYearEnd);
   const kicker = [exchange, sector].filter(Boolean).join(" · ");
   // A rise or fall is marked by an arrow as well as its colour.
@@ -93,7 +99,7 @@ export function CompanyHeader({ symbol, name, exchange, sector, fiscalYearEnd, q
       </div>
       {(range52 || nextEarnings) && (
         <div className="rf-head-side">
-          {range52 && <RangeBar low={range52.low} high={range52.high} price={quote?.price ?? null} />}
+          {range52 && <RangeBar low={range52.low} high={range52.high} price={quote?.price ?? null} through={range52Through} />}
           {nextEarnings && (
             <div className="rf-head-next">
               <span className="rf-lbl">Next earnings</span>

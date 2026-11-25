@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { TICKER_PATTERN } from "@/lib/ticker";
+import { isCrawler } from "@/lib/research/crawler";
 import { getTickerIntraday, isKnownSymbol } from "@/lib/analysis/tickerChart";
 
 // Backs the 1D and 1W ranges on /research/[ticker]. Server-only because the
@@ -12,7 +13,7 @@ import { getTickerIntraday, isKnownSymbol } from "@/lib/analysis/tickerChart";
 // resolves to { points: null } with a 200 rather than an error status, and
 // `busy: true` when the cause is the allowance, so the chart can say "try
 // again in a minute" instead of surfacing a failure the visitor can't act on.
-export async function GET(_request: Request, { params }: { params: Promise<{ symbol: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ symbol: string }> }) {
   const { symbol: raw } = await params;
   const symbol = raw?.trim().toUpperCase();
   if (!symbol || !TICKER_PATTERN.test(symbol)) {
@@ -22,5 +23,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ sym
   if (!(await isKnownSymbol(symbol))) {
     return NextResponse.json({ error: "Unknown ticker symbol." }, { status: 404 });
   }
+  // A crawler never spends a price request (fix/price-credits). The chart
+  // only asks from a click, but the address is in the page's script.
+  if (isCrawler(request.headers.get("user-agent"))) return NextResponse.json({ points: null, busy: false, out: true });
   return NextResponse.json(await getTickerIntraday(symbol));
 }

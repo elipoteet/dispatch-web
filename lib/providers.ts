@@ -6,6 +6,8 @@
 // free tier is 8 requests/minute — the tightest quota of any provider here).
 
 import { unstable_cache } from "next/cache";
+import { claimTwelveDataCredit, tiingoOpen, tiingoRefused, twelveDataLimitKind, twelveDataOutForTheDay } from "@/lib/prices/budget";
+import { databaseLedger } from "@/lib/prices/ledger";
 
 export type PriceRow = {
   date: string;
@@ -111,6 +113,11 @@ const HISTORICAL_TTL_S = false; // Time Machine news — a past date's news neve
 // used up, so the fallbacks can be checked without spending it.
 export class TwelveDataBusyError extends Error {}
 
+// Twelve Data isn't being asked today: its credits for the day are gone, or
+// the visitors' share of them is (lib/prices/budget.ts). Not a busy minute,
+// so callers don't say "try again in a minute".
+export class TwelveDataOutError extends Error {}
+
 const TWELVE_DATA_PER_MINUTE = 7;
 let tdMinute = -1;
 let tdUsed = 0;
@@ -136,6 +143,14 @@ async function twelveDataSeries(params: Record<string, string>): Promise<TwelveD
   if (tdUsed >= TWELVE_DATA_PER_MINUTE) throw twelveDataBusy(`${tdUsed} requests already this minute`);
   tdUsed++;
 
+  // The day's allowance, shared by every instance: the visitors' reserve, and
+  // whether Twelve Data has already said it's out for the day.
+  const claim = await claimTwelveDataCredit(databaseLedger);
+  if (!claim.ok) {
+    tdUsed--;
+    throw new TwelveDataOutError(`Twelve Data not asked: ${claim.reason}`);
+  }
+
   const qs = new URLSearchParams({ ...params, apikey: key }).toString();
   const res = await fetch(`https://api.twelvedata.com/time_series?${qs}`, { cache: "no-store" });
   // Twelve Data returns a real HTTP 404 for an unrecognized symbol, not a
@@ -147,19 +162,29 @@ async function twelveDataSeries(params: Record<string, string>): Promise<TwelveD
   // short-circuits instead of wasting a Tiingo fallback call on it.
   if (res.status === 404) throw new NoTickerDataError("No data for this symbol.");
   if (res.status === 429) {
-    tdBlockedMinute = minute;
-    throw twelveDataBusy("HTTP 429");
+    const body = (await res.json().catch(() => null)) as { message?: string } | null;
+    return refused(String(body?.message ?? ""), minute, "HTTP 429");
   }
   if (!res.ok) throw new Error("Twelve Data HTTP " + res.status);
   const j = await res.json();
   // Belt and braces: a rate-limit message in a 200 body is a busy signal, not
   // "this symbol has no data", which would 404 a real company's page.
-  if (j.code === 429) {
-    tdBlockedMinute = minute;
-    throw twelveDataBusy("429 in the response body");
-  }
+  if (j.code === 429) return refused(String(j.message ?? ""), minute, "429 in the response body");
   if (j.status === "error" || !j.values) throw new NoTickerDataError(j.message || "No data for this symbol.");
   return j.values as TwelveDataValue[];
+}
+
+// A 429 is either the minute's eight requests or the day's 800. The day's
+// stops every request until midnight UTC (lib/prices/budget.ts); the minute's
+// only this instance's, until the minute turns.
+async function refused(message: string, minute: number, how: string): Promise<never> {
+  if (twelveDataLimitKind(message) === "day") {
+    console.warn(`[prices] Twelve Data is out of credits for the day (${how}); not asking again until midnight UTC`);
+    await twelveDataOutForTheDay(databaseLedger);
+    throw new TwelveDataOutError("Twelve Data is out of credits for the day");
+  }
+  tdBlockedMinute = minute;
+  throw twelveDataBusy(how);
 }
 
 function rowsFromTwelveData(values: TwelveDataValue[]): PriceRow[] {
@@ -205,12 +230,20 @@ async function fetchPricesTwelveData(symbol: string, outputsize = 1300): Promise
 async function fetchPricesTiingo(symbol: string, years = 5): Promise<PriceRow[]> {
   const key = process.env.TIINGO_API_KEY;
   if (!key) throw new Error("Tiingo API key not configured.");
+  // Over one of Tiingo's caps earlier: don't ask until it has reset.
+  if (!tiingoOpen()) throw new Error("Tiingo not asked: over its allowance until it resets");
   const tiingoSymbol = symbol.replace(/\./g, "-");
   const startDate = new Date();
   startDate.setFullYear(startDate.getFullYear() - years);
   const url = `https://api.tiingo.com/tiingo/daily/${encodeURIComponent(tiingoSymbol)}/prices?startDate=${startDate.toISOString().slice(0, 10)}&token=${encodeURIComponent(key)}`;
   const res = await fetch(url, { cache: "no-store" });
   if (res.status === 404) throw new NoTickerDataError("No data for this symbol.");
+  if (res.status === 429) {
+    const text = await res.text().catch(() => "");
+    tiingoRefused(text);
+    console.warn("[prices] Tiingo refused (429); not asking again until its allowance resets");
+    throw new Error("Tiingo HTTP 429");
+  }
   if (!res.ok) throw new Error("Tiingo HTTP " + res.status);
   const j = await res.json();
   if (!Array.isArray(j)) throw new NoTickerDataError("No data for this symbol.");

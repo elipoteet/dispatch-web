@@ -169,9 +169,11 @@ export default async function OverviewPage({ params, searchParams }: Props) {
           earnings={company.earnings}
           nextEarnings={company.nextEarnings}
           previousClose={previousClose}
+          through={company.dailyThrough}
+          current={company.dailyCurrent}
         />
-      ) : (
-        <div className="rf-chart-pending">The price chart is updating. Try again in a minute.</div>
+      ) : company.pricesSkipped ? null : (
+        <div className="rf-chart-pending">The price chart can&rsquo;t be loaded right now.</div>
       )}
 
       {stats.length > 0 && (

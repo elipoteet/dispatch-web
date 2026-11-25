@@ -1,10 +1,6 @@
 {
   "crons": [
     {
-      "path": "/api/cron/alerts",
-      "schedule": "30 21 * * *"
-    },
-    {
       "path": "/api/cron/screener",
       "schedule": "0 9 * * *"
     }

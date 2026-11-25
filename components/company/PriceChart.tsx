@@ -23,7 +23,7 @@ import { formatPrice, formatSignedPct } from "@/lib/research/format";
 // asks at most once per visit.
 
 type Fetched = {
-  status: "idle" | "loading" | "ready" | "busy" | "empty";
+  status: "idle" | "loading" | "ready" | "busy" | "out" | "empty";
   points: ChartPoint[] | null;
   // When it last came back busy: another click within a minute won't ask
   // again, since Twelve Data's allowance is per minute.
@@ -103,7 +103,7 @@ function xTicks(points: ChartPoint[], range: RangeId): string[] {
 // only ever runs from a click, and keeping the clock reads out here makes
 // that plain to React's purity checks.
 async function loadSeries(url: string, current: Fetched, set: (f: Fetched) => void) {
-  if (current.status === "loading" || current.status === "ready" || current.status === "empty") return;
+  if (current.status === "loading" || current.status === "ready" || current.status === "empty" || current.status === "out") return;
   if (current.status === "busy" && Date.now() - current.busyAt < 60_000) return;
   set({ ...current, status: "loading" });
   try {
@@ -112,6 +112,7 @@ async function loadSeries(url: string, current: Fetched, set: (f: Fetched) => vo
     const points: ChartPoint[] | null = json?.points ?? null;
     if (points && points.length >= 2) set({ status: "ready", points, busyAt: 0 });
     else if (json?.busy) set({ status: "busy", points: null, busyAt: Date.now() });
+    else if (json?.out) set({ status: "out", points: null, busyAt: 0 });
     else set({ status: "empty", points: null, busyAt: 0 });
   } catch {
     // A network blip reads like a busy provider: try again in a minute.
@@ -126,6 +127,8 @@ export function PriceChart({
   earnings,
   nextEarnings,
   previousClose,
+  through,
+  current,
 }: {
   symbol: string;
   daily: ChartPoint[];
@@ -135,6 +138,10 @@ export function PriceChart({
   // The official previous close, the session it precedes ("YYYY-MM-DD"), and
   // that session's latest official price: the numbers the page header shows.
   previousClose: { value: number; session: string; last: number } | null;
+  // The last session in `daily`, and whether it's the latest: false when
+  // newer prices couldn't be fetched and the last stored ones are drawn.
+  through: string | null;
+  current: boolean;
 }) {
   const titleId = useId();
   const [range, setRange] = useState<RangeId>("1Y");
@@ -221,7 +228,10 @@ export function PriceChart({
       const reach = (parseDate(lastDate).getTime() - parseDate(firstDate).getTime()) / 86_400_000;
       const short = spec.spanDays != null && reach < spec.spanDays * 0.9;
       caption = short ? `${moveLabel(change)} since ${monthLabel(firstDate)}` : `${moveLabel(change)} over ${range}`;
-      source = spec.source === "weekly" ? "Weekly closes" : "Daily closes";
+      // Dated always, and said plainly when these are the last prices stored
+      // rather than the latest: never passed off as current.
+      source = `${spec.source === "weekly" ? "Weekly" : "Daily"} closes${through ? ` through ${dayLabel(through)}` : ""}`;
+      if (!current) source += ". Newer prices couldn't be loaded";
     }
   }
   const direction = change > 0 ? "pos" : change < 0 ? "neg" : "";
@@ -231,7 +241,9 @@ export function PriceChart({
       ? "Loading…"
       : fetched?.status === "busy"
         ? "Updating, try again in a minute."
-        : "No price data for this range.";
+        : fetched?.status === "out"
+          ? "This range can't be loaded right now."
+          : "No price data for this range.";
 
   const nextLine = nextEarnings
     ? `Next earnings ${dayLabel(nextEarnings.date)}${nextEarnings.hour ? `, ${HOUR_WORDS[nextEarnings.hour]}` : ""}`

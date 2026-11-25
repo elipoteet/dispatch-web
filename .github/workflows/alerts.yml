@@ -1,0 +1,47 @@
+# The nightly alerts job (fix/price-credits, 25 November 2026). It used to be a
+# Vercel cron at 21:30 UTC with 60 seconds for everything; now GitHub runs it
+# one ticker per request, so there's no overall time limit, at 00:23 UTC: just
+# after Twelve Data's daily credits reset, and with the US session's prices
+# settled (7:23 pm in New York, 8:23 pm in summer). The odd minute is on
+# purpose: GitHub delays schedules most at the top of the hour.
+#
+# Scheduled workflows run only from the default branch, so this starts once
+# merged. Needs one repository secret, CRON_SECRET, the same value as on
+# Vercel. A run started by hand from the Actions tab is a dry run unless that
+# box is unticked: it reports what it would send and writes nothing.
+name: Alerts job
+
+on:
+  schedule:
+    - cron: "23 0 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run: report what would be sent, write nothing"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: alerts-job
+  cancel-in-progress: false
+
+jobs:
+  alerts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/alerts
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run the alerts job
+        run: node scripts/alerts/run.mjs
+        env:
+          SITE_URL: https://www.dispatchresearch.com
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '1' || '' }}
