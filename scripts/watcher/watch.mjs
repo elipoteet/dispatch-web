@@ -24,11 +24,12 @@
 // any other method to the database's host. No secret is printed: everything
 // shown is scrubbed of every secret's value, and keys travel in headers only.
 //
-// Environment: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (the database),
-// TWELVE_DATA_API_KEY, VERCEL_TOKEN (optional), GITHUB_TOKEN and
-// GITHUB_REPOSITORY (from Actions, to file issues). A missing one makes its
-// check "skipped", never a failure. Local: node --env-file=.env.local
-// scripts/watcher/watch.mjs (NEXT_PUBLIC_SUPABASE_URL is read too).
+// Environment: SUPABASE_URL and SUPABASE_ANON_KEY (the database's public key;
+// it reads only watcher_status(), migration 0031), TWELVE_DATA_API_KEY,
+// VERCEL_TOKEN (optional), GITHUB_TOKEN and GITHUB_REPOSITORY (from Actions,
+// to file issues). A missing one makes its check "skipped", never a failure.
+// Local: node --env-file=.env.local scripts/watcher/watch.mjs
+// (NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are read too).
 
 import { appendFileSync } from "node:fs";
 
@@ -36,7 +37,9 @@ export const SITE = (process.env.SITE_URL ?? "https://www.dispatchresearch.com")
 export const FRESH_HOURS = 26;
 export const WARN_SHARE = 0.7;
 export const CPU_LIMIT_HOURS = 4;
-const SECRETS = ["SUPABASE_SERVICE_ROLE_KEY", "VERCEL_TOKEN", "TWELVE_DATA_API_KEY", "GITHUB_TOKEN"];
+// The public key isn't secret, but it's kept out of logs all the same; the
+// service key isn't used, and is listed in case it's ever set.
+const SECRETS = ["SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY", "VERCEL_TOKEN", "TWELVE_DATA_API_KEY", "GITHUB_TOKEN"];
 
 // Company counts per starting screen on 21 November 2026 (/screener). A count
 // moves a little every night as filings arrive; one that halves or doubles,
@@ -95,8 +98,10 @@ const ok = (key, name, detail) => ({ key, name, state: "ok", detail });
 const action = (key, name, detail, todo) => ({ key, name, state: "action", detail, todo });
 const skipped = (key, name, detail) => ({ key, name, state: "skipped", detail });
 
+// Vercel's pause has shown two faces: "DEPLOYMENT_PAUSED" (503, 17 November
+// 2026) and "DEPLOYMENT_DISABLED" (402 Payment Required, 25 November 2026).
 export function classifySite({ status, vercelError = "", body = "" }) {
-  if (/DEPLOYMENT_PAUSED/i.test(vercelError) || (status === 503 && /DEPLOYMENT_PAUSED/i.test(body))) return "paused";
+  if (/DEPLOYMENT_(PAUSED|DISABLED)/i.test(vercelError) || ((status === 503 || status === 402) && /DEPLOYMENT_(PAUSED|DISABLED)/i.test(body))) return "paused";
   if (status === 200) return "ok";
   return "down";
 }
@@ -108,10 +113,14 @@ export function isCached(header) {
 const hoursSince = (iso, now) => (iso ? (now.getTime() - new Date(iso).getTime()) / 3.6e6 : Infinity);
 const when = (iso) => (iso ? `${String(iso).slice(0, 16).replace("T", " ")} UTC` : "never");
 
+// `run` is watcher_status()'s screener_run (migration 0031): times, mode,
+// whether it failed and how many companies it published. The error text and
+// the reason for not publishing stay in the screener_runs table, which the
+// public key can't read.
 export function judgeScreenerJob(run, metricsUpdatedAt, now = new Date()) {
   const K = "screener-job";
   const N = "Screener job";
-  const todo = "Check Vercel's Cron Jobs page for /api/cron/screener, and the screener_runs row's error; a failed night keeps yesterday's figures.";
+  const todo = "Check Vercel's Cron Jobs page for /api/cron/screener, and the newest screener_runs row in Supabase (its error, or companies_skipped's \"not published because\"); a failed night keeps yesterday's figures.";
   if (!run) return action(K, N, "No run is recorded at all.", todo);
   const age = hoursSince(run.started_at, now);
   if (age > FRESH_HOURS) return action(K, N, `The last run started ${when(run.started_at)}, over ${FRESH_HOURS} hours ago.`, todo);
@@ -119,12 +128,9 @@ export function judgeScreenerJob(run, metricsUpdatedAt, now = new Date()) {
     if (age < 1) return ok(K, N, `Running now (started ${when(run.started_at)}).`);
     return action(K, N, `The run that started ${when(run.started_at)} never finished.`, todo);
   }
-  if (run.error) return action(K, N, `The run at ${when(run.started_at)} failed: ${String(run.error).slice(0, 200)}`, todo);
-  const skippedInfo = run.companies_skipped ?? {};
-  const published = skippedInfo.published;
-  if (published == null) {
-    return action(K, N, `The run at ${when(run.started_at)} didn't publish: ${skippedInfo["not published because"] ?? "no reason recorded"}.`, todo);
-  }
+  if (run.failed) return action(K, N, `The run at ${when(run.started_at)} failed.`, todo);
+  const published = run.published;
+  if (published == null) return action(K, N, `The run at ${when(run.started_at)} didn't publish.`, todo);
   if (hoursSince(metricsUpdatedAt, now) > FRESH_HOURS) {
     return action(K, N, `The run says it published, but the screener's table was last updated ${when(metricsUpdatedAt)}.`, todo);
   }
@@ -136,7 +142,12 @@ export function judgeAlertsJob(lastCheckedAt, watchedTickers, now = new Date()) 
   const N = "Alerts job";
   if (watchedTickers === 0) return skipped(K, N, "No one watches a ticker, so the job leaves no trace to check.");
   if (hoursSince(lastCheckedAt, now) > FRESH_HOURS) {
-    return action(K, N, `Watched tickers were last checked ${when(lastCheckedAt)}, over ${FRESH_HOURS} hours ago.`, "Check Vercel's Cron Jobs page for /api/cron/alerts.");
+    return action(
+      K,
+      N,
+      `Watched tickers were last checked ${when(lastCheckedAt)}, over ${FRESH_HOURS} hours ago.`,
+      "Check the \"Alerts job\" workflow's latest run in GitHub Actions (before fix/price-credits is merged, the job is Vercel's cron for /api/cron/alerts). A run that found no fresh prices says so per ticker.",
+    );
   }
   return ok(K, N, `Last checked watched tickers ${when(lastCheckedAt)}.`);
 }
@@ -272,7 +283,9 @@ export function isWeeklyDay(now = new Date(), force = process.env.WATCHER_WEEKLY
 
 // —— Wiring ——
 const DB_URL = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
-const DB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+// The public key: the same one every page of the site carries. It can read
+// none of the jobs' tables; watcher_status() is the only thing it's for here.
+const DB_KEY = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const guarded = readOnlyFetch(globalThis.fetch, DB_URL || null);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const UA = { "User-Agent": "dispatch-watcher" };
@@ -299,7 +312,7 @@ async function checkSite() {
   }
   const detail = seen.status ? `HTTP ${seen.status}${seen.vercelError ? ` ${seen.vercelError}` : ""}` : `no answer (${seen.error})`;
   if (state === "ok") return ok("site", "Live site", `${SITE} answers (${detail}).`);
-  if (state === "paused") return action("site", "Live site", `Vercel shows "Deployment Paused" (${detail}).`, "Vercel paused the account. Its Usage page shows which allowance went over; Vercel support (vercel.com/help) unpauses it.");
+  if (state === "paused") return action("site", "Live site", `Vercel has paused the account's deployments (${detail}).`, "Vercel paused the account. Its Usage page shows which allowance went over; Vercel support (vercel.com/help) unpauses it.");
   return action("site", "Live site", `${SITE} didn't answer with a page ${tries} times (${detail}).`, "Check the Vercel dashboard and vercel-status.com.");
 }
 
@@ -321,40 +334,50 @@ async function checkCache() {
   return ok("cache", "Cached pages", `Served from cache: ${seen.join(", ")}.`);
 }
 
-async function db(path, { count = false } = {}) {
-  const res = await guarded(`${DB_URL}/rest/v1/${path}`, {
-    method: "GET",
-    headers: { apikey: DB_KEY, Authorization: `Bearer ${DB_KEY}`, ...(count ? { Prefer: "count=exact" } : {}), ...UA },
-    signal: AbortSignal.timeout(20_000),
-  });
-  if (!res.ok) throw new Error(`database read ${path.split("?")[0]}: HTTP ${res.status} ${(await res.text()).slice(0, 160)}`);
-  const total = count ? Number(res.headers.get("content-range")?.split("/")[1]) : null;
-  return { rows: await res.json(), total };
+// Everything the watcher reads from the database is one call to
+// watcher_status() (migration 0031), with the public key: five numbers about
+// the jobs, and no table. A GET, as the read-only fetch requires (PostgREST
+// serves stable functions over GET).
+let statusOnce = null;
+function dbStatus() {
+  statusOnce ??= (async () => {
+    const res = await guarded(`${DB_URL}/rest/v1/rpc/watcher_status`, {
+      method: "GET",
+      headers: { apikey: DB_KEY, Authorization: `Bearer ${DB_KEY}`, ...UA },
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (res.status === 404) return { missing: true };
+    if (!res.ok) throw new Error(`watcher_status: HTTP ${res.status} ${(await res.text()).slice(0, 160)}`);
+    return { status: await res.json() };
+  })();
+  return statusOnce;
 }
 
-const needsDb = (key, name) => (DB_URL && DB_KEY ? null : skipped(key, name, "Needs SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY."));
+async function needsDb(key, name) {
+  if (!DB_URL || !DB_KEY) return skipped(key, name, "Needs SUPABASE_URL and SUPABASE_ANON_KEY (the public key).");
+  if ((await dbStatus()).missing) return skipped(key, name, "Needs migration 0031 (watcher_status) pasted into Supabase.");
+  return null;
+}
 
 async function checkScreenerJob() {
-  const missing = needsDb("screener-job", "Screener job");
+  const missing = await needsDb("screener-job", "Screener job");
   if (missing) return missing;
-  const runs = await db("screener_runs?select=started_at,finished_at,error,companies_skipped,mode&order=started_at.desc&limit=1");
-  const metrics = await db("screener_metrics?select=updated_at&order=updated_at.desc&limit=1");
-  return judgeScreenerJob(runs.rows[0] ?? null, metrics.rows[0]?.updated_at ?? null);
+  const { status } = await dbStatus();
+  return judgeScreenerJob(status.screener_run ?? null, status.screener_updated_at ?? null);
 }
 
 async function checkAlertsJob() {
-  const missing = needsDb("alerts-job", "Alerts job");
+  const missing = await needsDb("alerts-job", "Alerts job");
   if (missing) return missing;
-  const watched = await db("watchlist?select=ticker&limit=1", { count: true });
-  const last = await db("ticker_snapshot?select=checked_at&order=checked_at.desc&limit=1");
-  return judgeAlertsJob(last.rows[0]?.checked_at ?? null, watched.total ?? watched.rows.length);
+  const { status } = await dbStatus();
+  return judgeAlertsJob(status.alerts_checked_at ?? null, Number(status.watched_tickers ?? 0));
 }
 
 async function checkSupabase() {
-  const missing = needsDb("supabase", "Supabase");
+  const missing = await needsDb("supabase", "Supabase");
   if (missing) return missing;
-  const r = await db("screener_medians?select=metric&limit=1", { count: true });
-  return ok("supabase", "Supabase", `The database answers (${r.total ?? "some"} medians stored).`);
+  const { status } = await dbStatus();
+  return ok("supabase", "Supabase", `The database answers (${status.screener_medians ?? "some"} medians stored).`);
 }
 
 async function checkCounts() {

@@ -21,7 +21,7 @@ So the watcher checks what can be seen instead: whether the pages that must be c
 
 | Check | Fires when | What to do |
 |---|---|---|
-| Live site | The home page isn't a 200, or Vercel shows "Deployment Paused" (three tries, 30 s apart) | Paused: the Usage page shows which allowance went over, and Vercel support (vercel.com/help) unpauses. Down: the Vercel dashboard and vercel-status.com |
+| Live site | The home page isn't a 200, or Vercel shows its pause page ("DEPLOYMENT_PAUSED" on 17 November, "402 DEPLOYMENT_DISABLED" on 25 November 2026; three tries, 30 s apart) | Paused: the Usage page shows which allowance went over, and Vercel support (vercel.com/help) unpauses. Down: the Vercel dashboard and vercel-status.com |
 | Cached pages | /screener or The Compounder is rebuilt per visit instead of served from Vercel's cache | A page rebuilt per visit spends Active CPU. Check the last build's route table (docs/cpu-budget/cpu-budget-recap.md) |
 | Screener job | No run in 26 hours, a run that failed or never finished, a run that kept yesterday's figures, or the published table older than 26 hours | Vercel's Cron Jobs page, and the newest `screener_runs` row: its error, or `companies_skipped["not published because"]` |
 | Alerts job | No watched ticker checked in 26 hours. It is skipped when no one watches a ticker, because the job then leaves no trace | Vercel's Cron Jobs page for /api/cron/alerts. It needs Twelve Data prices, so check that row too |
@@ -32,10 +32,10 @@ So the watcher checks what can be seen instead: whether the pages that must be c
 
 ## Safety
 
-- **Read-only.** Every database request is a GET, and the script's `fetch` refuses any other method to the database's host. A test checks both.
+- **Read-only, with the public key.** The watcher's only database request is a GET of `watcher_status()` (migration 0031), which returns five numbers about the jobs and no rows. It uses the public key, which can't read the jobs' tables or write anything (checked 25 November 2026: on the live database it sees 0 of 14 watchlist rows, 0 of 21 alert snapshots, 0 of 33 screener runs; on a copy built from every migration, its inserts, updates and deletes were refused on every table). The script's `fetch` also refuses any method but GET to the database's host. Tests check both.
 - **No secrets in logs.** Keys travel only in request headers, and everything printed is scrubbed of every secret's value. GitHub also masks secrets.
 - **Secrets it reads,** set under the repository's Settings, Secrets and variables, Actions:
-  - `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`, for the job and Supabase checks.
+  - `SUPABASE_URL` and `SUPABASE_ANON_KEY` (the public key, the same one the site's pages carry), for the job and Supabase checks. Until migration 0031 is pasted, those checks say "skipped". The service-role key is not used.
   - `TWELVE_DATA_API_KEY`. Each check costs 1 of the 800 daily credits.
   - Optionally `VERCEL_TOKEN`, which gives nothing on Hobby.
 - **A missing secret** makes its checks "skipped", never an alert.

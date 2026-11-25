@@ -23,6 +23,9 @@ describe("the live site", () => {
   it("knows Vercel's paused answer, by header or page", () => {
     expect(classifySite({ status: 503, vercelError: "DEPLOYMENT_PAUSED" })).toBe("paused");
     expect(classifySite({ status: 503, body: "<p>Code: DEPLOYMENT_PAUSED</p>" })).toBe("paused");
+    // How the pause looked on 25 November 2026.
+    expect(classifySite({ status: 402, vercelError: "DEPLOYMENT_DISABLED" })).toBe("paused");
+    expect(classifySite({ status: 402, body: "<p>Code: DEPLOYMENT_DISABLED</p>" })).toBe("paused");
     expect(classifySite({ status: 200, body: "<html>" })).toBe("ok");
     expect(classifySite({ status: 500 })).toBe("down");
     expect(classifySite({ status: 0 })).toBe("down");
@@ -35,11 +38,13 @@ describe("the live site", () => {
 });
 
 describe("the screener job", () => {
+  // The shape watcher_status() returns (migration 0031).
   const run = (over = {}) => ({
     started_at: "2026-11-21T09:47:00Z",
     finished_at: "2026-11-21T09:49:00Z",
-    error: null,
-    companies_skipped: { published: 4575, "not published because": null },
+    mode: "nightly",
+    failed: false,
+    published: 4575,
     ...over,
   });
 
@@ -52,11 +57,13 @@ describe("the screener job", () => {
   it("needs action when it is old, failed, unfinished or didn't publish", () => {
     expect(judgeScreenerJob(null, null, NOW).state).toBe("action");
     expect(judgeScreenerJob(run({ started_at: "2026-11-20T08:00:00Z" }), "2026-11-20T08:02:00Z", NOW).detail).toMatch(/over 26 hours/);
-    expect(judgeScreenerJob(run({ error: "SEC HTTP 503" }), null, NOW).detail).toContain("SEC HTTP 503");
+    const failed = judgeScreenerJob(run({ failed: true }), null, NOW);
+    expect(failed.detail).toMatch(/failed/);
+    expect(failed.todo).toContain("screener_runs");
     expect(judgeScreenerJob(run({ finished_at: null, started_at: "2026-11-21T09:00:00Z" }), null, NOW).detail).toMatch(/never finished/);
-    const kept = judgeScreenerJob(run({ companies_skipped: { published: null, "not published because": "only 812 companies staged" } }), null, NOW);
+    const kept = judgeScreenerJob(run({ published: null }), null, NOW);
     expect(kept.state).toBe("action");
-    expect(kept.detail).toContain("only 812 companies staged");
+    expect(kept.detail).toMatch(/didn't publish/);
     expect(judgeScreenerJob(run(), "2026-11-19T09:48:00Z", NOW).detail).toMatch(/last updated/);
   });
 

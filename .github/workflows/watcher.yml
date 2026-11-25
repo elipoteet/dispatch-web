@@ -5,8 +5,10 @@
 # owner), and on Mondays a short weekly summary.
 #
 # Repository secrets it reads (Settings, Secrets and variables, Actions):
-# SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, TWELVE_DATA_API_KEY, and optionally
-# VERCEL_TOKEN. A missing one makes its check "skipped", not a failure.
+# SUPABASE_URL, SUPABASE_ANON_KEY (the public key, which reads only the
+# watcher_status() function from migration 0031), TWELVE_DATA_API_KEY, and
+# optionally VERCEL_TOKEN. A missing one makes its check "skipped", not a
+# failure. The service-role key is not needed.
 #
 # GitHub turns scheduled workflows off after 60 days without a commit to a
 # public repository; it emails before it does.
@@ -41,7 +43,7 @@ jobs:
         run: node scripts/watcher/watch.mjs
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           TWELVE_DATA_API_KEY: ${{ secrets.TWELVE_DATA_API_KEY }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
