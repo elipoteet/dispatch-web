@@ -27,7 +27,7 @@ npx vitest run lib/sec/normalize.test.ts -t "name"  # one test by name
 - `TWELVE_DATA_FORCE_BUSY=1` simulates a used-up Twelve Data allowance, for testing the fallbacks.
 - `SCREENER_FORCE_FAILURE=unavailable` (or `not-built`) makes the screener page show its inline failure message, for checking it on `next start`.
 - On Windows, Git Bash rewrites arguments that start with `/` (e.g. `/research/nvda`) into file paths. Use PowerShell for scripts that take URL paths.
-- `node scripts/cpu/measure.mjs <repo> <port> <out.json>` measures server CPU per page on a production build. It runs `next start` behind `scripts/cpu/local-guard.mjs`, which reads the live database but refuses every write. Preload the guard (`NODE_OPTIONS=--import=file:///…/local-guard.mjs`) to run the site locally against production data safely.
+- `node scripts/cpu/measure.mjs <repo> <port> <out.json>` measures server CPU per page on a production build. It runs `next start` behind `scripts/cpu/local-guard.mjs`, which reads the live database but refuses every write (it reads the database address on each request; before 25 November it read it once at load, before `next start` had loaded .env.local, and blocked nothing). Preload the guard (`NODE_OPTIONS=--import=file:///…/local-guard.mjs`) to run the site locally against production data safely.
 
 ## Architecture
 
@@ -51,7 +51,10 @@ npx vitest run lib/sec/normalize.test.ts -t "name"  # one test by name
 
 ### Market data: `lib/providers.ts`
 - Server-only fetch functions, each wrapped in `unstable_cache`.
-- Twelve Data serves daily and intraday prices. Its free allowance is 8 requests a minute, shared by everything, and every call goes through `twelveDataSeries`, which counts them. Twelve Data is the only provider with intraday bars for the session in progress.
+- Twelve Data serves daily and intraday prices. Its free allowance is 8 requests a minute and 800 a day (reset at midnight UTC), shared by everything, and every call goes through `twelveDataSeries`, which counts them. Twelve Data is the only provider with intraday bars for the session in progress.
+- The day's 800 (`lib/prices/budget.ts`, since 25 November 2026, when the site asked for 2,141): requests for visitors stop at 600 and the alerts job may go on to 790, counted in one shared row per day (`price_credit_day`, migration 0032; per server instance until it's pasted). A "for the day" 429 stops Twelve Data until midnight UTC; a Tiingo 429 stops Tiingo until its cap resets. Requests made inside `asPriceCaller("alerts", …)` count as the alerts job's.
+- Crawlers never fetch prices: `loadCompanyPage` skips the daily history when `isCrawler()`, so a crawler gets the page without the chart, the 52-week range, Valuation's history or (for split-checked companies) Earnings' EPS by quarter, and the chart's on-demand routes turn crawlers away.
+- Daily history is cached per trading session (`lib/analysis/sessions.ts`: a session is finished at 5 pm New York time; NYSE holidays listed through 2027, extend each December), and only finished sessions are kept. When the latest can't be fetched, the newest stored copy from the ten sessions before is shown, dated ("Daily closes through …. Newer prices couldn't be loaded"), never as current. The header's price is always Finnhub's live quote.
 - Tiingo is the price fallback. It is end-of-day only and not split-adjusted, which `splitAdjust` corrects.
 - Finnhub has a separate, larger quota and serves quotes, profiles, estimates, the earnings calendar and the home-page markets tape (`lib/research/markets.ts`). Anything that needs only a live quote must use Finnhub, never Twelve Data.
 
@@ -87,14 +90,15 @@ npx vitest run lib/sec/normalize.test.ts -t "name"  # one test by name
 - A person's first visit to a tab can start storage work through `after()`: loading peers' SEC files, two years of insider filings, the 10-K comparison. It runs only when `isCrawler()` (`lib/research/crawler.ts`) is false, so crawlers can't fill the database. Headless browsers count as crawlers, so test this with a desktop User-Agent.
 - Both cron routes go through `refuseCron` (`lib/cron.ts`): the secret is required, and a preview deployment refuses even with it. Vercel calls crons on production only; this stops a call to a preview's copy of the route.
 - `/api/cron/screener` runs daily at 09:00 UTC (`vercel.json`; see Screener above).
-- `/api/cron/alerts` runs daily (`vercel.json`). It first runs the watchlist RSI and moving-average alerts, which still use the old memo engine in `lib/analysis/` and wait 8 s between tickers to stay inside the Twelve Data allowance. It then refreshes insider filings and filing changes until a 50 s deadline.
+- The alerts job is scheduled from GitHub, not Vercel: `.github/workflows/alerts.yml` runs `scripts/alerts/run.mjs` daily at 00:23 UTC (just after Twelve Data's credits reset; needs the `CRON_SECRET` repository secret). It calls `/api/cron/alerts` one step at a time: `?step=list`, then `?step=ticker&ticker=X` for each watched ticker 8 s apart, then `?step=sec` (insider filings and filing changes, 50 s deadline). `&dry=1` reports without writing; a run started by hand is a dry run by default.
+- Alert rules (`lib/alerts/decide.ts`): prices must run through the latest finished session, or the ticker is skipped and not marked checked; a ticker whose last check is more than two sessions back is re-baselined without alerting, so an outage never produces a burst of old alerts.
 
 ### Supabase
 - Clients:
   - `lib/supabase/server.ts`: per request, with the user's session. Only the auth callback and the member API routes use it. The root layout must not: who is signed in is read in the browser (`components/auth/AuthProvider.tsx`), so pages can be cached.
   - `client.ts`: in the browser.
   - `service.ts`: `createServiceRoleClient` bypasses row-level security, for SEC writes and the cron; `createPublicClient` does anonymous reads.
-- Migrations are SQL files in `supabase/migrations/` that Eli pastes into the Supabase dashboard by hand; there is no migration runner. Everything through `0030` (the screener's tables, publish function, measures and medians, pasted 5 to 15 November 2026) is applied, and the next is `0031`.
+- Migrations are SQL files in `supabase/migrations/` that Eli pastes into the Supabase dashboard by hand; there is no migration runner. Everything through `0030` (the screener's tables, publish function, measures and medians, pasted 5 to 15 November 2026) is applied. `0031` (the watcher's status function, branch `feat/watcher`) and `0032` (the price credit count, branch `fix/price-credits`) are written and not yet pasted; the next new one is `0033`.
 - The database still holds the social, leaderboard and paper-trading tables. Leave them in place, and don't alter a live table without Eli's sign-off (which is why the version stamps reuse an existing column).
 - The untracked top-level `migrations/` folder is a stray copy of the older migrations.
 
